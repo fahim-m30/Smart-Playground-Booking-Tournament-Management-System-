@@ -1,45 +1,53 @@
-// ===============================================================
-// Project Name : Smart Playground Booking & Tournament Management System
-// File Name    : server.js
-// Description  : Entry point of the backend application.
-// Author       : Fahim Muntasir
-// ===============================================================
+/**
+ * ==============================================================
+ * Project : Smart Playground Booking & Tournament Management System
+ * File    : server.js
+ * Purpose : Start the Express Server
+ * Author  : Fahim Muntasir
+ * ==============================================================
+ */
 
 // ===============================
-// Import Required Package
+// Load Environment Variables
 // ===============================
-const express = require("express");
+
+require("dotenv").config();
+// Avoid logging raw environment variables (may contain credentials)
+// console.log(process.env.PORT);
+// console.log(process.env.DATABASE_URL);
 
 // ===============================
-// Create Express Application
+// Import Required Files
 // ===============================
-const app = express();
+
+const app = require("./src/app");
+const connectDB = require("./src/config/db");
 
 // ===============================
-// Define Application Port
+// Server Configuration
 // ===============================
-// If a PORT is defined in the .env file,
-// the application will use it.
-// Otherwise, it will run on port 5000.
+
 const PORT = process.env.PORT || 5000;
 
 // ===============================
-// Default Route
+// Start Server
 // ===============================
-// This route is used to verify
-// that the backend server is
-// running successfully.
-app.get("/", (req, res) => {
-  res
-    .status(200)
-    .send(
-      "Welcome to Smart Playground Booking & Tournament Management System API."
-    );
-});
 
-// ===============================
-// Start Express Server
-// ===============================
-app.listen(PORT, () => {
-  console.log(`🚀 Server is running successfully on Port ${PORT}`);
-});
+const startServer = async () => {
+    try {
+        const dbConnected = await connectDB();
+
+        app.listen(PORT, () => {
+            console.log("=======================================");
+            console.log(`🚀 Server Running on http://localhost:${PORT}`);
+            if (dbConnected) console.log("✅ Database Connected Successfully");
+            else console.log("⚠️  Database not connected — running in degraded mode");
+            console.log("=======================================");
+        });
+    } catch (error) {
+        console.error("❌ Failed to Start Server");
+        console.error(error);
+    }
+};
+
+startServer();
