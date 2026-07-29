@@ -8,6 +8,7 @@
  */
 
 const mongoose = require("mongoose");
+const bcrypt = require("bcrypt");
 
 // ===============================
 // User Schema
@@ -15,6 +16,10 @@ const mongoose = require("mongoose");
 
 const userSchema = new mongoose.Schema(
     {
+        // ===============================
+        // Basic Information
+        // ===============================
+
         name: {
             type: String,
             required: true,
@@ -41,20 +46,32 @@ const userSchema = new mongoose.Schema(
             default: null,
         },
 
+        // ===============================
+        // Profile Image
+        // ===============================
+
         profileImage: {
-            type: String,
-            default: null,
+            data: Buffer,
+            contentType: String,
         },
+
+        // ===============================
+        // User Role
+        // ===============================
 
         role: {
             type: String,
             enum: [
                 "customer",
-                "super-admin",
                 "playground-admin",
+                "super-admin",
             ],
             default: "customer",
         },
+
+        // ===============================
+        // Account Status
+        // ===============================
 
         isVerified: {
             type: Boolean,
@@ -65,12 +82,48 @@ const userSchema = new mongoose.Schema(
             type: Boolean,
             default: false,
         },
+
+        // ===============================
+        // OTP Information
+        // ===============================
+
+        otp: {
+            code: {
+                type: String,
+                default: null,
+            },
+            expiresAt: {
+                type: Date,
+                default: null,
+            },
+        },
     },
     {
         timestamps: true,
         versionKey: false,
     }
 );
+
+// ===============================
+// Hash Password Before Save
+// ===============================
+
+userSchema.pre("save", async function () {
+    if (!this.isModified("password")) {
+        return;
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+});
+
+// ===============================
+// Compare Password
+// ===============================
+
+userSchema.methods.comparePassword = async function (plainPassword) {
+    return bcrypt.compare(plainPassword, this.password);
+};
 
 // ===============================
 // Export Model

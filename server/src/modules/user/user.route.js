@@ -9,15 +9,28 @@
 
 const express = require("express");
 
+const userController = require("./user.controller");
+const upload = require("../../middlewares/upload.middleware");
+const auth = require("../../middlewares/auth.middleware");
+
 const router = express.Router();
 
-const { register } = require("./user.controller");
-const { validateRegister } = require("./user.validation");
+// ===================================
+// Public Routes
+// ===================================
 
-// ===============================
-// User Routes
-// ===============================
+// Customer Registration (With Profile Image)
+router.post(
+    "/register",
+    upload.single("profileImage"),
+    userController.register
+);
 
-router.post("/register", validateRegister, register);
+// ===================================
+// Protected Routes
+// ===================================
+
+// Logged-in User Profile
+router.get("/me", auth, userController.getMyProfile);
 
 module.exports = router;

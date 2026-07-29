@@ -16,6 +16,14 @@ const cors = require("cors");
 const cookieParser = require("cookie-parser");
 
 // ===============================
+// Import Routes & Middlewares
+// ===============================
+
+const routes = require("./routes");
+const notFound = require("./middlewares/notFound");
+const globalErrorHandler = require("./middlewares/globalErrorHandler");
+
+// ===============================
 // Initialize Express Application
 // ===============================
 
@@ -44,11 +52,31 @@ app.use(cookieParser());
 app.get("/", (req, res) => {
     res.status(200).json({
         success: true,
-        message: "Smart Playground Booking & Tournament Management System API is Running Successfully."
+        message:
+            "Smart Playground Booking & Tournament Management System API is Running Successfully.",
     });
 });
+
+// ===============================
+// API Routes
+// ===============================
+
+app.use("/api/v1", routes);
+
+// ===============================
+// Handle Invalid Routes
+// ===============================
+
+app.use(notFound);
+
+// ===============================
+// Global Error Handler
+// ===============================
+
+app.use(globalErrorHandler);
 
 // ===============================
 // Export Application
 // ===============================
 
+module.exports = app;

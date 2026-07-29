@@ -9,7 +9,6 @@
 
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-
 const transporter = require("../../config/mail");
 const generateOTP = require("../../utils/generateOTP");
 
@@ -20,26 +19,31 @@ const User = require("../user/user.model");
 // ===============================
 
 const loginUser = async ({ email, password }) => {
+    // Check Email
     const user = await User.findOne({ email });
 
     if (!user) {
         throw new Error("Invalid Email or Password.");
     }
 
-    const isMatched = await user.comparePassword(password);
+    // Compare Password
+    const isMatched = await bcrypt.compare(password, user.password);
 
     if (!isMatched) {
         throw new Error("Invalid Email or Password.");
     }
 
+    // Email Verification Check
     if (!user.isVerified) {
         throw new Error("Please verify your email before logging in.");
     }
 
+    // Block Check
     if (user.isBlocked) {
         throw new Error("Your account has been blocked.");
     }
 
+    // Generate JWT
     const accessToken = jwt.sign(
         {
             userId: user._id,
@@ -63,13 +67,10 @@ const loginUser = async ({ email, password }) => {
 };
 
 // ===============================
-// Send OTP
+// Send Email OTP
 // ===============================
 
-const sendOTP = async (
-    email,
-    subject = "Email Verification OTP"
-) => {
+const sendOTP = async (email) => {
     const user = await User.findOne({ email });
 
     if (!user) {
@@ -93,34 +94,28 @@ const sendOTP = async (
     await transporter.sendMail({
         from: `"Smart Playground" <${process.env.EMAIL_USER}>`,
         to: user.email,
-        subject,
-
+        subject: "Email Verification OTP",
         html: `
-        <div style="max-width:600px;margin:auto;padding:30px;border:1px solid #ddd;border-radius:10px;font-family:Arial,sans-serif;">
-
+        <div style="max-width:600px;margin:auto;padding:25px;font-family:Arial,sans-serif;border:1px solid #ddd;border-radius:10px;">
             <h2 style="text-align:center;color:#0F766E;">
                 Smart Playground Booking & Tournament Management System
             </h2>
 
             <p>Hello <strong>${user.name}</strong>,</p>
 
-            <p>
-                Your One-Time Password (OTP) is:
-            </p>
+            <p>Your verification code is:</p>
 
-            <div style="text-align:center;margin:30px 0;">
-                <span style="font-size:40px;font-weight:bold;letter-spacing:8px;color:#2563EB;">
-                    ${otp}
-                </span>
-            </div>
+            <h1 style="text-align:center;color:#2563EB;letter-spacing:8px;">
+                ${otp}
+            </h1>
 
             <p>
-                This OTP is valid for
+                This OTP will expire in
                 <strong>${expireMinutes} minutes</strong>.
             </p>
 
             <p>
-                If you did not request this,
+                If you did not request this verification,
                 please ignore this email.
             </p>
 
@@ -130,7 +125,6 @@ const sendOTP = async (
                 © ${new Date().getFullYear()}
                 Smart Playground Booking & Tournament Management System
             </p>
-
         </div>
         `,
     });
@@ -142,7 +136,7 @@ const sendOTP = async (
 };
 
 // ===============================
-// Verify OTP
+// Verify Email OTP
 // ===============================
 
 const verifyOTP = async ({ email, otp }) => {
@@ -189,30 +183,32 @@ const forgotPassword = async ({ email }) => {
         throw new Error("User not found.");
     }
 
-    await sendOTP(email, "Password Reset OTP");
+    await sendOTP(email);
 
     return {
         success: true,
         message: "Password reset OTP sent successfully.",
     };
 };
-
 // ===============================
-// Resend OTP
+// Resend Email OTP
 // ===============================
 
 const resendOTP = async ({ email }) => {
+    // Find User
     const user = await User.findOne({ email });
 
     if (!user) {
         throw new Error("User not found.");
     }
 
+    // Already Verified
     if (user.isVerified) {
         throw new Error("Email is already verified.");
     }
 
-    await sendOTP(email, "Email Verification OTP");
+    // Send New OTP
+    await sendOTP(email);
 
     return {
         success: true,
@@ -225,26 +221,34 @@ const resendOTP = async ({ email }) => {
 // ===============================
 
 const resetPassword = async ({ email, otp, newPassword }) => {
+    const bcrypt = require("bcrypt");
+
+    // Find User
     const user = await User.findOne({ email });
 
     if (!user) {
         throw new Error("User not found.");
     }
 
-    if (!user.otp || !user.otp.code) {
+    // OTP Exists
+    if (!user.otp.code) {
         throw new Error("OTP not found. Please request a new OTP.");
     }
 
+    // OTP Match
     if (user.otp.code !== otp) {
         throw new Error("Invalid OTP.");
     }
 
-    if (new Date() > user.otp.expiresAt) {
+    // OTP Expiry
+    if (user.otp.expiresAt < new Date()) {
         throw new Error("OTP has expired.");
     }
 
-    // Password will be hashed by pre("save") middleware
-    user.password = newPassword;
+    // Hash Password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    user.password = hashedPassword;
 
     // Clear OTP
     user.otp = {
@@ -259,7 +263,6 @@ const resetPassword = async ({ email, otp, newPassword }) => {
         message: "Password reset successful.",
     };
 };
-
 // ===============================
 // Change Password
 // ===============================
@@ -269,13 +272,25 @@ const changePassword = async ({
     currentPassword,
     newPassword,
 }) => {
+
+    console.log("==================================");
+    console.log("User ID:", userId);
+    console.log("Current Password:", currentPassword);
+    console.log("New Password:", newPassword);
+
     const user = await User.findById(userId);
+
+    console.log("User Found:", user);
 
     if (!user) {
         throw new Error("User not found.");
     }
 
+    console.log("Password From DB:", user.password);
+
     const isMatched = await user.comparePassword(currentPassword);
+
+    console.log("Password Match:", isMatched);
 
     if (!isMatched) {
         throw new Error("Current password is incorrect.");
