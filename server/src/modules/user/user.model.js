@@ -8,6 +8,7 @@
  */
 
 const mongoose = require("mongoose");
+const bcrypt = require("bcrypt");
 
 // ===============================
 // User Schema
@@ -71,6 +72,27 @@ const userSchema = new mongoose.Schema(
         versionKey: false,
     }
 );
+
+// ===============================
+// Hash Password Before Save
+// ===============================
+
+userSchema.pre("save", async function () {
+    if (!this.isModified("password")) {
+        return;
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+});
+
+// ===============================
+// Compare Password
+// ===============================
+
+userSchema.methods.comparePassword = async function (plainPassword) {
+    return await bcrypt.compare(plainPassword, this.password);
+};
 
 // ===============================
 // Export Model

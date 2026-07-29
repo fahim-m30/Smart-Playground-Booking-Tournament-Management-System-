@@ -7,7 +7,6 @@
  * ==============================================================
  */
 
-const bcrypt = require("bcrypt");
 const User = require("./user.model");
 
 // ===============================
@@ -24,14 +23,11 @@ const registerUser = async (userData) => {
         throw new Error("Email already exists.");
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
     // Create user
     const newUser = await User.create({
         name,
         email,
-        password: hashedPassword,
+        password,
         phone,
     });
 
