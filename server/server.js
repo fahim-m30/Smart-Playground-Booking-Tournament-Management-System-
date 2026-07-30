@@ -7,14 +7,11 @@
  * ==============================================================
  */
 
-// ===============================
-// Load Environment Variables
-// ===============================
-
 require("dotenv").config();
-// Avoid logging raw environment variables (may contain credentials)
-// console.log(process.env.PORT);
-// console.log(process.env.DATABASE_URL);
+
+console.log("=================================");
+console.log("RUNNING FROM:", __dirname);
+console.log("=================================");
 
 // ===============================
 // Import Required Files
@@ -22,6 +19,8 @@ require("dotenv").config();
 
 const app = require("./src/app");
 const connectDB = require("./src/config/db");
+const createSuperAdmin = require("./src/utils/createSuperAdmin");
+const User = require("./src/modules/user/user.model");
 
 // ===============================
 // Server Configuration
@@ -37,12 +36,30 @@ const startServer = async () => {
     try {
         const dbConnected = await connectDB();
 
+        if (dbConnected) {
+            // Create Default Super Admin
+            await createSuperAdmin();
+
+            // Debug: Show Users
+            const users = await User.find();
+
+            console.log("=================================");
+            console.log("Total Users:", users.length);
+            console.log(users);
+            console.log("=================================");
+        }
+
         app.listen(PORT, () => {
-            console.log("=======================================");
+            console.log("=================================");
             console.log(`🚀 Server Running on http://localhost:${PORT}`);
-            if (dbConnected) console.log("✅ Database Connected Successfully");
-            else console.log("⚠️  Database not connected — running in degraded mode");
-            console.log("=======================================");
+
+            if (dbConnected) {
+                console.log("✅ Database Connected Successfully");
+            } else {
+                console.log("⚠️ Database Not Connected");
+            }
+
+            console.log("=================================");
         });
     } catch (error) {
         console.error("❌ Failed to Start Server");

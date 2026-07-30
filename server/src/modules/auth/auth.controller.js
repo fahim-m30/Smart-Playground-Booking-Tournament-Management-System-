@@ -8,6 +8,8 @@
  */
 
 const {
+    registerUser,
+    registerPlaygroundOwner,
     loginUser,
     sendOTP,
     verifyOTP,
@@ -16,6 +18,55 @@ const {
     resetPassword,
     changePassword,
 } = require("./auth.service");
+
+// ===============================
+// Register Customer
+// ===============================
+// ===============================
+// Register Playground Owner
+// ===============================
+
+const registerPlayground = async (req, res) => {
+    try {
+
+        const result = await registerPlaygroundOwner(req.body);
+
+        res.status(201).json({
+            success: true,
+            message: result.message,
+        });
+
+    } catch (error) {
+
+        res.status(400).json({
+            success: false,
+            message: error.message,
+        });
+
+    }
+};
+
+const register = async (req, res) => {
+    console.log("✅ Register API Hit");
+    console.log(req.body);
+
+    try {
+        const result = await registerUser(req.body);
+
+        res.status(201).json({
+            success: true,
+            message: result.message,
+        });
+
+    } catch (error) {
+        console.log(error);
+
+        res.status(400).json({
+            success: false,
+            message: error.message,
+        });
+    }
+};
 
 // ===============================
 // Login
@@ -166,6 +217,8 @@ const changePasswordController = async (req, res) => {
 // ===============================
 
 module.exports = {
+    register,
+    registerPlayground,
     login,
     sendEmailOTP,
     verifyEmailOTP,

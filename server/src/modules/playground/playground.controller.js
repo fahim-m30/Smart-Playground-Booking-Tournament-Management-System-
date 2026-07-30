@@ -1,0 +1,234 @@
+/**
+ * ==============================================================
+ * Project : Smart Playground Booking & Tournament Management System
+ * File    : playground.controller.js
+ * Purpose : Playground Controller
+ * Author  : Fahim Muntasir
+ * ==============================================================
+ */
+const {
+    createPlayground,
+    getAllPlaygrounds,
+    getSinglePlayground,
+    updatePlayground,
+    deletePlayground,
+    getMyPlaygrounds,
+    getPendingPlaygrounds,
+    approvePlayground,
+    rejectPlayground,
+} = require("./playground.service");
+// ===============================
+// Create Playground
+// ===============================
+
+const createPlaygroundController = async (req, res) => {
+    try {
+        const playground = await createPlayground(
+            req.body,
+            req.user.userId
+        );
+
+        res.status(201).json({
+            success: true,
+            message: "Playground created successfully.",
+            data: playground,
+        });
+    } catch (error) {
+        res.status(400).json({
+            success: false,
+            message: error.message,
+        });
+    }
+};
+
+// ===============================
+// Get All Playgrounds
+// ===============================
+
+const getAllPlaygroundsController = async (req, res) => {
+    try {
+        const result = await getAllPlaygrounds(req.query);
+
+        res.status(200).json({
+            success: true,
+            message: "Playgrounds fetched successfully.",
+            meta: result.meta,
+            data: result.data,
+        });
+    } catch (error) {
+        res.status(400).json({
+            success: false,
+            message: error.message,
+        });
+    }
+};
+
+// ===============================
+// Get Single Playground
+// ===============================
+
+const getSinglePlaygroundController = async (req, res) => {
+    try {
+        const playground = await getSinglePlayground(req.params.id);
+
+        res.status(200).json({
+            success: true,
+            message: "Playground fetched successfully.",
+            data: playground,
+        });
+    } catch (error) {
+        res.status(404).json({
+            success: false,
+            message: error.message,
+        });
+    }
+};
+
+// ===============================
+// Get My Playgrounds
+// ===============================
+
+const getMyPlaygroundsController = async (req, res) => {
+    try {
+        const playgrounds = await getMyPlaygrounds(req.user.userId);
+
+        res.status(200).json({
+            success: true,
+            message: "My playgrounds fetched successfully.",
+            data: playgrounds,
+        });
+    } catch (error) {
+        res.status(400).json({
+            success: false,
+            message: error.message,
+        });
+    }
+};
+// ===============================
+// Get Pending Playgrounds
+// ===============================
+
+const getPendingPlaygroundsController = async (req, res) => {
+    try {
+        const playgrounds = await getPendingPlaygrounds();
+
+        res.status(200).json({
+            success: true,
+            message: "Pending playgrounds fetched successfully.",
+            data: playgrounds,
+        });
+    } catch (error) {
+        res.status(400).json({
+            success: false,
+            message: error.message,
+        });
+    }
+};
+
+// ===============================
+// Update Playground
+// ===============================
+
+const updatePlaygroundController = async (req, res) => {
+    try {
+        const playground = await updatePlayground(
+            req.params.id,
+            req.body,
+            req.user
+        );
+
+        res.status(200).json({
+            success: true,
+            message: "Playground updated successfully.",
+            data: playground,
+        });
+    } catch (error) {
+        res.status(400).json({
+            success: false,
+            message: error.message,
+        });
+    }
+};
+
+// ===============================
+// Delete Playground
+// ===============================
+
+const deletePlaygroundController = async (req, res) => {
+    try {
+        await deletePlayground(
+            req.params.id,
+            req.user
+        );
+
+        res.status(200).json({
+            success: true,
+            message: "Playground deleted successfully.",
+        });
+    } catch (error) {
+        res.status(400).json({
+            success: false,
+            message: error.message,
+        });
+    }
+};
+// ===============================
+// Approve Playground
+// ===============================
+
+const approvePlaygroundController = async (req, res) => {
+    try {
+        const playground = await approvePlayground(req.params.id);
+
+        res.status(200).json({
+            success: true,
+            message: "Playground approved successfully.",
+            data: playground,
+        });
+    } catch (error) {
+        res.status(400).json({
+            success: false,
+            message: error.message,
+        });
+    }
+};
+
+// ===============================
+// Reject Playground
+// ===============================
+
+const rejectPlaygroundController = async (req, res) => {
+    try {
+        const playground = await rejectPlayground(
+            req.params.id,
+            req.body.rejectionReason
+        );
+
+        res.status(200).json({
+            success: true,
+            message: "Playground rejected successfully.",
+            data: playground,
+        });
+    } catch (error) {
+        res.status(400).json({
+            success: false,
+            message: error.message,
+        });
+    }
+};
+
+// ===============================
+// Export Controllers
+// ===============================
+
+module.exports = {
+    createPlayground: createPlaygroundController,
+    getAllPlaygrounds: getAllPlaygroundsController,
+    getSinglePlayground: getSinglePlaygroundController,
+    getMyPlaygrounds: getMyPlaygroundsController,
+    getPendingPlaygrounds: getPendingPlaygroundsController,
+    updatePlayground: updatePlaygroundController,
+    deletePlayground: deletePlaygroundController,
+    approvePlayground: approvePlaygroundController,
+    rejectPlayground: rejectPlaygroundController,
+};

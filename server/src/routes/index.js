@@ -8,15 +8,18 @@
  */
 
 const express = require("express");
-
 const router = express.Router();
 
-// Import Routes
-const userRoutes = require("../modules/user/user.route");
+console.log("✅ Routes Index Loaded");
+
+// Auth Routes
 const authRoutes = require("../modules/auth/auth.route");
 
-// Register Routes
-router.use("/users", userRoutes);
+// Playground Routes
+const playgroundRoutes = require("../modules/playground/playground.route");
+
+// Route Registration
 router.use("/auth", authRoutes);
+router.use("/playgrounds", playgroundRoutes);
 
 module.exports = router;

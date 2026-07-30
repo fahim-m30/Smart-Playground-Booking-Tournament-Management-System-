@@ -13,9 +13,21 @@ const router = express.Router();
 const authController = require("./auth.controller");
 const authMiddleware = require("../../middlewares/auth.middleware");
 
+// Debug Logs
+console.log("✅ auth.route.js Loaded");
+
 // ===============================
 // Authentication Routes
 // ===============================
+
+// Register Customer
+router.post("/register", authController.register);
+
+// Register Playground Owner
+router.post(
+    "/register-playground",
+    authController.registerPlayground
+);
 
 // Login
 router.post("/login", authController.login);
@@ -41,6 +53,14 @@ router.patch(
     authMiddleware,
     authController.changePassword
 );
+
+// Test Route (Remove after development)
+router.get("/test", (req, res) => {
+    res.status(200).json({
+        success: true,
+        message: "Auth Route Working",
+    });
+});
 
 // ===============================
 // Export Router

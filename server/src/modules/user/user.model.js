@@ -45,16 +45,34 @@ const userSchema = new mongoose.Schema(
             type: String,
             default: null,
         },
+        // ===============================
+// National ID Information
+// ===============================
+
+nidNumber: {
+    type: String,
+    default: null,
+    trim: true,
+},
+
+nidFrontImage: {
+    type: String,
+    default: null,
+},
+
+nidBackImage: {
+    type: String,
+    default: null,
+},
 
         // ===============================
         // Profile Image
         // ===============================
 
-        profileImage: {
-            data: Buffer,
-            contentType: String,
-        },
-
+          profileImage: {
+                  type: String,
+                default: null,
+},
         // ===============================
         // User Role
         // ===============================
