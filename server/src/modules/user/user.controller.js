@@ -48,10 +48,14 @@ const getMyProfile = async (req, res) => {
 
         let profileImage = null;
 
-        if (user.profileImage && user.profileImage.data) {
-            profileImage = `data:${user.profileImage.contentType};base64,${user.profileImage.data.toString(
-                "base64"
-            )}`;
+        if (user.profileImage) {
+            if (typeof user.profileImage === "string") {
+                profileImage = user.profileImage;
+            } else if (user.profileImage.data) {
+                profileImage = `data:${user.profileImage.contentType};base64,${user.profileImage.data.toString(
+                    "base64"
+                )}`;
+            }
         }
 
         res.status(200).json({

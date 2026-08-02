@@ -12,6 +12,13 @@ const router = express.Router();
 
 const authController = require("./auth.controller");
 const authMiddleware = require("../../middlewares/auth.middleware");
+const upload = require("../../middlewares/upload.middleware");
+
+const authUpload = upload.fields([
+    { name: "profileImage", maxCount: 1 },
+    { name: "nidFrontImage", maxCount: 1 },
+    { name: "nidBackImage", maxCount: 1 },
+]);
 
 // Debug Logs
 console.log("✅ auth.route.js Loaded");
@@ -21,11 +28,12 @@ console.log("✅ auth.route.js Loaded");
 // ===============================
 
 // Register Customer
-router.post("/register", authController.register);
+router.post("/register", authUpload, authController.register);
 
 // Register Playground Owner
 router.post(
     "/register-playground",
+    authUpload,
     authController.registerPlayground
 );
 

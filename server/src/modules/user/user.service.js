@@ -90,12 +90,12 @@ const sendOTP = async (
 
     await user.save();
 
-    await transporter.sendMail({
-        from: `"Smart Playground" <${process.env.EMAIL_USER}>`,
-        to: user.email,
-        subject,
-
-        html: `
+    try {
+        await transporter.sendMail({
+            from: `"Smart Playground" <${process.env.EMAIL_USER}>`,
+            to: user.email,
+            subject,
+            html: `
         <div style="max-width:600px;margin:auto;padding:30px;border:1px solid #ddd;border-radius:10px;font-family:Arial,sans-serif;">
 
             <h2 style="text-align:center;color:#0F766E;">
@@ -133,7 +133,13 @@ const sendOTP = async (
 
         </div>
         `,
-    });
+        });
+    } catch (error) {
+        console.error("❌ Failed to send OTP email:", error);
+        throw new Error(
+            "OTP email could not be sent. Please verify the mail server configuration."
+        );
+    }
 
     return {
         success: true,

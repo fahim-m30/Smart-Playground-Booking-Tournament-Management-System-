@@ -28,21 +28,23 @@ const {
 
 const registerPlayground = async (req, res) => {
     try {
+        const payload = {
+            ...req.body,
+            nidFrontImage: req.files?.nidFrontImage?.[0] || null,
+            nidBackImage: req.files?.nidBackImage?.[0] || null,
+        };
 
-        const result = await registerPlaygroundOwner(req.body);
+        const result = await registerPlaygroundOwner(payload);
 
         res.status(201).json({
             success: true,
             message: result.message,
         });
-
     } catch (error) {
-
         res.status(400).json({
             success: false,
             message: error.message,
         });
-
     }
 };
 
@@ -51,13 +53,17 @@ const register = async (req, res) => {
     console.log(req.body);
 
     try {
-        const result = await registerUser(req.body);
+        const payload = {
+            ...req.body,
+            profileImage: req.files?.profileImage?.[0] || null,
+        };
+
+        const result = await registerUser(payload);
 
         res.status(201).json({
             success: true,
             message: result.message,
         });
-
     } catch (error) {
         console.log(error);
 

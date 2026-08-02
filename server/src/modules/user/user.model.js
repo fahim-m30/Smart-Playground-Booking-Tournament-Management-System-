@@ -131,8 +131,14 @@ userSchema.pre("save", async function () {
         return;
     }
 
+    const password = this.password;
+
+    if (typeof password !== "string" || password.startsWith("$2")) {
+        return;
+    }
+
     const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
+    this.password = await bcrypt.hash(password, salt);
 });
 
 // ===============================

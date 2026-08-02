@@ -14,8 +14,92 @@ const generateOTP = require("../../utils/generateOTP");
 const emailTemplate = require("../../utils/emailTemplate");
 
 const User = require("../user/user.model");
+const PendingRegistration = require("./pendingRegistration.model");
+const Playground = require("../playground/playground.model");
+
+const convertFileToDataUrl = (file) => {
+    if (!file) {
+        return null;
+    }
+
+    const buffer = file.buffer || file.data;
+    if (!buffer) {
+        return null;
+    }
+
+    const mimeType = file.mimetype || file.contentType || "application/octet-stream";
+    return `data:${mimeType};base64,${Buffer.from(buffer).toString("base64")}`;
+};
+
+const hashPassword = async (password) => {
+    return bcrypt.hash(password, 10);
+};
+
+const normalizeEmail = (email) => {
+    return typeof email === "string" ? email.trim().toLowerCase() : email;
+};
+
+const isPendingExpired = (pending) => {
+    return Boolean(
+        pending &&
+        pending.otp &&
+        pending.otp.expiresAt &&
+        new Date() > new Date(pending.otp.expiresAt)
+    );
+};
+
+const cleanupExpiredPendingRegistration = async (email) => {
+    const pending = await PendingRegistration.findOne({ email });
+    if (pending && isPendingExpired(pending)) {
+        await PendingRegistration.deleteOne({ _id: pending._id });
+        return null;
+    }
+    return pending;
+};
+
+const createUserFromPendingRegistration = async (pending) => {
+    const user = await User.create({
+        name: pending.name,
+        email: pending.email,
+        password: pending.password,
+        phone: pending.phone,
+        role: pending.role,
+        profileImage: pending.profileImage,
+        nidNumber: pending.nidNumber,
+        nidFrontImage: pending.nidFrontImage,
+        nidBackImage: pending.nidBackImage,
+    });
+
+    if (pending.role === "playground-admin") {
+        await Playground.create({
+            owner: user._id,
+            name: pending.playgroundName,
+            slug: pending.playgroundName
+                ? pending.playgroundName.toLowerCase().replace(/\s+/g, "-")
+                : pending.email.split("@")[0],
+            description: pending.description,
+            sportType: pending.sportType,
+            pricePerHour: pending.pricePerHour,
+            phone: pending.phone,
+            email: pending.email,
+            address: pending.address,
+            division: pending.division,
+            district: pending.district,
+            area: pending.area,
+            openingTime: pending.openingTime,
+            closingTime: pending.closingTime,
+            maxPlayers: pending.maxPlayers,
+            facilities: pending.facilities,
+            status: "Pending",
+        });
+    }
+
+    return user;
+};
+
 // ===============================
 // Register Customer
+// ===============================
 // ===============================
 
 const registerUser = async ({
@@ -23,26 +107,39 @@ const registerUser = async ({
     email,
     password,
     phone,
+    profileImage,
 }) => {
+    const normalizedEmail = normalizeEmail(email);
+    const existingUser = await User.findOne({ email: normalizedEmail });
+    let existingPending = await PendingRegistration.findOne({ email: normalizedEmail });
 
-    // Check Existing Email
-    const existingUser = await User.findOne({ email });
+    if (existingPending && isPendingExpired(existingPending)) {
+        await PendingRegistration.deleteOne({ _id: existingPending._id });
+        existingPending = null;
+    }
 
     if (existingUser) {
         throw new Error("Email already exists.");
     }
 
-    // Create User
-    const user = await User.create({
+    if (existingPending) {
+        throw new Error(
+            "A pending registration already exists. Please verify the OTP sent to your email or request a new one."
+        );
+    }
+
+    const profileImageDataUrl = convertFileToDataUrl(profileImage);
+
+    await PendingRegistration.create({
         name,
-        email,
-        password,
+        email: normalizedEmail,
+        password: await hashPassword(password),
         phone,
         role: "customer",
+        profileImage: profileImageDataUrl,
     });
 
-    // Send Verification OTP
-    await sendOTP(user.email);
+    await sendOTP(normalizedEmail);
 
     return {
         success: true,
@@ -79,60 +176,52 @@ const registerPlaygroundOwner = async ({
     maxPlayers,
     facilities,
 }) => {
+    const normalizedEmail = normalizeEmail(email);
+    const existingUser = await User.findOne({ email: normalizedEmail });
+    let existingPending = await PendingRegistration.findOne({ email: normalizedEmail });
 
-    // Check Existing Email
-    const existingUser = await User.findOne({ email });
+    if (existingPending && isPendingExpired(existingPending)) {
+        await PendingRegistration.deleteOne({ _id: existingPending._id });
+        existingPending = null;
+    }
 
     if (existingUser) {
         throw new Error("Email already exists.");
     }
 
-    // Create User
-    const user = await User.create({
+    if (existingPending) {
+        throw new Error(
+            "A pending registration already exists. Please verify the OTP sent to your email or request a new one."
+        );
+    }
+
+    const nidFrontImageDataUrl = convertFileToDataUrl(nidFrontImage);
+    const nidBackImageDataUrl = convertFileToDataUrl(nidBackImage);
+
+    await PendingRegistration.create({
         name,
-        email,
-        password,
+        email: normalizedEmail,
+        password: await hashPassword(password),
         phone,
-
         role: "playground-admin",
-
         nidNumber,
-        nidFrontImage,
-        nidBackImage,
-    });
-
-    // Create Playground
-    await Playground.create({
-        owner: user._id,
-
-        name: playgroundName,
-        slug: playgroundName.toLowerCase().replace(/\s+/g, "-"),
-
+        nidFrontImage: nidFrontImageDataUrl,
+        nidBackImage: nidBackImageDataUrl,
+        playgroundName,
         description,
         sportType,
-
         pricePerHour,
-
-        phone,
-        email,
-
         address,
         division,
         district,
         area,
-
         openingTime,
         closingTime,
-
         maxPlayers,
-
         facilities,
-
-        status: "Pending",
     });
 
-    // Send OTP
-    await sendOTP(user.email);
+    await sendOTP(normalizedEmail);
 
     return {
         success: true,
@@ -145,12 +234,11 @@ const registerPlaygroundOwner = async ({
 // Login User
 // ===============================
 
-const Playground = require("../playground/playground.model");
-
 const loginUser = async ({ email, password }) => {
+    const normalizedEmail = normalizeEmail(email);
 
     // Find User
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: normalizedEmail });
 
     console.log("User:", user);
 
@@ -208,36 +296,50 @@ console.log("Password From DB:", user.password);
 // ===============================
 
 const sendOTP = async (email) => {
-    const user = await User.findOne({ email });
+    const normalizedEmail = normalizeEmail(email);
+    const pending = await cleanupExpiredPendingRegistration(normalizedEmail);
+    const user = await User.findOne({ email: normalizedEmail });
 
-    if (!user) {
+    const record = pending || user;
+    const recordType = pending ? "pending" : user ? "user" : null;
+
+    if (!record) {
         throw new Error("User not found.");
     }
 
     const otp = generateOTP();
 
-    const expireMinutes =
-        Number(process.env.OTP_EXPIRE_MINUTES) || 10;
+    const expireMinutes = Number(process.env.OTP_EXPIRE_MINUTES) || 10;
 
-    user.otp = {
+    record.otp = {
         code: otp,
-        expiresAt: new Date(
-            Date.now() + expireMinutes * 60 * 1000
-        ),
+        expiresAt: new Date(Date.now() + expireMinutes * 60 * 1000),
     };
 
-    await user.save();
+    await record.save();
 
-    await transporter.sendMail({
-    from: `"Smart Playground" <${process.env.EMAIL_USER}>`,
-    to: user.email,
-    subject: "Verify Your Email",
-    html: emailTemplate({
-        name: user.name,
-        otp,
-        expireMinutes,
-    }),
-});
+    console.log(`📧 Sending OTP to ${record.email} (${recordType})`);
+
+    try {
+        await transporter.sendMail({
+            from: `"Smart Playground" <${process.env.EMAIL_USER}>`,
+            to: record.email,
+            subject: "Verify Your Email",
+            text: `Hello ${record.name},\n\nYour OTP code is: ${otp}\nThis code is valid for ${expireMinutes} minutes.\n\nIf you did not request this, please ignore this message.\n`,
+            html: emailTemplate({
+                name: record.name,
+                otp,
+                expireMinutes,
+            }),
+        });
+        console.log(`✅ OTP email queued for ${record.email}`);
+    } catch (error) {
+        console.error("❌ Failed to send OTP email:", error);
+        throw new Error(
+            "OTP email could not be sent. Please verify the mail server configuration."
+        );
+    }
+
     return {
         success: true,
         message: "OTP sent successfully.",
@@ -249,26 +351,31 @@ const sendOTP = async (email) => {
 // ===============================
 
 const verifyOTP = async ({ email, otp }) => {
-    const user = await User.findOne({ email });
+    const normalizedEmail = normalizeEmail(email);
+    const pending = await PendingRegistration.findOne({ email: normalizedEmail });
 
-    if (!user) {
-        throw new Error("User not found.");
+    if (!pending) {
+        throw new Error("Pending registration not found.");
     }
 
-    if (!user.otp || !user.otp.code) {
+    if (!pending.otp || !pending.otp.code) {
         throw new Error("OTP not found.");
     }
 
-    if (user.otp.code !== otp) {
+    if (new Date() > pending.otp.expiresAt) {
+        await PendingRegistration.deleteOne({ _id: pending._id });
+        throw new Error("OTP has expired. Please register again.");
+    }
+
+    if (pending.otp.code !== otp) {
         throw new Error("Invalid OTP.");
     }
 
-    if (new Date() > user.otp.expiresAt) {
-        throw new Error("OTP has expired.");
-    }
+    const user = await createUserFromPendingRegistration(pending);
+
+    await PendingRegistration.deleteOne({ email: normalizedEmail });
 
     user.isVerified = true;
-
     user.otp = {
         code: null,
         expiresAt: null,
@@ -286,13 +393,14 @@ const verifyOTP = async ({ email, otp }) => {
 // ===============================
 
 const forgotPassword = async ({ email }) => {
-    const user = await User.findOne({ email });
+    const normalizedEmail = normalizeEmail(email);
+    const user = await User.findOne({ email: normalizedEmail });
 
     if (!user) {
         throw new Error("User not found.");
     }
 
-    await sendOTP(email);
+    await sendOTP(normalizedEmail);
 
     return {
         success: true,
@@ -304,20 +412,35 @@ const forgotPassword = async ({ email }) => {
 // ===============================
 
 const resendOTP = async ({ email }) => {
-    // Find User
-    const user = await User.findOne({ email });
+    const normalizedEmail = normalizeEmail(email);
+    const pending = await cleanupExpiredPendingRegistration(normalizedEmail);
+    const user = await User.findOne({ email: normalizedEmail });
 
-    if (!user) {
-        throw new Error("User not found.");
+    if (!pending && !user) {
+        throw new Error("Email not found.");
     }
 
-    // Already Verified
+    if (!pending && user && !user.isVerified) {
+        await sendOTP(normalizedEmail);
+        return {
+            success: true,
+            message: "A new OTP has been sent to your email.",
+        };
+    }
+
+    if (pending) {
+        await sendOTP(normalizedEmail);
+        return {
+            success: true,
+            message: "A new OTP has been sent to your email.",
+        };
+    }
+
     if (user.isVerified) {
         throw new Error("Email is already verified.");
     }
 
-    // Send New OTP
-    await sendOTP(email);
+    await sendOTP(normalizedEmail);
 
     return {
         success: true,
@@ -331,9 +454,10 @@ const resendOTP = async ({ email }) => {
 
 const resetPassword = async ({ email, otp, newPassword }) => {
     const bcrypt = require("bcrypt");
+    const normalizedEmail = normalizeEmail(email);
 
     // Find User
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: normalizedEmail });
 
     if (!user) {
         throw new Error("User not found.");
