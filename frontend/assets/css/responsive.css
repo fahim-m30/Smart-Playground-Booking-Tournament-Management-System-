@@ -1,0 +1,64 @@
+/* ==========================================================
+   Project : TURF
+   File    : responsive.css
+   Purpose : Responsive Design
+   Author  : Fahim Muntasir
+========================================================== */
+
+@media(max-width:992px){
+
+.nav-menu{
+
+position:absolute;
+
+top:90px;
+
+left:0;
+
+width:100%;
+
+background:white;
+
+display:none;
+
+flex-direction:column;
+
+padding:30px;
+
+box-shadow:0 10px 30px rgba(0,0,0,.08);
+
+}
+
+.nav-menu ul{
+
+flex-direction:column;
+
+gap:25px;
+
+}
+
+.show-menu{
+
+display:flex;
+
+}
+
+.nav-buttons{
+
+display:none;
+
+flex-direction:column;
+
+padding:20px;
+
+background:white;
+
+}
+
+.show-buttons{
+
+display:flex;
+
+}
+
+}

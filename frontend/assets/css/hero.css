@@ -1,0 +1,545 @@
+/* ==========================================================
+   Project : TURF
+   File    : hero.css
+   Purpose : Hero Section Styling
+   Author  : Fahim Muntasir
+========================================================== */
+
+/* =============================
+   Navbar
+============================= */
+
+.navbar{
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 9999;
+
+    background: rgba(255,255,255,.92);
+
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+
+    border-bottom: 1px solid #E2E8F0;
+
+    transition: .35s ease;
+
+    box-shadow:
+    0 8px 30px rgba(15,23,42,.05);
+}
+
+
+/* =============================
+Container
+============================= */
+
+.navbar-container{
+
+    max-width:1280px;
+
+    margin:auto;
+
+    padding:20px;
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+}
+
+/* =============================
+Logo
+============================= */
+
+.logo{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:16px;
+
+}
+
+
+.logo img{
+
+    width:68px;
+
+    transition:.35s;
+
+}
+
+
+.logo:hover img{
+
+    transform:scale(1.07);
+
+}
+
+
+.logo-text{
+
+    display:flex;
+
+    flex-direction:column;
+
+}
+
+
+.logo-text h2{
+
+    font-size:30px;
+
+    font-weight:800;
+
+    color:#15803D;
+
+    line-height:1;
+
+    letter-spacing:1px;
+
+}
+
+
+.logo-text span{
+
+    font-size:13px;
+
+    color:#64748B;
+
+    margin-top:6px;
+
+}
+
+
+/* =============================
+Menu
+============================= */
+
+.nav-menu ul{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:40px;
+
+}
+
+
+.nav-menu a{
+
+    position:relative;
+
+    color:#334155;
+
+    font-size:16px;
+
+    font-weight:600;
+
+    transition:.3s;
+
+}
+
+
+/* Hover */
+
+.nav-menu a:hover{
+
+    color:#16A34A;
+
+}
+
+
+/* Underline */
+
+.nav-menu a::after{
+
+    content:"";
+
+    position:absolute;
+
+    left:0;
+
+    bottom:-8px;
+
+    width:0;
+
+    height:3px;
+
+    border-radius:10px;
+
+    background:#16A34A;
+
+    transition:.3s;
+
+}
+
+
+.nav-menu a:hover::after{
+
+    width:100%;
+
+}
+
+
+/* Active */
+
+.active{
+
+    color:#16A34A !important;
+
+}
+
+.active::after{
+
+    width:100% !important;
+
+}
+
+
+/* =============================
+Buttons
+============================= */
+
+.nav-buttons {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    flex-shrink: 0;
+}
+
+.login-btn {
+    padding: 12px 28px;
+    border-radius: 12px;
+    border: 2px solid #16A34A;
+    color: #15803D;
+    font-weight: 600;
+    transition: .35s;
+    background: #F0FDFA;
+}
+
+.login-btn:hover {
+    background: #DCFCE7;
+}
+
+.register-btn {
+    padding: 12px 28px;
+    border-radius: 12px;
+    background: #16A34A;
+    color: #fff;
+    font-weight: 600;
+    transition: .35s;
+    box-shadow: 0 10px 20px rgba(22, 163, 74, .2);
+}
+
+.register-btn:hover {
+    background: #15803D;
+    transform: translateY(-3px);
+}
+
+/* =============================
+   Hero Section
+============================= */
+
+.hero{
+    position:relative;
+    min-height:calc(100vh - 90px);
+    display:flex;
+    align-items:center;
+    padding:140px 0 100px;
+    background-image:
+        linear-gradient(180deg, rgba(15,23,42,.24), rgba(15,23,42,.45)),
+        url("../images/hero-bg.jpg");
+    background-size:cover;
+    background-position:center;
+    overflow:hidden;
+    perspective:1200px;
+}
+
+.hero::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    background:radial-gradient(circle at 18% 18%, rgba(22,163,74,.22), transparent 22%),
+                radial-gradient(circle at 82% 20%, rgba(34,197,94,.16), transparent 16%),
+                radial-gradient(circle at 50% 85%, rgba(255,255,255,.14), transparent 15%);
+    pointer-events:none;
+}
+
+.hero-overlay{
+    position:absolute;
+    inset:0;
+    background:rgba(15,23,42,.18);
+    pointer-events:none;
+}
+
+.hero-container{
+    position:relative;
+    z-index:2;
+    display:flex;
+    align-items:center;
+    min-height:calc(100vh - 90px);
+}
+
+.hero-content{
+    max-width:680px;
+    padding:44px 36px;
+    border-radius:34px;
+    background:#ffffff;
+    border:1px solid rgba(16,185,129,.14);
+    box-shadow:
+        0 28px 60px rgba(15,23,42,.08),
+        0 10px 30px rgba(16,185,129,.12);
+}
+
+.hero-subtitle{
+    display:inline-block;
+    margin-bottom:20px;
+    font-size:18px;
+    font-weight:700;
+    color:#16A34A;
+    text-transform:uppercase;
+    letter-spacing:2px;
+}
+
+.hero h1{
+    font-size:4.2rem;
+    line-height:1.02;
+    font-weight:800;
+    color:#ffffff;
+    text-shadow:0 22px 40px rgba(0,0,0,.32);
+    margin-bottom:24px;
+}
+
+.hero p{
+    color:rgba(255,255,255,.88);
+    font-size:1.05rem;
+    line-height:1.9;
+    margin-bottom:24px;
+}
+
+.hero-search{
+    display:flex;
+    gap:12px;
+    margin-top:18px;
+    flex-wrap:wrap;
+}
+
+.hero-search input{
+    flex:1;
+    min-width:220px;
+    padding:18px 22px;
+    border-radius:18px;
+    border:1px solid rgba(255,255,255,.22);
+    background:rgba(255,255,255,.14);
+    color:#fff;
+    font-size:1rem;
+    outline:none;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);
+}
+
+.hero-search input::placeholder{
+    color:rgba(255,255,255,.7);
+}
+
+.hero-search button{
+    padding:18px 30px;
+    border-radius:18px;
+    border:none;
+    background:linear-gradient(135deg,#22c55e,#16a34a);
+    color:#fff;
+    font-weight:700;
+    cursor:pointer;
+    transition:.35s ease;
+    box-shadow:0 18px 40px rgba(22,163,74,.25);
+}
+
+.hero-search button:hover{
+    transform:translateY(-2px);
+    box-shadow:0 22px 48px rgba(22,163,74,.32);
+}
+
+.hero-buttons{
+    display:flex;
+    flex-wrap:wrap;
+    gap:16px;
+    margin-top:32px;
+}
+
+.hero-buttons .btn-green,
+.hero-buttons .btn-white{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-width:160px;
+    padding:16px 28px;
+    border-radius:18px;
+    font-weight:700;
+    transition:.35s ease;
+}
+
+.btn-green{
+    background:#16a34a;
+    color:#fff;
+    box-shadow:0 18px 32px rgba(22,163,74,.25);
+}
+
+.btn-green:hover{
+    transform:translateY(-2px);
+}
+
+.btn-white{
+    background:rgba(255,255,255,.92);
+    color:#0f172a;
+}
+
+.btn-white:hover{
+    background:#ffffff;
+    transform:translateY(-2px);
+}
+
+.hero-features{
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:18px;
+    margin-top:42px;
+}
+
+.feature-card{
+    display:flex;
+    align-items:center;
+    gap:18px;
+    padding:22px;
+    border-radius:24px;
+    background:rgba(255,255,255,.12);
+    border:1px solid rgba(255,255,255,.12);
+    box-shadow:0 18px 50px rgba(0,0,0,.12);
+    transition:.35s ease;
+    backdrop-filter:blur(12px);
+}
+
+.feature-card:hover{
+    transform:translateY(-8px) scale(1.01);
+}
+
+.feature-icon{
+    width:58px;
+    height:58px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:18px;
+    background:rgba(255,255,255,.2);
+    color:#10b981;
+    font-size:22px;
+}
+
+.feature-text h3{
+    font-size:1.05rem;
+    color:#fff;
+    margin-bottom:6px;
+}
+
+.feature-text p{
+    color:rgba(255,255,255,.76);
+    font-size:.95rem;
+}
+
+@media(max-width:1024px) {
+    .hero{
+        padding:120px 0 80px;
+    }
+    .hero h1{
+        font-size:3.4rem;
+    }
+    .hero-features{
+        grid-template-columns:1fr 1fr;
+    }
+}
+
+@media(max-width:768px) {
+    .hero{
+        min-height:auto;
+        padding:90px 0 60px;
+    }
+    .hero-content{
+        padding:32px 22px;
+    }
+    .hero h1{
+        font-size:2.8rem;
+    }
+    .hero-search{
+        flex-direction:column;
+    }
+    .hero-buttons{
+        width:100%;
+    }
+    .hero-features{
+        grid-template-columns:1fr;
+    }
+}
+
+
+/* =============================
+Mobile Icon
+============================= */
+
+.menu-toggle{
+
+    display:none;
+
+    font-size:28px;
+
+    cursor:pointer;
+
+}
+
+
+/* =============================
+Responsive
+============================= */
+
+@media(max-width:992px){
+
+.nav-menu{
+
+display:none;
+
+}
+
+.nav-buttons{
+
+display:none;
+
+}
+
+.menu-toggle{
+
+display:block;
+
+}
+
+.logo img{
+
+width:58px;
+
+}
+
+.logo-text h2{
+
+font-size:24px;
+
+}
+
+.logo-text span{
+
+font-size:11px;
+
+}
+
+} eyje code motamoti sob thik ache jeita problem oita thik koro 
