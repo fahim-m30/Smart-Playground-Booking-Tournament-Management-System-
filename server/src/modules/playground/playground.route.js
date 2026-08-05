@@ -9,17 +9,7 @@
 
 const express = require("express");
 
-const {
-    createPlayground,
-    getAllPlaygrounds,
-    getSinglePlayground,
-    getMyPlaygrounds,
-    getPendingPlaygrounds,
-    approvePlayground,
-    rejectPlayground,
-    updatePlayground,
-    deletePlayground,
-} = require("./playground.controller");
+const playgroundController = require("./playground.controller");
 
 const verifyToken = require("../../middlewares/verifyToken");
 const authorize = require("../../middlewares/authorize");
@@ -30,70 +20,74 @@ const router = express.Router();
 // Public Routes
 // ======================================================
 
-// Get All Approved Playgrounds
-router.get("/", getAllPlaygrounds);
-
-// Get Single Playground
-router.get("/:id", getSinglePlayground);
+// Get All Playgrounds
+router.get("/", playgroundController.getAllPlaygrounds);
 
 // ======================================================
 // Protected Routes
 // ======================================================
 
-// Create Playground (Playground Admin / Super Admin)
+// Create Playground
 router.post(
     "/",
     verifyToken,
     authorize("playground-admin", "super-admin"),
-    createPlayground
+    playgroundController.createPlayground
 );
 
-// Get My Playgrounds (Playground Admin)
+// Get My Playgrounds
 router.get(
     "/my-playgrounds",
     verifyToken,
-    authorize("playground-admin"),
-    getMyPlaygrounds
+    authorize("playground-admin", "super-admin"),
+    playgroundController.getMyPlaygrounds
 );
 
-// Get Pending Playgrounds (Super Admin)
-router.get(
-    "/pending",
-    verifyToken,
-    authorize("super-admin"),
-    getPendingPlaygrounds
-);
-
-// Approve Playground (Super Admin)
+// Approve Playground
 router.patch(
     "/:id/approve",
     verifyToken,
     authorize("super-admin"),
-    approvePlayground
+    playgroundController.approvePlayground
 );
 
-// Reject Playground (Super Admin)
+// Activate Playground
 router.patch(
-    "/:id/reject",
+    "/:id/activate",
     verifyToken,
     authorize("super-admin"),
-    rejectPlayground
+    playgroundController.activatePlayground
 );
 
-// Update Playground (Owner / Super Admin)
+// Deactivate Playground
+router.patch(
+    "/:id/deactivate",
+    verifyToken,
+    authorize("super-admin"),
+    playgroundController.deactivatePlayground
+);
+
+// Update Playground
 router.patch(
     "/:id",
     verifyToken,
     authorize("playground-admin", "super-admin"),
-    updatePlayground
+    playgroundController.updatePlayground
 );
 
-// Delete Playground (Owner / Super Admin)
+// Delete Playground
 router.delete(
     "/:id",
     verifyToken,
     authorize("playground-admin", "super-admin"),
-    deletePlayground
+    playgroundController.deletePlayground
 );
+
+// ======================================================
+// Dynamic Route (Always Keep Last)
+// ======================================================
+
+// Get Single Playground
+router.get("/:id", playgroundController.getSinglePlayground);
 
 module.exports = router;

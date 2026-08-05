@@ -13,9 +13,9 @@ const {
     updatePlayground,
     deletePlayground,
     getMyPlaygrounds,
-    getPendingPlaygrounds,
     approvePlayground,
-    rejectPlayground,
+    activatePlayground,
+    deactivatePlayground,
 } = require("./playground.service");
 // ===============================
 // Create Playground
@@ -104,26 +104,6 @@ const getMyPlaygroundsController = async (req, res) => {
         });
     }
 };
-// ===============================
-// Get Pending Playgrounds
-// ===============================
-
-const getPendingPlaygroundsController = async (req, res) => {
-    try {
-        const playgrounds = await getPendingPlaygrounds();
-
-        res.status(200).json({
-            success: true,
-            message: "Pending playgrounds fetched successfully.",
-            data: playgrounds,
-        });
-    } catch (error) {
-        res.status(400).json({
-            success: false,
-            message: error.message,
-        });
-    }
-};
 
 // ===============================
 // Update Playground
@@ -178,7 +158,10 @@ const deletePlaygroundController = async (req, res) => {
 
 const approvePlaygroundController = async (req, res) => {
     try {
-        const playground = await approvePlayground(req.params.id);
+        const playground = await approvePlayground(
+            req.params.id,
+            req.user.userId
+        );
 
         res.status(200).json({
             success: true,
@@ -194,19 +177,16 @@ const approvePlaygroundController = async (req, res) => {
 };
 
 // ===============================
-// Reject Playground
+// Activate Playground
 // ===============================
 
-const rejectPlaygroundController = async (req, res) => {
+const activatePlaygroundController = async (req, res) => {
     try {
-        const playground = await rejectPlayground(
-            req.params.id,
-            req.body.rejectionReason
-        );
+        const playground = await activatePlayground(req.params.id);
 
         res.status(200).json({
             success: true,
-            message: "Playground rejected successfully.",
+            message: "Playground activated successfully.",
             data: playground,
         });
     } catch (error) {
@@ -218,6 +198,26 @@ const rejectPlaygroundController = async (req, res) => {
 };
 
 // ===============================
+// Deactivate Playground
+// ===============================
+
+const deactivatePlaygroundController = async (req, res) => {
+    try {
+        const playground = await deactivatePlayground(req.params.id);
+
+        res.status(200).json({
+            success: true,
+            message: "Playground deactivated successfully.",
+            data: playground,
+        });
+    } catch (error) {
+        res.status(400).json({
+            success: false,
+            message: error.message,
+        });
+    }
+};
+// ===============================
 // Export Controllers
 // ===============================
 
@@ -226,9 +226,9 @@ module.exports = {
     getAllPlaygrounds: getAllPlaygroundsController,
     getSinglePlayground: getSinglePlaygroundController,
     getMyPlaygrounds: getMyPlaygroundsController,
-    getPendingPlaygrounds: getPendingPlaygroundsController,
     updatePlayground: updatePlaygroundController,
     deletePlayground: deletePlaygroundController,
     approvePlayground: approvePlaygroundController,
-    rejectPlayground: rejectPlaygroundController,
+    activatePlayground: activatePlaygroundController,
+    deactivatePlayground: deactivatePlaygroundController,
 };

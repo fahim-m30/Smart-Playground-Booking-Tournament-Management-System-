@@ -1,8 +1,8 @@
 /**
  * ==============================================================
  * Project : Smart Playground Booking & Tournament Management System
- * File    : auth.service.js
- * Purpose : Authentication Service
+ * File    : user.service.js
+ * Purpose : User Service
  * Author  : Fahim Muntasir
  * ==============================================================
  */
@@ -296,6 +296,158 @@ const changePassword = async ({
         message: "Password changed successfully.",
     };
 };
+// ===============================
+// Get My Profile
+// ===============================
+
+const getMyProfile = async (userId) => {
+    const user = await User.findById(userId).select("-password -otp");
+
+    if (!user) {
+        throw new Error("User not found.");
+    }
+
+    return user;
+};
+
+// ===============================
+// Update Profile
+// ===============================
+
+const updateProfile = async (userId, payload) => {
+    const user = await User.findById(userId);
+
+    if (!user) {
+        throw new Error("User not found.");
+    }
+
+    if (payload.name !== undefined) {
+        user.name = payload.name;
+    }
+
+    if (payload.phone !== undefined) {
+        user.phone = payload.phone;
+    }
+
+    if (payload.address !== undefined) {
+        user.address = payload.address;
+    }
+
+    if (payload.gender !== undefined) {
+        user.gender = payload.gender;
+    }
+
+    if (payload.dateOfBirth !== undefined) {
+        user.dateOfBirth = payload.dateOfBirth;
+    }
+
+    await user.save();
+
+    return user;
+};
+
+// ===============================
+// Update Profile Image
+// ===============================
+
+const updateProfileImage = async (userId, imagePath) => {
+    const user = await User.findById(userId);
+
+    if (!user) {
+        throw new Error("User not found.");
+    }
+
+    user.profileImage = imagePath;
+
+    await user.save();
+
+    return user;
+};
+// ===============================
+// Get All Users
+// Super Admin
+// ===============================
+
+const getAllUsers = async () => {
+    const users = await User.find({
+        isDeleted: false,
+    })
+        .select("-password -otp -refreshToken")
+        .sort({ createdAt: -1 });
+
+    return users;
+};
+
+// ===============================
+// Get Single User
+// ===============================
+
+const getSingleUser = async (userId) => {
+    const user = await User.findOne({
+        _id: userId,
+        isDeleted: false,
+    }).select("-password -otp -refreshToken");
+
+    if (!user) {
+        throw new Error("User not found.");
+    }
+
+    return user;
+};
+
+// ===============================
+// Block User
+// ===============================
+
+const blockUser = async (userId) => {
+    const user = await User.findById(userId);
+
+    if (!user) {
+        throw new Error("User not found.");
+    }
+
+    user.isBlocked = true;
+
+    await user.save();
+
+    return user;
+};
+
+// ===============================
+// Unblock User
+// ===============================
+
+const unblockUser = async (userId) => {
+    const user = await User.findById(userId);
+
+    if (!user) {
+        throw new Error("User not found.");
+    }
+
+    user.isBlocked = false;
+
+    await user.save();
+
+    return user;
+};
+
+// ===============================
+// Soft Delete User
+// ===============================
+
+const deleteUser = async (userId) => {
+    const user = await User.findById(userId);
+
+    if (!user) {
+        throw new Error("User not found.");
+    }
+
+    user.isDeleted = true;
+
+    await user.save();
+
+    return;
+};
 
 // ===============================
 // Export Services
@@ -309,4 +461,14 @@ module.exports = {
     resendOTP,
     resetPassword,
     changePassword,
+
+    getMyProfile,
+    updateProfile,
+    updateProfileImage,
+
+    getAllUsers,
+    getSingleUser,
+    blockUser,
+    unblockUser,
+    deleteUser,
 };

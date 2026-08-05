@@ -2,149 +2,254 @@
  * ==============================================================
  * Project : Smart Playground Booking & Tournament Management System
  * File    : playground.model.js
- * Purpose : Playground model
+ * Purpose : Playground Model
  * Author  : Fahim Muntasir
  * ==============================================================
  */
+
 const mongoose = require("mongoose");
 
 const playgroundSchema = new mongoose.Schema(
-  {
-    owner: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-    },
+    {
+        // ===============================
+        // Playground Admin
+        // ===============================
 
-    name: {
-      type: String,
-      required: true,
-      trim: true,
-    },
+        playgroundAdmin: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            required: true,
+        },
 
-    slug: {
-      type: String,
-      required: true,
-      unique: true,
-      lowercase: true,
-      trim: true,
-    },
+        // ===============================
+        // Basic Information
+        // ===============================
 
-    description: {
-      type: String,
-      required: true,
-      trim: true,
-    },
+        name: {
+            type: String,
+            required: true,
+            trim: true,
+        },
 
-    sportType: {
-      type: String,
-      enum: ["Football", "Cricket", "Badminton"],
-      required: true,
-    },
+        slug: {
+            type: String,
+            required: true,
+            unique: true,
+            lowercase: true,
+            trim: true,
+        },
 
-    images: [
-      {
-        type: String,
-      },
-    ],
+        description: {
+            type: String,
+            required: true,
+            trim: true,
+        },
 
-    pricePerHour: {
-      type: Number,
-      required: true,
-      min: 0,
-    },
+        sportType: {
+            type: String,
+            enum: ["Football", "Cricket", "Badminton"],
+            required: true,
+        },
 
-    phone: {
-      type: String,
-      required: true,
-      trim: true,
-    },
+        // ===============================
+        // Images
+        // ===============================
 
-    email: {
-      type: String,
-      required: true,
-      lowercase: true,
-      trim: true,
-    },
+        coverImage: {
+            type: String,
+            default: null,
+        },
 
-    address: {
-      type: String,
-      required: true,
-      trim: true,
-    },
+        galleryImages: [
+            {
+                type: String,
+            },
+        ],
 
-    division: {
-      type: String,
-      required: true,
-      trim: true,
-    },
+        // ===============================
+        // Contact Information
+        // ===============================
 
-    district: {
-      type: String,
-      required: true,
-      trim: true,
-    },
+        phone: {
+            type: String,
+            required: true,
+            trim: true,
+        },
 
-    area: {
-      type: String,
-      required: true,
-      trim: true,
-    },
+        email: {
+            type: String,
+            required: true,
+            lowercase: true,
+            trim: true,
+        },
 
-    openingTime: {
-      type: String,
-      required: true,
-    },
+        // ===============================
+        // Address
+        // ===============================
 
-    closingTime: {
-      type: String,
-      required: true,
-    },
+        address: {
+            type: String,
+            required: true,
+            trim: true,
+        },
 
-    maxPlayers: {
-      type: Number,
-      required: true,
-    },
+        division: {
+            type: String,
+            required: true,
+            trim: true,
+        },
 
-    facilities: [
-      {
-        type: String,
-      },
-    ],
+        district: {
+            type: String,
+            required: true,
+            trim: true,
+        },
 
-    averageRating: {
-      type: Number,
-      default: 0,
-      min: 0,
-      max: 5,
-    },
+        area: {
+            type: String,
+            required: true,
+            trim: true,
+        },
 
-    totalReviews: {
-      type: Number,
-      default: 0,
-    },
+        googleMapLocation: {
+            type: String,
+            default: null,
+        },
 
-    status: {
-      type: String,
-      enum: ["Pending", "Approved", "Rejected"],
-      default: "Pending",
-    },
-    rejectionReason: {
-      type: String,
-      default: null,
-      trim: true,
-    },
+        // ===============================
+        // Operating Time
+        // ===============================
 
-    isDeleted: {
-      type: Boolean,
-      default: false,
+        openingTime: {
+            type: String,
+            required: true,
+        },
+
+        closingTime: {
+            type: String,
+            required: true,
+        },
+
+        // ===============================
+        // Pricing
+        // ===============================
+
+        pricing: {
+            morning: {
+                type: Number,
+                required: true,
+                min: 0,
+            },
+
+            day: {
+                type: Number,
+                required: true,
+                min: 0,
+            },
+
+            evening: {
+                type: Number,
+                required: true,
+                min: 0,
+            },
+
+            weekend: {
+                type: Number,
+                required: true,
+                min: 0,
+            },
+        },
+
+        // ===============================
+        // Playground Details
+        // ===============================
+
+        maxPlayers: {
+            type: Number,
+            required: true,
+        },
+
+        facilities: [
+            {
+                type: String,
+            },
+        ],
+
+        // ===============================
+        // Statistics
+        // ===============================
+
+        averageRating: {
+            type: Number,
+            default: 0,
+            min: 0,
+            max: 5,
+        },
+
+        totalReviews: {
+            type: Number,
+            default: 0,
+        },
+
+        bookingCount: {
+            type: Number,
+            default: 0,
+        },
+
+        tournamentCount: {
+            type: Number,
+            default: 0,
+        },
+
+        // ===============================
+        // Approval
+        // ===============================
+
+        isApproved: {
+            type: Boolean,
+            default: false,
+        },
+
+        approvedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            default: null,
+        },
+
+        approvedAt: {
+            type: Date,
+            default: null,
+        },
+
+        // ===============================
+        // Status
+        // ===============================
+
+        status: {
+            type: String,
+            enum: ["Active", "Inactive", "Maintenance"],
+            default: "Inactive",
+        },
+
+        isFeatured: {
+            type: Boolean,
+            default: false,
+        },
+
+        isDeleted: {
+            type: Boolean,
+            default: false,
+        },
     },
-  },
-  {
-    timestamps: true,
-  }
+    {
+        timestamps: true,
+        versionKey: false,
+    }
 );
 
-const Playground = mongoose.model("Playground", playgroundSchema);
+const Playground = mongoose.model(
+    "Playground",
+    playgroundSchema
+);
 
 module.exports = Playground;

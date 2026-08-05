@@ -45,10 +45,37 @@ const userSchema = new mongoose.Schema(
             type: String,
             default: null,
         },
-        // ===============================
-// National ID Information
-// ===============================
+        address: {
+    type: String,
+    default: null,
+    trim: true,
+},
+dateOfBirth: {
+    type: Date,
+    default: null,
+},
+gender: {
+    type: String,
+    enum: ["male", "female", "other"],
+    default: null,
+},
+isDeleted: {
+    type: Boolean,
+    default: false,
+},
+lastLogin: {
+    type: Date,
+    default: null,
+},
+refreshToken: {
+    type: String,
+    default: null,
+},
 
+// ===============================
+// Playground Admin Verification
+// (Only for Playground Admin)
+// ===============================
 nidNumber: {
     type: String,
     default: null,

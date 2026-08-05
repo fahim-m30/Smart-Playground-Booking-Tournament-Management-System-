@@ -5,7 +5,7 @@ const Playground = require("./playground.model");
 // Create Playground
 // ===================================================
 
-const createPlayground = async (payload, ownerId) => {
+const createPlayground = async (payload, adminId) => {
     const existingPlayground = await Playground.findOne({
         name: payload.name,
         isDeleted: false,
@@ -22,25 +22,34 @@ const createPlayground = async (payload, ownerId) => {
 
     const playground = await Playground.create({
         ...payload,
-        owner: ownerId,
+
+        playgroundAdmin: adminId,
+
         slug,
-        status: "Pending", // New playground requires approval
+
+        isApproved: false,
+
+        status: "Inactive",
     });
 
     return playground;
 };
 
 // ===================================================
-// Get All Approved Playgrounds
+// Get All Active Playgrounds
 // ===================================================
 
 const getAllPlaygrounds = async (query) => {
     const filter = {
         isDeleted: false,
-        status: "Approved",
+        isApproved: true,
+        status: "Active",
     };
 
+    // ===============================
     // Search
+    // ===============================
+
     if (query.search) {
         filter.name = {
             $regex: query.search,
@@ -48,37 +57,57 @@ const getAllPlaygrounds = async (query) => {
         };
     }
 
+    // ===============================
     // Sport Type
+    // ===============================
+
     if (query.sportType) {
         filter.sportType = query.sportType;
     }
 
+    // ===============================
     // Division
+    // ===============================
+
     if (query.division) {
         filter.division = query.division;
     }
 
+    // ===============================
     // District
+    // ===============================
+
     if (query.district) {
         filter.district = query.district;
     }
 
-    // Price Range
+    // ===============================
+    // Morning Price Range
+    // ===============================
+
     if (query.minPrice || query.maxPrice) {
-        filter.pricePerHour = {};
+        filter["pricing.morning"] = {};
 
         if (query.minPrice) {
-            filter.pricePerHour.$gte = Number(query.minPrice);
+            filter["pricing.morning"].$gte = Number(query.minPrice);
         }
 
         if (query.maxPrice) {
-            filter.pricePerHour.$lte = Number(query.maxPrice);
+            filter["pricing.morning"].$lte = Number(query.maxPrice);
         }
     }
+
+    // ===============================
+    // Pagination
+    // ===============================
 
     const page = Number(query.page) || 1;
     const limit = Number(query.limit) || 10;
     const skip = (page - 1) * limit;
+
+    // ===============================
+    // Sorting
+    // ===============================
 
     let sort = {
         createdAt: -1,
@@ -86,13 +115,13 @@ const getAllPlaygrounds = async (query) => {
 
     if (query.sort === "priceLow") {
         sort = {
-            pricePerHour: 1,
+            "pricing.morning": 1,
         };
     }
 
     if (query.sort === "priceHigh") {
         sort = {
-            pricePerHour: -1,
+            "pricing.morning": -1,
         };
     }
 
@@ -102,8 +131,12 @@ const getAllPlaygrounds = async (query) => {
         };
     }
 
+    // ===============================
+    // Query
+    // ===============================
+
     const data = await Playground.find(filter)
-        .populate("owner", "name email")
+        .populate("playgroundAdmin", "name email")
         .sort(sort)
         .skip(skip)
         .limit(limit);
@@ -120,7 +153,6 @@ const getAllPlaygrounds = async (query) => {
         data,
     };
 };
-
 // ===================================================
 // Get Single Playground
 // ===================================================
@@ -129,14 +161,18 @@ const getSinglePlayground = async (id) => {
     const playground = await Playground.findOne({
         _id: id,
         isDeleted: false,
-    }).populate("owner", "name email");
+    }).populate(
+        "playgroundAdmin",
+        "name email phone profileImage"
+    );
 
     if (!playground) {
         throw new Error("Playground not found.");
     }
 
     return playground;
-};// ===================================================
+};
+// ===================================================
 // Update Playground
 // ===================================================
 
@@ -150,9 +186,10 @@ const updatePlayground = async (id, payload, user) => {
         throw new Error("Playground not found.");
     }
 
-    // Owner or Super Admin Authorization
+    // Playground Admin or Super Admin
     if (
-        playground.owner.toString() !== user.userId &&
+        playground.playgroundAdmin.toString() !==
+            user.userId &&
         user.role !== "super-admin"
     ) {
         throw new Error(
@@ -160,7 +197,7 @@ const updatePlayground = async (id, payload, user) => {
         );
     }
 
-    // Update Slug if Name Changes
+    // Update Slug
     if (payload.name) {
         payload.slug = slugify(payload.name, {
             lower: true,
@@ -168,18 +205,18 @@ const updatePlayground = async (id, payload, user) => {
         });
     }
 
-    const updatedPlayground = await Playground.findByIdAndUpdate(
-        id,
-        payload,
-        {
-            new: true,
-            runValidators: true,
-        }
-    );
+    const updatedPlayground =
+        await Playground.findByIdAndUpdate(
+            id,
+            payload,
+            {
+                new: true,
+                runValidators: true,
+            }
+        );
 
     return updatedPlayground;
 };
-
 // ===================================================
 // Soft Delete Playground
 // ===================================================
@@ -194,9 +231,9 @@ const deletePlayground = async (id, user) => {
         throw new Error("Playground not found.");
     }
 
-    // Owner or Super Admin Authorization
     if (
-        playground.owner.toString() !== user.userId &&
+        playground.playgroundAdmin.toString() !==
+            user.userId &&
         user.role !== "super-admin"
     ) {
         throw new Error(
@@ -204,15 +241,16 @@ const deletePlayground = async (id, user) => {
         );
     }
 
-    const deletedPlayground = await Playground.findByIdAndUpdate(
-        id,
-        {
-            isDeleted: true,
-        },
-        {
-            new: true,
-        }
-    );
+    const deletedPlayground =
+        await Playground.findByIdAndUpdate(
+            id,
+            {
+                isDeleted: true,
+            },
+            {
+                new: true,
+            }
+        );
 
     return deletedPlayground;
 };
@@ -221,39 +259,24 @@ const deletePlayground = async (id, user) => {
 // Get My Playgrounds
 // ===================================================
 
-const getMyPlaygrounds = async (ownerId) => {
+const getMyPlaygrounds = async (adminId) => {
     return await Playground.find({
-        owner: ownerId,
+        playgroundAdmin: adminId,
         isDeleted: false,
     })
+        .populate(
+            "playgroundAdmin",
+            "name email"
+        )
         .sort({
             createdAt: -1,
-        })
-        .populate("owner", "name email");
-};
-// ===============================
-// Get Pending Playgrounds
-// ===============================
-
-const getPendingPlaygrounds = async () => {
-    const playgrounds = await Playground.find({
-        status: "Pending",
-        isDeleted: false,
-    })
-        .populate("owner", "name email phone")
-        .sort({ createdAt: -1 });
-
-    return playgrounds;
+        });
 };
 
 // ===================================================
-// Export Services
-// ===================================================
-// ===============================
 // Approve Playground
-// ===============================
-
-const approvePlayground = async (id) => {
+// ===================================================
+const approvePlayground = async (id, superAdminId) => {
     const playground = await Playground.findOne({
         _id: id,
         isDeleted: false,
@@ -263,23 +286,24 @@ const approvePlayground = async (id) => {
         throw new Error("Playground not found.");
     }
 
-    if (playground.status === "Approved") {
+    if (playground.isApproved) {
         throw new Error("Playground is already approved.");
     }
 
-    playground.status = "Approved";
-    playground.rejectionReason = null;
+    playground.isApproved = true;
+    playground.status = "Active";
+    playground.approvedBy = superAdminId;
+    playground.approvedAt = new Date();
 
     await playground.save();
 
     return playground;
 };
+// ===================================================
+// Deactivate Playground
+// ===================================================
 
-// ===============================
-// Reject Playground
-// ===============================
-
-const rejectPlayground = async (id, rejectionReason) => {
+const deactivatePlayground = async (id) => {
     const playground = await Playground.findOne({
         _id: id,
         isDeleted: false,
@@ -289,13 +313,35 @@ const rejectPlayground = async (id, rejectionReason) => {
         throw new Error("Playground not found.");
     }
 
-    playground.status = "Rejected";
-    playground.rejectionReason = rejectionReason;
+    playground.status = "Inactive";
 
     await playground.save();
 
     return playground;
 };
+// ===================================================
+// Activate Playground
+// ===================================================
+
+const activatePlayground = async (id) => {
+    const playground = await Playground.findOne({
+        _id: id,
+        isDeleted: false,
+    });
+
+    if (!playground) {
+        throw new Error("Playground not found.");
+    }
+
+    playground.status = "Active";
+
+    await playground.save();
+
+    return playground;
+};
+// ===================================================
+// Export Services
+// ===================================================
 
 module.exports = {
     createPlayground,
@@ -304,7 +350,7 @@ module.exports = {
     updatePlayground,
     deletePlayground,
     getMyPlaygrounds,
-    getPendingPlaygrounds,
     approvePlayground,
-    rejectPlayground,
+    activatePlayground,
+    deactivatePlayground,
 };

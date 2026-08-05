@@ -1,76 +1,125 @@
+/**
+ * ==============================================================
+ * Project : Smart Playground Booking & Tournament Management System
+ * File    : playground.validation.js
+ * Purpose : Playground Validation
+ * Author  : Fahim Muntasir
+ * ==============================================================
+ */
+
 const Joi = require("joi");
 
+// ===============================
+// Create Playground Validation
+// ===============================
+
 const createPlaygroundValidation = Joi.object({
-  name: Joi.string().trim().required(),
+    name: Joi.string().trim().required(),
 
-  description: Joi.string().trim().required(),
+    description: Joi.string().trim().required(),
 
-  sportType: Joi.string()
-    .valid("Football", "Cricket", "Badminton")
-    .required(),
+    sportType: Joi.string()
+        .valid("Football", "Cricket", "Badminton")
+        .required(),
 
-  images: Joi.array().items(Joi.string()),
+    coverImage: Joi.string().allow(null, ""),
 
-  pricePerHour: Joi.number().min(0).required(),
+    galleryImages: Joi.array().items(Joi.string()),
 
-  phone: Joi.string().trim().required(),
+    phone: Joi.string().trim().required(),
 
-  email: Joi.string().email().required(),
+    email: Joi.string().email().required(),
 
-  address: Joi.string().trim().required(),
+    address: Joi.string().trim().required(),
 
-  division: Joi.string().trim().required(),
+    division: Joi.string().trim().required(),
 
-  district: Joi.string().trim().required(),
+    district: Joi.string().trim().required(),
 
-  area: Joi.string().trim().required(),
+    area: Joi.string().trim().required(),
 
-  openingTime: Joi.string().required(),
+    googleMapLocation: Joi.string().allow(null, ""),
 
-  closingTime: Joi.string().required(),
+    openingTime: Joi.string().required(),
 
-  maxPlayers: Joi.number().min(1).required(),
+    closingTime: Joi.string().required(),
 
-  facilities: Joi.array().items(Joi.string()),
+    pricing: Joi.object({
+        morning: Joi.number().min(0).required(),
+        day: Joi.number().min(0).required(),
+        evening: Joi.number().min(0).required(),
+        weekend: Joi.number().min(0).required(),
+    }).required(),
+
+    maxPlayers: Joi.number().min(1).required(),
+
+    facilities: Joi.array().items(Joi.string()),
+
+    isFeatured: Joi.boolean(),
 });
+
+// ===============================
+// Update Playground Validation
+// ===============================
 
 const updatePlaygroundValidation = Joi.object({
-  name: Joi.string().trim(),
+    name: Joi.string().trim(),
 
-  description: Joi.string().trim(),
+    description: Joi.string().trim(),
 
-  sportType: Joi.string().valid(
-    "Football",
-    "Cricket",
-    "Badminton"
-  ),
+    sportType: Joi.string().valid(
+        "Football",
+        "Cricket",
+        "Badminton"
+    ),
 
-  images: Joi.array().items(Joi.string()),
+    coverImage: Joi.string().allow(null, ""),
 
-  pricePerHour: Joi.number().min(0),
+    galleryImages: Joi.array().items(Joi.string()),
 
-  phone: Joi.string().trim(),
+    phone: Joi.string().trim(),
 
-  email: Joi.string().email(),
+    email: Joi.string().email(),
 
-  address: Joi.string().trim(),
+    address: Joi.string().trim(),
 
-  division: Joi.string().trim(),
+    division: Joi.string().trim(),
 
-  district: Joi.string().trim(),
+    district: Joi.string().trim(),
 
-  area: Joi.string().trim(),
+    area: Joi.string().trim(),
 
-  openingTime: Joi.string(),
+    googleMapLocation: Joi.string().allow(null, ""),
 
-  closingTime: Joi.string(),
+    openingTime: Joi.string(),
 
-  maxPlayers: Joi.number().min(1),
+    closingTime: Joi.string(),
 
-  facilities: Joi.array().items(Joi.string()),
+    pricing: Joi.object({
+        morning: Joi.number().min(0),
+        day: Joi.number().min(0),
+        evening: Joi.number().min(0),
+        weekend: Joi.number().min(0),
+    }),
+
+    maxPlayers: Joi.number().min(1),
+
+    facilities: Joi.array().items(Joi.string()),
+
+    status: Joi.string().valid(
+        "Active",
+        "Inactive",
+        "Maintenance"
+    ),
+
+    isFeatured: Joi.boolean(),
 });
 
+// ===============================
+// Export
+// ===============================
+
 module.exports = {
-  createPlaygroundValidation,
-  updatePlaygroundValidation,
+    createPlaygroundValidation,
+    updatePlaygroundValidation,
 };
