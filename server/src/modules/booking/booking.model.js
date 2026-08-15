@@ -134,6 +134,11 @@ const bookingSchema = new mongoose.Schema(
             default: null,
         },
 
+        qrExpiresAt: {
+            type: Date,
+            default: null,
+        },
+
         isScanned: {
             type: Boolean,
             default: false,

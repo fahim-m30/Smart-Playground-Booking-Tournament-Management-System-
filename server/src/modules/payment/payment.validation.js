@@ -17,16 +17,26 @@ const Joi = require("joi");
 const createPaymentValidation = Joi.object({
     booking: Joi.string()
         .length(24)
-        .hex()
-        .required(),
+        .hex(),
+
+    tournamentTeam: Joi.string()
+        .length(24)
+        .hex(),
 
     paymentMethod: Joi.string()
         .valid(
+            "Nagad",
+            "bKash",
+            "Card",
             "SSLCommerz",
-            "Stripe",
             "Cash"
         )
         .required(),
+}).custom((value, helpers) => {
+    if (!value.booking && !value.tournamentTeam) {
+        return helpers.error("any.required", { message: "Either booking or tournamentTeam is required." });
+    }
+    return value;
 });
 
 // ===================================================

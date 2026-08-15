@@ -12,14 +12,25 @@ const mongoose = require("mongoose");
 const paymentSchema = new mongoose.Schema(
     {
         // ===============================
-        // Booking
+        // Reference
         // ===============================
 
         booking: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Booking",
-            required: true,
-            unique: true,
+            default: null,
+        },
+
+        tournament: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Tournament",
+            default: null,
+        },
+
+        tournamentTeam: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "TournamentTeam",
+            default: null,
         },
 
         // ===============================
@@ -42,17 +53,45 @@ const paymentSchema = new mongoose.Schema(
             min: 0,
         },
 
+        paymentType: {
+            type: String,
+            enum: ["SlotBooking", "Tournament"],
+            required: true,
+        },
+
         paymentMethod: {
             type: String,
             enum: [
+                "Nagad",
+                "bKash",
+                "Card",
                 "SSLCommerz",
-                "Stripe",
                 "Cash",
             ],
-            default: "SSLCommerz",
+            required: true,
         },
 
         transactionId: {
+            type: String,
+            default: null,
+        },
+
+        bankTransactionId: {
+            type: String,
+            default: null,
+        },
+
+        validationId: {
+            type: String,
+            default: null,
+        },
+
+        cardType: {
+            type: String,
+            default: null,
+        },
+
+        cardIssuer: {
             type: String,
             default: null,
         },
