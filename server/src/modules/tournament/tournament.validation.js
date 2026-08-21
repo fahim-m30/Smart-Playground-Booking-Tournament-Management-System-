@@ -16,11 +16,11 @@ const createTournamentValidation = Joi.object({
 
     sportType: Joi.string().valid("Football", "Cricket", "Badminton").required(),
 
-    playgrounds: Joi.array().items(Joi.string()).min(3).max(3).required(),
+    playground: Joi.string().length(24).hex().required(),
 
     totalTeams: Joi.number().min(4).max(24).required(),
 
-    groupCount: Joi.number().min(2).max(6).default(3),
+    groupCount: Joi.number().integer().min(2).max(8).default(2),
 
     teamsPerGroup: Joi.number().min(2).max(8).default(4),
 
@@ -42,7 +42,9 @@ const addTeamValidation = Joi.object({
 
     contactNumber: Joi.string().required(),
 
-    group: Joi.string().required(),
+    // Customers are assigned automatically to the least-filled group.  The
+    // optional value is retained only for an administrator adding a team.
+    group: Joi.string().optional(),
 
     players: Joi.array()
         .items(
@@ -82,9 +84,18 @@ const scheduleMatchValidation = Joi.object({
     matchStatus: Joi.string().valid("Scheduled", "Live", "Completed", "Cancelled"),
 });
 
+const updateTournamentTeamCountsValidation = Joi.object({
+    totalTeams: Joi.number().min(4).max(24),
+
+    groupCount: Joi.number().min(2).max(6),
+
+    teamsPerGroup: Joi.number().min(2).max(8),
+});
+
 module.exports = {
     createTournamentValidation,
     addTeamValidation,
     updateMatchValidation,
     scheduleMatchValidation,
+    updateTournamentTeamCountsValidation,
 };

@@ -153,6 +153,12 @@ const getAllPlaygrounds = async (query) => {
         data,
     };
 };
+const getAllPlaygroundsForAdmin = async () => {
+    return Playground.find({ isDeleted: false })
+        .populate("playgroundAdmin", "name email phone")
+        .sort({ createdAt: -1 });
+};
+
 // ===================================================
 // Get Single Playground
 // ===================================================
@@ -346,6 +352,7 @@ const activatePlayground = async (id) => {
 module.exports = {
     createPlayground,
     getAllPlaygrounds,
+    getAllPlaygroundsForAdmin,
     getSinglePlayground,
     updatePlayground,
     deletePlayground,

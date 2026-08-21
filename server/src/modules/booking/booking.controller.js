@@ -12,6 +12,7 @@ const {
     getMyBookings,
     getSingleBooking,
     cancelBooking,
+    getPlaygroundBookings,
 } = require("./booking.service");
 
 // ===================================================
@@ -86,6 +87,27 @@ const getSingleBookingController = async (req, res) => {
 };
 
 // ===================================================
+// Get Playground Bookings
+// ===================================================
+
+const getPlaygroundBookingsController = async (req, res) => {
+    try {
+        const result = await getPlaygroundBookings(req.params.playgroundId, req.user.userId);
+
+        res.status(200).json({
+            success: true,
+            message: "Playground bookings fetched successfully.",
+            data: result,
+        });
+    } catch (error) {
+        res.status(400).json({
+            success: false,
+            message: error.message,
+        });
+    }
+};
+
+// ===================================================
 // Cancel Booking
 // ===================================================
 
@@ -117,5 +139,6 @@ module.exports = {
     createBooking: createBookingController,
     getMyBookings: getMyBookingsController,
     getSingleBooking: getSingleBookingController,
+    getPlaygroundBookings: getPlaygroundBookingsController,
     cancelBooking: cancelBookingController,
 };

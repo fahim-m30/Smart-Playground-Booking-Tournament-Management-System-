@@ -9,9 +9,6 @@
 
 require("dotenv").config();
 
-console.log("=================================");
-console.log("RUNNING FROM:", __dirname);
-console.log("=================================");
 
 // ===============================
 // Import Required Files
@@ -20,7 +17,7 @@ console.log("=================================");
 const app = require("./src/app");
 const connectDB = require("./src/config/db");
 const createSuperAdmin = require("./src/utils/createSuperAdmin");
-const User = require("./src/modules/user/user.model");
+const { startNotificationScheduler } = require("./src/jobs/notificationJob");
 
 // ===============================
 // Server Configuration
@@ -40,13 +37,6 @@ const startServer = async () => {
             // Create Default Super Admin
             await createSuperAdmin();
 
-            // Debug: Show Users
-            const users = await User.find();
-
-            console.log("=================================");
-            console.log("Total Users:", users.length);
-            console.log(users);
-            console.log("=================================");
         }
 
         app.listen(PORT, () => {
@@ -59,6 +49,8 @@ const startServer = async () => {
                 console.log("⚠️ Database Not Connected");
             }
 
+            startNotificationScheduler();
+
             console.log("=================================");
         });
     } catch (error) {
@@ -66,7 +58,4 @@ const startServer = async () => {
         console.error(error);
     }
 };
-console.log("DATABASE_URL =", process.env.DATABASE_URL);
-console.log("PORT =", process.env.PORT);
-
 startServer();

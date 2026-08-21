@@ -25,7 +25,7 @@
     <!-- AOS Animation -->
     <link rel="stylesheet"
           href="https://unpkg.com/aos@2.3.4/dist/aos.css">
-     
+
 
     <!-- Custom CSS -->
      
@@ -114,13 +114,13 @@
 
         <div class="nav-buttons">
 
-            <a href="login.html" class="login-btn">
+            <a id="nav-login" href="login.html" class="login-btn">
 
                 Login
 
             </a>
 
-            <a href="register.html" class="register-btn">
+            <a id="nav-register" href="register.html" class="register-btn">
 
                 Register
 
@@ -150,6 +150,7 @@
         <div class="hero-content">
 
         
+
           <h1>
 
     Book Your Favorite
@@ -172,14 +173,15 @@
 
             </p>
 
-            <div class="hero-search">
+            <form id="hero-search-form" class="hero-search">
 
                 <input
+                    id="hero-search-input"
                     type="text"
                     placeholder="Search Playground..."
                 >
 
-                <button>
+                <button type="submit">
 
                     <i class="fa-solid fa-magnifying-glass"></i>
 
@@ -187,22 +189,27 @@
 
                 </button>
 
-            </div>
+            </form>
 
             <div class="hero-buttons">
 
-                <a href="playgrounds.html" class="btn-green">
+                <a id="book-now-link" href="playgrounds.html" class="btn-green">
 
                     Book Now
 
                 </a>
 
-                <a href="tournament.html" class="btn-white">
+                <a id="explore-link" href="tournament.html" class="btn-white">
 
                     Explore
 
                 </a>
 
+            </div>
+
+            <div id="role-actions" class="hero-buttons" style="margin-top: 16px;" hidden>
+                <a id="role-dashboard-link" href="dashboard.html" class="btn-green" style="min-width: 180px;">Open Dashboard</a>
+                <a id="role-chat-link" href="chat.html" class="btn-white" style="min-width: 180px;">Open Messages</a>
             </div>
             <!-- ================= Hero Features ================= -->
 

@@ -8,114 +8,45 @@
  */
 
 const mongoose = require("mongoose");
-const dns = require("dns");
-
-// ======================================================
-// MongoDB DNS Configuration
-// ======================================================
-
-// Use public DNS servers for MongoDB Atlas SRV lookup
-dns.setServers([
-    "8.8.8.8",
-    "1.1.1.1",
-]);
-
-// ======================================================
-// Connect MongoDB
-// ======================================================
 
 const connectDB = async () => {
-
     const mongoURI =
         process.env.DATABASE_URL ||
-        process.env.MONGO_URI;
-
-    // ==================================================
-    // Check MongoDB URI
-    // ==================================================
+        process.env.MONGO_URI ||
+        "mongodb://127.0.0.1:27017/turf";
 
     if (!mongoURI) {
-
         console.error(
-            "❌ DATABASE_URL or MONGO_URI is not defined."
+            "❌ No MongoDB connection string provided."
         );
-
-        return false;
+        process.exit(1);
     }
 
     try {
+        await mongoose.connect(mongoURI);
+
+        console.log("=======================================");
+        console.log("✅ Database Connected Successfully");
+        console.log("Database Name:", mongoose.connection.db.databaseName);
+        console.log("Host:", mongoose.connection.host);
+
+        const isLocal =
+            mongoURI.startsWith("mongodb://127.0.0.1") ||
+            mongoURI.startsWith("mongodb://localhost");
 
         console.log(
-            "======================================="
+            "MongoDB:",
+            isLocal
+                ? mongoURI
+                : "<remote - credentials hidden>"
         );
 
-        console.log(
-            "🔄 Connecting to MongoDB..."
-        );
-
-        // ==================================================
-        // MongoDB Connection
-        // ==================================================
-
-        const connection =
-            await mongoose.connect(
-                mongoURI,
-                {
-                    serverSelectionTimeoutMS: 15000,
-                    connectTimeoutMS: 15000,
-                }
-            );
-
-        // ==================================================
-        // Success
-        // ==================================================
-
-        console.log(
-            "======================================="
-        );
-
-        console.log(
-            "✅ Database Connected Successfully"
-        );
-
-        console.log(
-            "Database Name:",
-            connection.connection.db.databaseName
-        );
-
-        console.log(
-            "Host:",
-            connection.connection.host
-        );
-
-        console.log(
-            "======================================="
-        );
+        console.log("=======================================");
 
         return true;
-
     } catch (error) {
-
-        // ==================================================
-        // Connection Error
-        // ==================================================
-
-        console.error(
-            "======================================="
-        );
-
-        console.error(
-            "❌ Database Connection Failed"
-        );
-
-        console.error(
-            error.message
-        );
-
-        console.error(
-            "======================================="
-        );
-
+        console.error("❌ Database Connection Failed");
+        console.error(error.message);
         return false;
     }
 };

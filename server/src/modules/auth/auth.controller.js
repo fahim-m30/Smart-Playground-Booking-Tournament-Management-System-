@@ -17,6 +17,8 @@ const {
     resendOTP,
     resetPassword,
     changePassword,
+    requestSensitiveOTP,
+    changeEmail,
 } = require("./auth.service");
 
 // ===============================
@@ -30,6 +32,7 @@ const registerPlayground = async (req, res) => {
     try {
         const payload = {
             ...req.body,
+            profileImage: req.files?.profileImage?.[0] || null,
             nidFrontImage: req.files?.nidFrontImage?.[0] || null,
             nidBackImage: req.files?.nidBackImage?.[0] || null,
         };
@@ -199,11 +202,11 @@ const resetPasswordController = async (req, res) => {
 
 const changePasswordController = async (req, res) => {
     try {
-        const { currentPassword, newPassword } = req.body;
+        const { otp, newPassword } = req.body;
 
         const result = await changePassword({
             userId: req.user._id,
-            currentPassword,
+            otp,
             newPassword,
         });
 
@@ -218,6 +221,32 @@ const changePasswordController = async (req, res) => {
         });
     }
 };
+const requestSensitiveOTPController = async (req, res) => {
+    try {
+        const result = await requestSensitiveOTP({
+            userId: req.user._id,
+            action: req.body.action,
+            newEmail: req.body.newEmail,
+        });
+        res.status(200).json({ success: true, message: result.message });
+    } catch (error) {
+        res.status(400).json({ success: false, message: error.message });
+    }
+};
+
+const changeEmailController = async (req, res) => {
+    try {
+        const result = await changeEmail({
+            userId: req.user._id,
+            newEmail: req.body.newEmail,
+            otp: req.body.otp,
+        });
+        res.status(200).json({ success: true, message: result.message, data: result.user });
+    } catch (error) {
+        res.status(400).json({ success: false, message: error.message });
+    }
+};
+
 // ===============================
 // Export Controllers
 // ===============================
@@ -232,4 +261,6 @@ module.exports = {
     resendEmailOTP,
     resetPassword: resetPasswordController,
     changePassword: changePasswordController,
+    requestSensitiveOTP: requestSensitiveOTPController,
+    changeEmail: changeEmailController,
 };

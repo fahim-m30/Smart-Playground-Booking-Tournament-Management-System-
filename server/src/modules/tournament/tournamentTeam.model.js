@@ -17,6 +17,12 @@ const tournamentTeamSchema = new mongoose.Schema(
             required: true,
         },
 
+        registeredBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            default: null,
+        },
+
         group: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "TournamentGroup",
@@ -30,9 +36,9 @@ const tournamentTeamSchema = new mongoose.Schema(
         },
 
         captain: {
-            type: String,
-            default: null,
-            trim: true,
+            name: { type: String, required: true, trim: true },
+            phone: { type: String, required: true, trim: true },
+            photo: { type: String, required: true },
         },
 
         contactNumber: {
@@ -47,6 +53,15 @@ const tournamentTeamSchema = new mongoose.Schema(
                     type: String,
                     required: true,
                     trim: true,
+                },
+                phone: {
+                    type: String,
+                    required: true,
+                    trim: true,
+                },
+                photo: {
+                    type: String,
+                    required: true,
                 },
                 isPlaying: {
                     type: Boolean,
@@ -135,6 +150,16 @@ const tournamentTeamSchema = new mongoose.Schema(
         },
 
         isKnockedOut: {
+            type: Boolean,
+            default: false,
+        },
+
+        reminderSent: {
+            type: Boolean,
+            default: false,
+        },
+
+        isDeleted: {
             type: Boolean,
             default: false,
         },

@@ -41,6 +41,15 @@ const tournamentSchema = new mongoose.Schema(
             required: true,
         },
 
+        // `playground` is the single official venue for a tournament.
+        playground: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Playground",
+            required: true,
+        },
+
+        // Kept for backwards-compatible reads of older records. New records
+        // always contain one item only and the app uses `playground`.
         playgrounds: [
             {
                 type: mongoose.Schema.Types.ObjectId,
@@ -48,6 +57,15 @@ const tournamentSchema = new mongoose.Schema(
                 required: true,
             },
         ],
+
+        venueApprovalStatus: {
+            type: String,
+            enum: ["Not Required", "Pending", "Approved", "Rejected"],
+            default: "Not Required",
+        },
+
+        venueApprovalRequestedAt: { type: Date, default: null },
+        venueApprovalRespondedAt: { type: Date, default: null },
 
         totalTeams: {
             type: Number,
@@ -92,7 +110,7 @@ const tournamentSchema = new mongoose.Schema(
 
         status: {
             type: String,
-            enum: ["Upcoming", "Group Stage", "Knockout Stage", "Completed", "Cancelled"],
+            enum: ["Pending Approval", "Upcoming", "Group Stage", "Knockout Stage", "Completed", "Cancelled"],
             default: "Upcoming",
         },
 
@@ -107,6 +125,16 @@ const tournamentSchema = new mongoose.Schema(
         },
 
         isDeleted: {
+            type: Boolean,
+            default: false,
+        },
+
+        startNotificationSent: {
+            type: Boolean,
+            default: false,
+        },
+
+        reminderSent: {
             type: Boolean,
             default: false,
         },

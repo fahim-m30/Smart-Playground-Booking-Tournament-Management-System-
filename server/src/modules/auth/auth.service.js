@@ -15,7 +15,6 @@ const emailTemplate = require("../../utils/emailTemplate");
 
 const User = require("../user/user.model");
 const PendingRegistration = require("./pendingRegistration.model");
-const Playground = require("../playground/playground.model");
 
 const convertFileToDataUrl = (file) => {
     if (!file) {
@@ -69,30 +68,6 @@ const createUserFromPendingRegistration = async (pending) => {
         nidFrontImage: pending.nidFrontImage,
         nidBackImage: pending.nidBackImage,
     });
-
-    if (pending.role === "playground-admin") {
-        await Playground.create({
-            owner: user._id,
-            name: pending.playgroundName,
-            slug: pending.playgroundName
-                ? pending.playgroundName.toLowerCase().replace(/\s+/g, "-")
-                : pending.email.split("@")[0],
-            description: pending.description,
-            sportType: pending.sportType,
-            pricePerHour: pending.pricePerHour,
-            phone: pending.phone,
-            email: pending.email,
-            address: pending.address,
-            division: pending.division,
-            district: pending.district,
-            area: pending.area,
-            openingTime: pending.openingTime,
-            closingTime: pending.closingTime,
-            maxPlayers: pending.maxPlayers,
-            facilities: pending.facilities,
-            status: "Pending",
-        });
-    }
 
     return user;
 };
@@ -156,25 +131,11 @@ const registerPlaygroundOwner = async ({
     email,
     password,
     phone,
+    profileImage,
     nidNumber,
     nidFrontImage,
     nidBackImage,
 
-    playgroundName,
-    description,
-    sportType,
-    pricePerHour,
-
-    address,
-    division,
-    district,
-    area,
-
-    openingTime,
-    closingTime,
-
-    maxPlayers,
-    facilities,
 }) => {
     const normalizedEmail = normalizeEmail(email);
     const existingUser = await User.findOne({ email: normalizedEmail });
@@ -197,6 +158,7 @@ const registerPlaygroundOwner = async ({
 
     const nidFrontImageDataUrl = convertFileToDataUrl(nidFrontImage);
     const nidBackImageDataUrl = convertFileToDataUrl(nidBackImage);
+    const profileImageDataUrl = convertFileToDataUrl(profileImage);
 
     await PendingRegistration.create({
         name,
@@ -204,21 +166,10 @@ const registerPlaygroundOwner = async ({
         password: await hashPassword(password),
         phone,
         role: "playground-admin",
+        profileImage: profileImageDataUrl,
         nidNumber,
         nidFrontImage: nidFrontImageDataUrl,
         nidBackImage: nidBackImageDataUrl,
-        playgroundName,
-        description,
-        sportType,
-        pricePerHour,
-        address,
-        division,
-        district,
-        area,
-        openingTime,
-        closingTime,
-        maxPlayers,
-        facilities,
     });
 
     await sendOTP(normalizedEmail);
@@ -240,21 +191,11 @@ const loginUser = async ({ email, password }) => {
     // Find User
     const user = await User.findOne({ email: normalizedEmail });
 
-    console.log("User:", user);
-
     if (!user) {
         throw new Error("Invalid Email or Password.");
     }
-console.log("=================================");
-console.log("Entered Password:", password);
-console.log("Password From DB:", user.password);
     // Compare Password
     const isMatched = await bcrypt.compare(password, user.password);
-    console.log("Password Matched:", isMatched);
-    console.log("=================================");
-
-    console.log("Password Matched:", isMatched);
-
     if (!isMatched) {
         throw new Error("Invalid Email or Password.");
     }
@@ -266,7 +207,13 @@ console.log("Password From DB:", user.password);
 
     // Block Check
     if (user.isBlocked) {
-        throw new Error("Your account has been blocked.");
+        if (user.blockedUntil && new Date() >= user.blockedUntil) {
+            user.isBlocked = false;
+            user.blockedUntil = null;
+            await user.save();
+        } else {
+            throw new Error("Your account is temporarily suspended.");
+        }
     }
 
     // Generate JWT
@@ -502,41 +449,107 @@ const resetPassword = async ({ email, otp, newPassword }) => {
 
 const changePassword = async ({
     userId,
-    currentPassword,
+    otp,
     newPassword,
 }) => {
-
-    console.log("==================================");
-    console.log("User ID:", userId);
-    console.log("Current Password:", currentPassword);
-    console.log("New Password:", newPassword);
-
     const user = await User.findById(userId);
-
-    console.log("User Found:", user);
 
     if (!user) {
         throw new Error("User not found.");
     }
 
-    console.log("Password From DB:", user.password);
-
-    const isMatched = await user.comparePassword(currentPassword);
-
-    console.log("Password Match:", isMatched);
-
-    if (!isMatched) {
-        throw new Error("Current password is incorrect.");
+    if (!newPassword || String(newPassword).length < 6) {
+        throw new Error("New password must be at least 6 characters long.");
     }
+    validateSensitiveOTP(user, otp, "password-change");
 
     user.password = newPassword;
-
+    clearSensitiveOTP(user);
     await user.save();
 
     return {
         success: true,
         message: "Password changed successfully.",
     };
+};
+
+const clearSensitiveOTP = (user) => {
+    user.otp = { code: null, expiresAt: null, purpose: null };
+    user.pendingEmail = null;
+};
+
+const validateSensitiveOTP = (user, otp, purpose) => {
+    if (!otp || !user.otp?.code || user.otp.purpose !== purpose) {
+        throw new Error("Request a new verification OTP before continuing.");
+    }
+    if (user.otp.code !== String(otp).trim()) throw new Error("Invalid OTP.");
+    if (!user.otp.expiresAt || new Date() > user.otp.expiresAt) {
+        throw new Error("OTP has expired. Please request a new one.");
+    }
+};
+
+const requestSensitiveOTP = async ({ userId, action, newEmail }) => {
+    if (!["password-change", "email-change"].includes(action)) {
+        throw new Error("Choose a valid verification action.");
+    }
+    const user = await User.findById(userId);
+    if (!user) throw new Error("User not found.");
+
+    let recipient = user.email;
+    if (action === "email-change") {
+        const normalizedEmail = normalizeEmail(newEmail);
+        if (!normalizedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+            throw new Error("Enter a valid new email address.");
+        }
+        if (normalizedEmail === user.email) throw new Error("Enter a different email address.");
+        if (await User.exists({ email: normalizedEmail, _id: { $ne: user._id } })) {
+            throw new Error("This email address is already in use.");
+        }
+        user.pendingEmail = normalizedEmail;
+        recipient = normalizedEmail;
+    }
+
+    const otp = generateOTP();
+    const expireMinutes = Number(process.env.OTP_EXPIRE_MINUTES) || 10;
+    user.otp = {
+        code: otp,
+        expiresAt: new Date(Date.now() + expireMinutes * 60 * 1000),
+        purpose: action,
+    };
+    await user.save();
+
+    try {
+        await transporter.sendMail({
+            from: `"Smart Playground" <${process.env.EMAIL_USER}>`,
+            to: recipient,
+            subject: action === "email-change" ? "Verify your new email address" : "Verify your password change",
+            html: emailTemplate({ name: user.name, otp, expireMinutes }),
+        });
+    } catch (error) {
+        clearSensitiveOTP(user);
+        await user.save();
+        throw new Error("OTP email could not be sent. Please verify the mail server configuration.");
+    }
+
+    return { message: `Verification OTP sent to ${recipient}.` };
+};
+
+const changeEmail = async ({ userId, newEmail, otp }) => {
+    const user = await User.findById(userId);
+    if (!user) throw new Error("User not found.");
+    const normalizedEmail = normalizeEmail(newEmail);
+    if (!normalizedEmail || normalizedEmail !== user.pendingEmail) {
+        throw new Error("Use the same new email address that received the OTP.");
+    }
+    if (await User.exists({ email: normalizedEmail, _id: { $ne: user._id } })) {
+        throw new Error("This email address is already in use.");
+    }
+    validateSensitiveOTP(user, otp, "email-change");
+    user.email = normalizedEmail;
+    clearSensitiveOTP(user);
+    await user.save();
+    const safeUser = await User.findById(userId).select("-password -otp -pendingEmail");
+    return { message: "Email address changed successfully.", user: safeUser };
 };
 
 // ===============================
@@ -554,4 +567,6 @@ module.exports = {
     resendOTP,
     resetPassword,
     changePassword,
+    requestSensitiveOTP,
+    changeEmail,
 };

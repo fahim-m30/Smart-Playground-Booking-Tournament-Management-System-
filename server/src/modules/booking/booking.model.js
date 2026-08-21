@@ -144,6 +144,11 @@ const bookingSchema = new mongoose.Schema(
             default: false,
         },
 
+        reminderSent: {
+            type: Boolean,
+            default: false,
+        },
+
         // ===============================
         // Cancellation
         // ===============================

@@ -6,6 +6,15 @@ const SITE_NAV = [
     { label: "Contact", href: "contact.html" }
 ];
 
+const getAuthenticatedUser = () => {
+    try {
+        const user = JSON.parse(localStorage.getItem("authUser") || "null");
+        return localStorage.getItem("authToken") && user?.role ? user : null;
+    } catch (_) {
+        return null;
+    }
+};
+
 const PAGE_DATA = {
     about: {
         title: "About TURF",
@@ -42,19 +51,19 @@ const PAGE_DATA = {
             {
                 icon: "fa-solid fa-envelope",
                 title: "Email",
-                value: "support@turf.com",
+                value: "fmuntasir488@gmail.com",
                 hint: "We reply within 1 business day"
             },
             {
                 icon: "fa-solid fa-phone",
                 title: "Phone",
-                value: "+880 1700-000000",
+                value: "01581876432",
                 hint: "Available for urgent support"
             },
             {
                 icon: "fa-solid fa-location-dot",
                 title: "Office",
-                value: "Dhaka, Bangladesh",
+                value: "Banasree, Rampura, Dhaka, Bangladesh",
                 hint: "Serving sports communities nationwide"
             }
         ],
@@ -64,6 +73,7 @@ const PAGE_DATA = {
 
 const buildHeader = (page) => {
     const currentPage = page || "home";
+    const user = getAuthenticatedUser();
     const links = SITE_NAV.map((item) => {
         const isActive = currentPage === item.href.replace(".html", "");
         return `<li><a href="${item.href}" class="${isActive ? "active" : ""}">${item.label}</a></li>`;
@@ -83,8 +93,9 @@ const buildHeader = (page) => {
                     <ul>${links}</ul>
                 </nav>
                 <div class="nav-buttons">
-                    <a href="login.html" class="login-btn">Login</a>
-                    <a href="register.html" class="register-btn">Register</a>
+                    ${user
+        ? '<a href="dashboard.html" class="login-btn">Dashboard</a><a href="#" class="register-btn" data-logout>Log out</a>'
+        : '<a href="login.html" class="login-btn">Login</a><a href="register.html" class="register-btn">Register</a>'}
                 </div>
                 <div class="menu-toggle"><i class="fa-solid fa-bars"></i></div>
             </div>
@@ -159,7 +170,7 @@ const renderPageContent = (page) => {
             </section>
             <section class="contact-panel">
                 <p>${data.cta}</p>
-                <a href="mailto:support@turf.com" class="btn-green">Email Support</a>
+                <a href="mailto:fmuntasir488@gmail.com" class="btn-green">Email Support</a>
             </section>
         `;
     }
@@ -170,7 +181,13 @@ document.addEventListener("DOMContentLoaded", () => {
     const shell = document.getElementById("page-shell");
     if (shell) {
         shell.insertAdjacentHTML("beforebegin", buildHeader(page));
-        shell.insertAdjacentHTML("afterend", buildFooter());
+        document.body.insertAdjacentHTML("beforeend", buildFooter());
         renderPageContent(page);
+        document.querySelector("[data-logout]")?.addEventListener("click", (event) => {
+            event.preventDefault();
+            localStorage.removeItem("authToken");
+            localStorage.removeItem("authUser");
+            location.reload();
+        });
     }
 });

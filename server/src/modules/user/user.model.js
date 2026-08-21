@@ -128,6 +128,11 @@ nidBackImage: {
             default: false,
         },
 
+        blockedUntil: {
+            type: Date,
+            default: null,
+        },
+
         // ===============================
         // OTP Information
         // ===============================
@@ -141,6 +146,16 @@ nidBackImage: {
                 type: Date,
                 default: null,
             },
+            purpose: {
+                type: String,
+                default: null,
+            },
+        },
+        pendingEmail: {
+            type: String,
+            default: null,
+            lowercase: true,
+            trim: true,
         },
     },
     {

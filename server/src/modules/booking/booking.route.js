@@ -49,4 +49,16 @@ router.patch(
     bookingController.cancelBooking
 );
 
+// ======================================================
+// Playground Admin Routes
+// ======================================================
+
+// Get Bookings for My Playground
+router.get(
+    "/playground/:playgroundId",
+    verifyToken,
+    authorize("playground-admin"),
+    bookingController.getPlaygroundBookings
+);
+
 module.exports = router;

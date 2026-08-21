@@ -13,6 +13,8 @@ const playgroundController = require("./playground.controller");
 
 const verifyToken = require("../../middlewares/verifyToken");
 const authorize = require("../../middlewares/authorize");
+const upload = require("../../middlewares/upload.middleware");
+const playgroundUpload = upload.fields([{ name: "coverImage", maxCount: 1 }, { name: "galleryImages", maxCount: 5 }]);
 
 const router = express.Router();
 
@@ -32,6 +34,7 @@ router.post(
     "/",
     verifyToken,
     authorize("playground-admin", "super-admin"),
+    playgroundUpload,
     playgroundController.createPlayground
 );
 
@@ -41,6 +44,13 @@ router.get(
     verifyToken,
     authorize("playground-admin", "super-admin"),
     playgroundController.getMyPlaygrounds
+);
+
+router.get(
+    "/admin/all",
+    verifyToken,
+    authorize("super-admin"),
+    playgroundController.getAllPlaygroundsForAdmin
 );
 
 // Approve Playground
@@ -72,6 +82,7 @@ router.patch(
     "/:id",
     verifyToken,
     authorize("playground-admin", "super-admin"),
+    playgroundUpload,
     playgroundController.updatePlayground
 );
 

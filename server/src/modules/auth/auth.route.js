@@ -62,6 +62,9 @@ router.patch(
     authController.changePassword
 );
 
+router.post("/request-sensitive-otp", authMiddleware, authController.requestSensitiveOTP);
+router.patch("/change-email", authMiddleware, authController.changeEmail);
+
 // Test Route (Remove after development)
 router.get("/test", (req, res) => {
     res.status(200).json({

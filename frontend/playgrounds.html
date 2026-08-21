@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>TURF | Playgrounds</title>
+    <link rel="icon" type="image/png" href="assets/images/favicon.png">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/navbar.css">
+    <link rel="stylesheet" href="assets/css/footer.css">
+    <link rel="stylesheet" href="assets/css/responsive.css">
+    <link rel="stylesheet" href="assets/css/portal.css">
+    <link rel="stylesheet" href="assets/css/playground-cards.css">
+</head>
+<body data-page="playgrounds">
+    <div id="page-shell"></div>
+    <main class="portal">
+        <header class="portal-head">
+            <div><h1>Explore playgrounds</h1><p>Find an active venue and continue to slot booking.</p></div>
+            <a class="button" href="booking.html">Book a slot</a>
+        </header>
+        <section class="panel form-panel show">
+            <label>Search playground<input id="search" type="search" placeholder="Name, area or sport"></label>
+        </section>
+        <section id="results" class="grid"><p class="empty">Loading playgrounds…</p></section>
+    </main>
+    <script>
+        const api = "http://localhost:5000/api/v1";
+        const results = document.querySelector("#results");
+        const search = document.querySelector("#search");
+        const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character]));
+        const render = (grounds) => {
+            results.innerHTML = grounds.length ? grounds.map((ground) => '<article class="card"><img src="' + escapeHtml(ground.coverImage || "assets/images/hero-bg.jpg") + '" alt="' + escapeHtml(ground.name) + '"><h2>' + escapeHtml(ground.name) + '</h2><p>' + escapeHtml(ground.sportType || "Sports") + ' · ' + escapeHtml(ground.address || ground.area || "Location available after booking") + '</p><a class="button" href="booking.html?playground=' + encodeURIComponent(ground._id) + '">View slots</a></article>').join("") : '<p class="empty">No active playground matches your search.</p>';
+        };
+        const load = async () => {
+            results.innerHTML = '<p class="empty">Loading playgrounds…</p>';
+            try {
+                const response = await fetch(api + "/playgrounds?search=" + encodeURIComponent(search.value.trim()));
+                const body = await response.json();
+                if (!response.ok) throw new Error(body.message || "Could not load playgrounds.");
+                render(body.data || []);
+            } catch (error) { results.innerHTML = '<p class="empty">' + escapeHtml(error.message) + '</p>'; }
+        };
+        search.value = new URLSearchParams(location.search).get("search") || "";
+        let timer;
+        search.addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(load, 250); });
+        load();
+    </script>
+    <script src="assets/js/site.js"></script>
+    <script src="assets/js/navbar.js"></script>
+</body>
+</html>

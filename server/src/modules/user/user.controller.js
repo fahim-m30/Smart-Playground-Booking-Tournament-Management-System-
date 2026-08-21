@@ -105,7 +105,7 @@ const updateMyProfileImage = async (req, res) => {
 
         const user = await updateProfileImage(
             req.user._id,
-            req.file.path
+            req.file
         );
 
         res.status(200).json({
@@ -167,11 +167,16 @@ const getUser = async (req, res) => {
 
 const blockUserController = async (req, res) => {
     try {
-        const user = await blockUser(req.params.id);
+        const days = req.body.days || null;
+        const user = await blockUser(req.params.id, days);
+
+        const message = days
+            ? `User blocked successfully for ${days} days.`
+            : "User blocked successfully.";
 
         res.status(200).json({
             success: true,
-            message: "User blocked successfully.",
+            message,
             data: user,
         });
     } catch (error) {

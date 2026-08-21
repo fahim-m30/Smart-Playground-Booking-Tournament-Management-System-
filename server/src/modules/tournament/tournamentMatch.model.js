@@ -85,6 +85,11 @@ const tournamentMatchSchema = new mongoose.Schema(
             enum: ["Scheduled", "Live", "Completed", "Cancelled"],
             default: "Scheduled",
         },
+
+        reminderSent: {
+            type: Boolean,
+            default: false,
+        },
     },
     {
         timestamps: true,

@@ -14,6 +14,7 @@
 const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
+const path = require("path");
 
 // ===============================
 // Import Routes & Middlewares
@@ -44,6 +45,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Parse Cookies
 app.use(cookieParser());
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 // ===============================
 // Health Check Route

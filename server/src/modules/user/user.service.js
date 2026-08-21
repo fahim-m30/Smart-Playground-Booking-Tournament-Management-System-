@@ -15,6 +15,12 @@ const generateOTP = require("../../utils/generateOTP");
 
 const User = require("../user/user.model");
 
+const convertFileToDataUrl = (file) => {
+    if (!file?.buffer) return null;
+    const mimeType = file.mimetype || "application/octet-stream";
+    return `data:${mimeType};base64,${file.buffer.toString("base64")}`;
+};
+
 // ===============================
 // Login User
 // ===============================
@@ -301,7 +307,7 @@ const changePassword = async ({
 // ===============================
 
 const getMyProfile = async (userId) => {
-    const user = await User.findById(userId).select("-password -otp");
+    const user = await User.findById(userId).select("-password -otp -pendingEmail");
 
     if (!user) {
         throw new Error("User not found.");
@@ -322,7 +328,13 @@ const updateProfile = async (userId, payload) => {
     }
 
     if (payload.name !== undefined) {
-        user.name = payload.name;
+        const name = String(payload.name).trim();
+        if (name.length < 3) throw new Error("Name must be at least 3 characters long.");
+        user.name = name;
+    }
+
+    if (payload.email !== undefined && String(payload.email).trim().toLowerCase() !== user.email) {
+        throw new Error("Use email verification to change your email address.");
     }
 
     if (payload.phone !== undefined) {
@@ -338,30 +350,35 @@ const updateProfile = async (userId, payload) => {
     }
 
     if (payload.dateOfBirth !== undefined) {
-        user.dateOfBirth = payload.dateOfBirth;
+        user.dateOfBirth = payload.dateOfBirth || null;
     }
 
     await user.save();
 
-    return user;
+    return getMyProfile(userId);
 };
 
 // ===============================
 // Update Profile Image
 // ===============================
 
-const updateProfileImage = async (userId, imagePath) => {
+const updateProfileImage = async (userId, file) => {
     const user = await User.findById(userId);
 
     if (!user) {
         throw new Error("User not found.");
     }
 
-    user.profileImage = imagePath;
+    const profileImage = convertFileToDataUrl(file);
+    if (!profileImage) {
+        throw new Error("Invalid profile image.");
+    }
+
+    user.profileImage = profileImage;
 
     await user.save();
 
-    return user;
+    return getMyProfile(userId);
 };
 // ===============================
 // Get All Users
@@ -399,7 +416,7 @@ const getSingleUser = async (userId) => {
 // Block User
 // ===============================
 
-const blockUser = async (userId) => {
+const blockUser = async (userId, days = null) => {
     const user = await User.findById(userId);
 
     if (!user) {
@@ -407,6 +424,12 @@ const blockUser = async (userId) => {
     }
 
     user.isBlocked = true;
+
+    if (days && days > 0) {
+        user.blockedUntil = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+    } else {
+        user.blockedUntil = null;
+    }
 
     await user.save();
 
@@ -425,6 +448,7 @@ const unblockUser = async (userId) => {
     }
 
     user.isBlocked = false;
+    user.blockedUntil = null;
 
     await user.save();
 

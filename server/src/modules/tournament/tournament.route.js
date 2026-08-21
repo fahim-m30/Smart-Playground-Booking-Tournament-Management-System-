@@ -13,6 +13,14 @@ const tournamentController = require("./tournament.controller");
 
 const verifyToken = require("../../middlewares/verifyToken");
 const authorize = require("../../middlewares/authorize");
+const validate = require("../../middlewares/validate");
+const upload = require("../../middlewares/upload.middleware");
+const { createTournamentValidation } = require("./tournament.validation");
+
+const teamRosterUpload = upload.fields([
+    { name: "captainPhoto", maxCount: 1 },
+    { name: "playerPhotos", maxCount: 23 },
+]);
 
 const router = express.Router();
 
@@ -24,8 +32,18 @@ const router = express.Router();
 router.post(
     "/",
     verifyToken,
-    authorize("super-admin"),
+    authorize("super-admin", "playground-admin"),
+    validate(createTournamentValidation),
     tournamentController.createTournament
+);
+
+// The selected venue owner has to approve a super-admin's request before it
+// becomes visible to customers or accepts registrations.
+router.patch(
+    "/:id/venue-approval",
+    verifyToken,
+    authorize("playground-admin"),
+    tournamentController.respondToVenueApproval
 );
 
 // Generate Group Matches
@@ -48,7 +66,7 @@ router.post(
 router.patch(
     "/matches/:id/result",
     verifyToken,
-    authorize("super-admin", "playground-admin"),
+    authorize("playground-admin"),
     tournamentController.updateMatchResult
 );
 
@@ -63,6 +81,18 @@ router.patch(
 // ======================================================
 // Public / Authenticated Routes
 // ======================================================
+
+// Playground-admin routes must appear before /:id so Express does not treat
+// "my-playgrounds" as a tournament id.
+router.get(
+    "/my-playgrounds/tournaments",
+    verifyToken,
+    authorize("playground-admin"),
+    tournamentController.getMyPlaygroundTournaments
+);
+
+router.get("/my-registrations", verifyToken, authorize("customer"), tournamentController.getMyRegistrations);
+router.patch("/teams/:teamId/cancel", verifyToken, authorize("customer"), tournamentController.cancelRegistration);
 
 // Get All Tournaments
 router.get(
@@ -98,6 +128,7 @@ router.post(
     "/:id/register",
     verifyToken,
     authorize("customer"),
+    teamRosterUpload,
     tournamentController.registerTeam
 );
 
@@ -120,6 +151,30 @@ router.get(
     "/:id/standings",
     verifyToken,
     tournamentController.getTournamentStandings
+);
+
+// Get Tournament Participants (for my playgrounds)
+router.get(
+    "/:id/participants",
+    verifyToken,
+    authorize("playground-admin", "super-admin"),
+    tournamentController.getTournamentParticipants
+);
+
+// Update Tournament Team Counts
+router.patch(
+    "/:id/team-counts",
+    verifyToken,
+    authorize("playground-admin", "super-admin"),
+    tournamentController.updateTournamentTeamCounts
+);
+
+// Delete Tournament
+router.delete(
+    "/:id",
+    verifyToken,
+    authorize("playground-admin", "super-admin"),
+    tournamentController.deleteTournament
 );
 
 module.exports = router;

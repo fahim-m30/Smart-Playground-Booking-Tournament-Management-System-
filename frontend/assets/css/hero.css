@@ -287,14 +287,35 @@ Buttons
 }
 
 .hero-content{
-    max-width:680px;
+    max-width:720px;
     padding:44px 36px;
-    border-radius:34px;
-    background:#ffffff;
-    border:1px solid rgba(16,185,129,.14);
+    border-radius:28px;
+    /* make content visually float above the background image */
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.06);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
     box-shadow:
-        0 28px 60px rgba(15,23,42,.08),
-        0 10px 30px rgba(16,185,129,.12);
+        0 40px 80px rgba(6,30,20,.35),
+        0 14px 36px rgba(16,185,129,.08);
+    position: relative;
+    transform: translateZ(40px) translateY(0);
+    transform-style: preserve-3d;
+    transition: transform .6s cubic-bezier(.2,.9,.2,1), box-shadow .3s ease;
+}
+
+.hero-content::after{
+    /* subtle floating shadow under the panel */
+    content:"";
+    position:absolute;
+    left:8px;
+    right:8px;
+    bottom:-28px;
+    height:40px;
+    border-radius:20px;
+    background: rgba(8,20,10,0.28);
+    filter: blur(18px);
+    z-index:-1;
 }
 
 .hero-subtitle{
@@ -312,8 +333,24 @@ Buttons
     line-height:1.02;
     font-weight:800;
     color:#ffffff;
-    text-shadow:0 22px 40px rgba(0,0,0,.32);
+    text-shadow:0 28px 60px rgba(0,0,0,.48), 0 6px 20px rgba(16,185,129,.06);
     margin-bottom:24px;
+}
+
+@media (max-width: 860px) {
+    .hero {
+        padding: 120px 0 80px;
+        background-position: center top;
+    }
+    .hero-content{
+        background:#ffffff;
+        border:1px solid rgba(16,185,129,.14);
+        box-shadow: 0 28px 60px rgba(15,23,42,.08), 0 10px 30px rgba(16,185,129,.12);
+        transform: none;
+        backdrop-filter: none;
+    }
+    .hero-content::after{ display:none; }
+    .hero h1{ color:#065F46; text-shadow:none; }
 }
 
 .hero p{
@@ -542,4 +579,4 @@ font-size:11px;
 
 }
 
-} eyje code motamoti sob thik ache jeita problem oita thik koro 
+}

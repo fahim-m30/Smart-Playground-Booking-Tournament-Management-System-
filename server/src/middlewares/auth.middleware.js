@@ -73,12 +73,20 @@ const auth = async (req, res, next) => {
         }
 
         if (user.isBlocked) {
-            console.log("Blocked User");
+            const blockedUntil = user.blockedUntil ? new Date(user.blockedUntil) : null;
 
-            return res.status(403).json({
-                success: false,
-                message: "Your Account Has Been Blocked.",
-            });
+            if (blockedUntil && new Date() > blockedUntil) {
+                user.isBlocked = false;
+                user.blockedUntil = null;
+                await user.save();
+            } else {
+                console.log("Blocked User");
+
+                return res.status(403).json({
+                    success: false,
+                    message: "Your account has been blocked.",
+                });
+            }
         }
 
         req.user = user;

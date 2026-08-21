@@ -8,8 +8,9 @@
  */
 
 const jwt = require("jsonwebtoken");
+const User = require("../modules/user/user.model");
 
-const verifyToken = (req, res, next) => {
+const verifyToken = async (req, res, next) => {
     try {
         const authHeader = req.headers.authorization;
 
@@ -27,7 +28,20 @@ const verifyToken = (req, res, next) => {
             process.env.JWT_ACCESS_SECRET
         );
 
-        req.user = decoded;
+        const user = await User.findById(decoded.userId).select("_id role isBlocked blockedUntil isDeleted");
+        if (!user || user.isDeleted) {
+            return res.status(401).json({ success: false, message: "Account is no longer available." });
+        }
+        if (user.isBlocked) {
+            if (user.blockedUntil && new Date() >= user.blockedUntil) {
+                user.isBlocked = false;
+                user.blockedUntil = null;
+                await user.save();
+            } else {
+                return res.status(403).json({ success: false, message: "Your account is temporarily suspended.", blockedUntil: user.blockedUntil });
+            }
+        }
+        req.user = { userId: user._id.toString(), role: user.role };
 
         next();
     } catch (error) {

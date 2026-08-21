@@ -64,6 +64,7 @@ const paymentSchema = new mongoose.Schema(
             enum: [
                 "Nagad",
                 "bKash",
+                "Rocket",
                 "Card",
                 "SSLCommerz",
                 "Cash",

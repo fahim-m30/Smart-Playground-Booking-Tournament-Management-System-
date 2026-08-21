@@ -9,6 +9,7 @@
 const {
     createPlayground,
     getAllPlaygrounds,
+    getAllPlaygroundsForAdmin,
     getSinglePlayground,
     updatePlayground,
     deletePlayground,
@@ -17,6 +18,8 @@ const {
     activatePlayground,
     deactivatePlayground,
 } = require("./playground.service");
+const fileToDataUrl = (file) => file?.buffer ? `data:${file.mimetype || "image/jpeg"};base64,${file.buffer.toString("base64")}` : null;
+const withImages = (req) => ({ ...req.body, ...(typeof req.body.pricing === "string" ? { pricing: JSON.parse(req.body.pricing) } : {}), ...(typeof req.body.facilities === "string" ? { facilities: req.body.facilities.split(",").map((item) => item.trim()).filter(Boolean) } : {}), ...(req.files?.coverImage?.[0] ? { coverImage: fileToDataUrl(req.files.coverImage[0]) } : {}), ...(req.files?.galleryImages ? { galleryImages: req.files.galleryImages.map(fileToDataUrl) } : {}) });
 // ===============================
 // Create Playground
 // ===============================
@@ -24,7 +27,7 @@ const {
 const createPlaygroundController = async (req, res) => {
     try {
         const playground = await createPlayground(
-            req.body,
+            withImages(req),
             req.user.userId
         );
 
@@ -60,6 +63,15 @@ const getAllPlaygroundsController = async (req, res) => {
             success: false,
             message: error.message,
         });
+    }
+};
+
+const getAllPlaygroundsForAdminController = async (req, res) => {
+    try {
+        const playgrounds = await getAllPlaygroundsForAdmin();
+        res.status(200).json({ success: true, message: "All playgrounds fetched successfully.", data: playgrounds });
+    } catch (error) {
+        res.status(400).json({ success: false, message: error.message });
     }
 };
 
@@ -113,7 +125,7 @@ const updatePlaygroundController = async (req, res) => {
     try {
         const playground = await updatePlayground(
             req.params.id,
-            req.body,
+            withImages(req),
             req.user
         );
 
@@ -224,6 +236,7 @@ const deactivatePlaygroundController = async (req, res) => {
 module.exports = {
     createPlayground: createPlaygroundController,
     getAllPlaygrounds: getAllPlaygroundsController,
+    getAllPlaygroundsForAdmin: getAllPlaygroundsForAdminController,
     getSinglePlayground: getSinglePlaygroundController,
     getMyPlaygrounds: getMyPlaygroundsController,
     updatePlayground: updatePlaygroundController,

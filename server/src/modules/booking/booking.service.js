@@ -9,6 +9,12 @@
 
 const Booking = require("./booking.model");
 const Playground = require("../playground/playground.model");
+const Slot = require("../slot/slot.model");
+
+const timeToMinutes = (timeStr) => {
+    const [h, m] = timeStr.split(":").map(Number);
+    return h * 60 + m;
+};
 
 // ===================================================
 // Create Booking
@@ -46,6 +52,34 @@ const createBooking = async (payload, customerId) => {
     }
 
     // ===================================================
+    // Validate Against Defined Slots
+    // ===================================================
+
+    const bookingDay = new Date(payload.bookingDate).getDay();
+    const requestStartMinutes = timeToMinutes(payload.startTime);
+    const requestEndMinutes = timeToMinutes(payload.endTime);
+    if (!Number.isFinite(requestStartMinutes) || !Number.isFinite(requestEndMinutes) || requestEndMinutes <= requestStartMinutes) {
+        throw new Error("Booking end time must be after the start time.");
+    }
+    const duration = (requestEndMinutes - requestStartMinutes) / 60;
+
+    const activeSlots = await Slot.find({
+        playground: playground._id,
+        dayOfWeek: bookingDay,
+        isActive: true,
+        isDeleted: false,
+    });
+
+    if (activeSlots.length === 0) {
+        throw new Error("This playground has not published any bookable slots for the selected day.");
+    }
+
+    const selectedSlot = activeSlots.find((slot) => slot.startTime === payload.startTime && slot.endTime === payload.endTime);
+    if (!selectedSlot) {
+        throw new Error("Select one of the published slots shown for this date.");
+    }
+
+    // ===================================================
     // Check Time Slot Overlap
     // ===================================================
 
@@ -78,7 +112,6 @@ const createBooking = async (payload, customerId) => {
 
     let pricePerHour = playground.pricing.morning;
 
-    const bookingDay = new Date(payload.bookingDate).getDay();
     const startHour = Number(payload.startTime.split(":")[0]);
 
     // Friday & Saturday
@@ -98,7 +131,12 @@ const createBooking = async (payload, customerId) => {
         pricePerHour = playground.pricing.evening;
     }
 
-    const totalAmount = pricePerHour * payload.duration;
+    // A per-slot rate is authoritative when the playground admin configured
+    // one. Otherwise preserve the venue's existing time-of-day pricing.
+    const totalAmount = selectedSlot.price ?? (pricePerHour * duration);
+    if (selectedSlot.price !== null && selectedSlot.price !== undefined) {
+        pricePerHour = selectedSlot.price / duration;
+    }
 // ===================================================
 // Generate OTP
 // ===================================================
@@ -122,7 +160,7 @@ const otpExpiresAt = new Date(
     bookingDate: payload.bookingDate,
     startTime: payload.startTime,
     endTime: payload.endTime,
-    duration: payload.duration,
+    duration,
 
     pricePerHour: pricePerHour,
     totalAmount: totalAmount,
@@ -172,6 +210,34 @@ const getSingleBooking = async (id, customerId) => {
 };
 
 // ===================================================
+// Get Playground Bookings
+// ===================================================
+
+const getPlaygroundBookings = async (playgroundId, adminId) => {
+    const playground = await Playground.findOne({
+        _id: playgroundId,
+        isDeleted: false,
+    });
+
+    if (!playground) {
+        throw new Error("Playground not found.");
+    }
+
+    if (playground.playgroundAdmin.toString() !== adminId) {
+        throw new Error("You are not authorized to view bookings for this playground.");
+    }
+
+    const bookings = await Booking.find({
+        playground: playgroundId,
+        isDeleted: false,
+    })
+        .populate("customer", "name email phone")
+        .sort({ createdAt: -1 });
+
+    return bookings;
+};
+
+// ===================================================
 // Cancel Booking
 // ===================================================
 
@@ -190,6 +256,14 @@ const cancelBooking = async (id, customerId) => {
         throw new Error("Booking is already cancelled.");
     }
 
+    const [hour, minute] = String(booking.startTime || "00:00").split(":").map(Number);
+    const startAt = new Date(booking.bookingDate);
+    startAt.setHours(hour, minute, 0, 0);
+    const cancellationDeadline = new Date(startAt.getTime() - 2 * 60 * 60 * 1000);
+    if (new Date() > cancellationDeadline) {
+        throw new Error("Bookings can only be cancelled at least 2 hours before the slot starts.");
+    }
+
     booking.bookingStatus = "Cancelled";
     booking.cancelledAt = new Date();
 
@@ -206,5 +280,6 @@ module.exports = {
     createBooking,
     getMyBookings,
     getSingleBooking,
+    getPlaygroundBookings,
     cancelBooking,
 };

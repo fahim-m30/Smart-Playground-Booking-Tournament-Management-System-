@@ -9,7 +9,6 @@
 
 const Joi = require("joi");
 
-
 // ===================================================
 // Create Payment Validation
 // ===================================================
@@ -27,8 +26,8 @@ const createPaymentValidation = Joi.object({
         .valid(
             "Nagad",
             "bKash",
+            "Rocket",
             "Card",
-            "SSLCommerz",
             "Cash"
         )
         .required(),
@@ -48,7 +47,6 @@ const refundPaymentValidation = Joi.object({
         .trim()
         .required(),
 });
-
 
 // ===================================================
 // Export

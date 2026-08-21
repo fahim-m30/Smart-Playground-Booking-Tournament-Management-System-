@@ -20,7 +20,6 @@ const authorize = require("../../middlewares/authorize");
 // Customer Routes
 // ======================================================
 
-// Create Payment Session
 router.post(
     "/",
     verifyToken,
@@ -28,7 +27,15 @@ router.post(
     paymentController.createPayment
 );
 
-// Get My Payments
+router.post("/demo/bkash", verifyToken, authorize("customer"), paymentController.createBkashPayment);
+router.post("/demo/nagad", verifyToken, authorize("customer"), paymentController.createNagadPayment);
+router.post("/demo/rocket", verifyToken, authorize("customer"), paymentController.createRocketPayment);
+router.post("/demo/card", verifyToken, authorize("customer"), paymentController.createCardPayment);
+router.post("/demo/checkout", verifyToken, authorize("customer"), paymentController.startDemoCheckout);
+router.get("/demo/checkout/:id", verifyToken, authorize("customer"), paymentController.getDemoCheckout);
+router.post("/demo/checkout/:id/complete", verifyToken, authorize("customer"), paymentController.completeDemoCheckout);
+router.post("/demo/checkout/:id/cancel", verifyToken, authorize("customer"), paymentController.cancelDemoCheckout);
+
 router.get(
     "/my-payments",
     verifyToken,
@@ -36,7 +43,6 @@ router.get(
     paymentController.getMyPayments
 );
 
-// Get Single Payment
 router.get(
     "/:id",
     verifyToken,
@@ -45,31 +51,12 @@ router.get(
 );
 
 // ======================================================
-// Payment Callback Routes (Public - no auth)
+// QR Validation (Public - no auth)
 // ======================================================
 
-// Success
 router.post(
-    "/success",
-    paymentController.paymentSuccess
-);
-
-// Failed
-router.post(
-    "/fail",
-    paymentController.paymentFailed
-);
-
-// Cancelled
-router.post(
-    "/cancel",
-    paymentController.paymentCancelled
-);
-
-// IPN
-router.post(
-    "/ipn",
-    paymentController.paymentIPN
+    "/verify-qr",
+    paymentController.verifyQR
 );
 
 // ======================================================

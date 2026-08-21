@@ -32,6 +32,11 @@ const getQueryParam = (name) => {
     return params.get(name) || "";
 };
 
+const getDashboardRedirect = (user) => {
+    // One role-aware dashboard keeps every account in the correct workspace.
+    return user?.role ? "dashboard.html" : "index.html";
+};
+
 const registerForm = document.querySelector("#register-form");
 const loginForm = document.querySelector("#login-form");
 const verifyOtpForm = document.querySelector("#verify-otp-form");
@@ -108,18 +113,6 @@ if (registerForm) {
 
         if (accountType === "owner") {
             formData.append("nidNumber", registerForm.nidNumber?.value.trim() || "");
-            formData.append("playgroundName", registerForm.playgroundName?.value.trim() || "");
-            formData.append("description", registerForm.description?.value.trim() || "");
-            formData.append("sportType", registerForm.sportType?.value.trim() || "");
-            formData.append("pricePerHour", registerForm.pricePerHour?.value || 0);
-            formData.append("address", registerForm.address?.value.trim() || "");
-            formData.append("division", registerForm.division?.value.trim() || "");
-            formData.append("district", registerForm.district?.value.trim() || "");
-            formData.append("area", registerForm.area?.value.trim() || "");
-            formData.append("openingTime", registerForm.openingTime?.value.trim() || "");
-            formData.append("closingTime", registerForm.closingTime?.value.trim() || "");
-            formData.append("maxPlayers", registerForm.maxPlayers?.value || 0);
-            formData.append("facilities", registerForm.facilities?.value.trim() || "");
 
             const nidFrontImage = registerForm.nidFrontImage?.files?.[0];
             const nidBackImage = registerForm.nidBackImage?.files?.[0];
@@ -187,8 +180,9 @@ if (loginForm) {
                 showMessage(messageContainer, data.message || "Login successful.", "success");
                 localStorage.setItem("authToken", data.data.accessToken);
                 localStorage.setItem("authUser", JSON.stringify(data.data.user));
+                const redirectPath = getDashboardRedirect(data.data.user);
                 setTimeout(() => {
-                    window.location.href = "index.html";
+                    window.location.href = redirectPath;
                 }, 1100);
             } else {
                 const data = await response.json();
