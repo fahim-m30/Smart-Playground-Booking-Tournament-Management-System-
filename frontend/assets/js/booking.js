@@ -137,6 +137,19 @@
         try {
             const bookings = await request("/bookings/my-bookings");
             showContent(bookings.length ? bookings.map((booking) => `<article class="card"><span class="badge">${escapeHtml(booking.bookingStatus)} · ${escapeHtml(booking.paymentStatus)}</span><h3>${escapeHtml(booking.playground?.name || "Playground")}</h3><p>${bookingDate(String(booking.bookingDate).slice(0, 10))} · ${escapeHtml(booking.startTime)} – ${escapeHtml(booking.endTime)}<br>Total: ৳${Number(booking.totalAmount || 0).toLocaleString()}</p>${!["Cancelled", "Completed"].includes(booking.bookingStatus) ? `<div class="card-foot"><button class="alt cancel-booking" type="button" data-booking-id="${escapeHtml(booking._id)}">Cancel booking</button></div>` : ""}</article>`).join("") : '<div class="empty">You have no bookings yet.</div>');
+            content.querySelectorAll(".card").forEach((card, index) => {
+                const booking = bookings[index];
+                if (!booking) return;
+                const existingFooter = card.querySelector(".card-foot");
+                const [hour, minute] = String(booking.startTime || "00:00").split(":").map(Number);
+                const startAt = new Date(booking.bookingDate);
+                startAt.setHours(hour, minute, 0, 0);
+                const deadlinePassed = new Date() > new Date(startAt.getTime() - 2 * 60 * 60 * 1000);
+                const message = booking.bookingStatus === "Cancelled" ? "Already cancelled" : booking.bookingStatus === "Completed" ? "Completed bookings cannot be cancelled" : deadlinePassed ? "Cancellation period ended (2 hours before the slot)" : "";
+                if (!message) return;
+                if (existingFooter) existingFooter.innerHTML = `<span class="meta">${message}</span>`;
+                else card.insertAdjacentHTML("beforeend", `<div class="card-foot"><span class="meta">${message}</span></div>`);
+            });
             content.querySelectorAll(".cancel-booking").forEach((button) => button.addEventListener("click", async () => {
                 if (!confirm("Cancel this booking? Cancellation is allowed only at least 2 hours before the slot. Any paid refund is handled by the venue administrator.")) return;
                 button.disabled = true;
