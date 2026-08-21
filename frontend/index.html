@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+         <!-- Favicon -->
+    <link rel="icon" type="image/png" href="assets/images/favicon.png">
+
+    <title>TURF | Smart Playground Booking & Tournament Management System</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Google Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+
+    <!-- Swiper CSS -->
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css">
+
+    <!-- AOS Animation -->
+    <link rel="stylesheet"
+          href="https://unpkg.com/aos@2.3.4/dist/aos.css">
+
+
+    <!-- Custom CSS -->
+     
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/navbar.css">
+    <link rel="stylesheet" href="assets/css/hero.css">
+    <link rel="stylesheet" href="assets/css/footer.css">
+    <link rel="stylesheet" href="assets/css/responsive.css">
+</head>
+
+<body class="bg-slate-50">
+
+<!-- ==================================================
+ Project : TURF
+ File    : index.html
+ Section : Premium Navbar
+ Author  : Fahim Muntasir
+=================================================== -->
+
+<header id="navbar" class="navbar">
+
+    <div class="container navbar-container">
+
+        <!-- ================= Logo ================= -->
+
+        <a href="index.html" class="logo">
+
+            <img
+                src="assets/images/favicon.png"
+                alt="TURF Logo"
+            >
+
+            <div class="logo-text">
+
+                <h2>TURF</h2>
+
+                <span>
+                    Smart Playground Booking & Tournament Management System
+                </span>
+
+            </div>
+
+        </a>
+
+        <!-- ================= Navigation ================= -->
+
+        <nav class="nav-menu">
+
+            <ul>
+
+                <li>
+                    <a href="index.html" class="active">
+                        Home
+                    </a>
+                </li>
+
+                <li>
+                    <a href="playgrounds.html">
+                        Playgrounds
+                    </a>
+                </li>
+
+                <li>
+                    <a href="tournament.html">
+                        Tournament
+                    </a>
+                </li>
+
+                <li>
+                    <a href="about.html">
+                        About
+                    </a>
+                </li>
+
+                <li>
+                    <a href="contact.html">
+                        Contact
+                    </a>
+                </li>
+
+            </ul>
+
+        </nav>
+
+        <!-- ================= Buttons ================= -->
+
+        <div class="nav-buttons">
+
+            <a id="nav-login" href="login.html" class="login-btn">
+
+                Login
+
+            </a>
+
+            <a id="nav-register" href="register.html" class="register-btn">
+
+                Register
+
+            </a>
+
+        </div>
+
+        <!-- ================= Mobile Icon ================= -->
+
+        <div class="menu-toggle">
+
+            <i class="fa-solid fa-bars"></i>
+
+        </div>
+
+    </div>
+
+</header>
+<!-- ================= HERO SECTION ================= -->
+
+<section class="hero">
+
+    <div class="hero-overlay"></div>
+
+    <div class="container hero-container">
+
+        <div class="hero-content">
+
+        
+
+          <h1>
+
+    Book Your Favorite
+    <br>
+    Playground
+
+</h1>
+
+<p>
+
+    Discover premium Football, Cricket and Badminton playgrounds.
+    <br>
+    Book your slot anytime, anywhere.
+
+</p>
+            <p>
+
+                Book premium Football, Cricket and Badminton
+                playgrounds with just a few clicks.
+
+            </p>
+
+            <form id="hero-search-form" class="hero-search">
+
+                <input
+                    id="hero-search-input"
+                    type="text"
+                    placeholder="Search Playground..."
+                >
+
+                <button type="submit">
+
+                    <i class="fa-solid fa-magnifying-glass"></i>
+
+                    Search
+
+                </button>
+
+            </form>
+
+            <div class="hero-buttons">
+
+                <a id="book-now-link" href="playgrounds.html" class="btn-green">
+
+                    Book Now
+
+                </a>
+
+                <a id="explore-link" href="tournament.html" class="btn-white">
+
+                    Explore
+
+                </a>
+
+            </div>
+
+            <div id="role-actions" class="hero-buttons" style="margin-top: 16px;" hidden>
+                <a id="role-dashboard-link" href="dashboard.html" class="btn-green" style="min-width: 180px;">Open Dashboard</a>
+                <a id="role-chat-link" href="chat.html" class="btn-white" style="min-width: 180px;">Open Messages</a>
+            </div>
+            <!-- ================= Hero Features ================= -->
+
+<div class="hero-features">
+
+    <div class="feature-card">
+
+        <div class="feature-icon">
+
+            <i class="fa-solid fa-futbol"></i>
+
+        </div>
+
+        <div class="feature-text">
+
+            <h3>Premium Playgrounds</h3>
+
+            <p>Football • Cricket • Badminton</p>
+
+        </div>
+
+    </div>
+
+    <div class="feature-card">
+
+        <div class="feature-icon">
+
+            <i class="fa-solid fa-calendar-check"></i>
+
+        </div>
+
+        <div class="feature-text">
+
+            <h3>Easy Booking</h3>
+
+            <p>Book Your Playground Anytime</p>
+
+        </div>
+
+    </div>
+
+    <div class="feature-card">
+
+        <div class="feature-icon">
+
+            <i class="fa-solid fa-trophy"></i>
+
+        </div>
+
+        <div class="feature-text">
+
+            <h3>Sports Tournament</h3>
+
+            <p>Join Exciting Competitions</p>
+
+        </div>
+
+    </div>
+
+</div>
+
+        </div>
+
+    </div>
+
+</section>
+<!-- ==================================================
+     Playground Gallery Section
+================================================== -->
+
+<section class="gallery">
+
+    <div class="container">
+
+        <div class="section-title">
+
+            <h2>Explore Our Playgrounds</h2>
+
+            <p>
+                Premium Football, Cricket and Badminton
+                playgrounds available for booking.
+            </p>
+
+        </div>
+
+    </div>
+
+    <!-- Football -->
+
+    <div class="marquee">
+
+        <div class="track">
+
+            <img src="assets/images/football1.jpg">
+
+            <img src="assets/images/football2.jpg">
+
+            <img src="assets/images/football3.jpg">
+
+            <img src="assets/images/football4.jpg">
+
+            <img src="assets/images/football5.jpg">
+
+            <img src="assets/images/football1.jpg">
+
+            <img src="assets/images/football2.jpg">
+
+            <img src="assets/images/football3.jpg">
+
+            <img src="assets/images/football4.jpg">
+
+            <img src="assets/images/football5.jpg">
+
+        </div>
+
+    </div>
+
+    <!-- Cricket -->
+
+    <div class="marquee reverse">
+
+        <div class="track">
+
+            <img src="assets/images/cricket1.jpg">
+
+            <img src="assets/images/cricket2.jpg">
+
+            <img src="assets/images/cricket3.jpg">
+
+            <img src="assets/images/cricket4.jpg">
+
+            <img src="assets/images/cricket5.jpg">
+
+            <img src="assets/images/cricket1.jpg">
+
+            <img src="assets/images/cricket2.jpg">
+
+            <img src="assets/images/cricket3.jpg">
+
+            <img src="assets/images/cricket4.jpg">
+
+            <img src="assets/images/cricket5.jpg">
+
+        </div>
+
+    </div>
+
+    <!-- Badminton -->
+
+    <div class="marquee">
+
+        <div class="track">
+
+            <img src="assets/images/badminton1.jpg">
+
+            <img src="assets/images/badminton2.jpg">
+
+            <img src="assets/images/badminton3.jpg">
+
+            <img src="assets/images/badminton4.jpg">
+
+            <img src="assets/images/badminton5.jpg">
+
+            <img src="assets/images/badminton1.jpg">
+
+            <img src="assets/images/badminton2.jpg">
+
+            <img src="assets/images/badminton3.jpg">
+
+            <img src="assets/images/badminton4.jpg">
+
+            <img src="assets/images/badminton5.jpg">
+
+        </div>
+
+    </div>
+
+</section>
+
+    <!-- Footer Start -->
+    <footer id="footer">
+        <div class="footer-credit">
+            <p>Made with passion for sports and seamless playground booking.</p>
+            <p>Made by <strong>Fahim Muntasir</strong></p>
+        </div>
+    </footer>
+    <!-- Footer End -->
+
+
+    <!-- Swiper -->
+    <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+
+    <!-- AOS -->
+    <script src="https://unpkg.com/aos@2.3.4/dist/aos.js"></script>
+
+    <script>
+        AOS.init({
+            duration: 1000,
+            once: true
+        });
+    </script>
+
+    <!-- Custom JS -->
+    <script src="assets/js/navbar.js"></script>
+    <script src="assets/js/slider.js"></script>
+    <script src="assets/js/search.js"></script>
+    <script src="assets/js/app.js"></script>
+
+</body>
+</html>

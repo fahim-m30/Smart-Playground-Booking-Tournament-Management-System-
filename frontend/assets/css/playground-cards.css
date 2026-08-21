@@ -1,0 +1,56 @@
+.ground-card {
+    overflow: hidden;
+    padding: 0;
+}
+
+.ground-card-body {
+    padding: 17px 18px 18px;
+}
+
+.ground-cover,
+.ground-cover-fallback {
+    display: block;
+    width: 100%;
+    height: 152px;
+    background: #e9f8ed;
+}
+
+.ground-cover {
+    object-fit: cover;
+}
+
+.ground-cover-fallback {
+    display: grid;
+    place-items: center;
+    color: #137a39;
+    background: linear-gradient(135deg, #e5f7ea, #cdeed7);
+    font-size: 2.4rem;
+    font-weight: 800;
+}
+
+.ground-card .card-foot {
+    margin: 14px -18px -18px;
+    padding: 13px 18px;
+}
+
+.playground-cover {
+    width: calc(100% + 36px);
+    height: 155px;
+    margin: -18px -18px 14px;
+    border-radius: 14px 14px 0 0;
+    object-fit: cover;
+}
+
+.ground-details { position: relative; }
+.ground-detail-image { width: 100%; height: 230px; margin-bottom: 16px; border-radius: 10px; object-fit: cover; }
+.ground-description { color: #4c5f51; line-height: 1.6; }
+.ground-info { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 16px 0; }
+.ground-info span { padding: 10px; border-radius: 8px; background: #effbf3; color: #075a2a; font-size: .75rem; }
+.ground-info strong { display: block; margin-bottom: 4px; font-size: .68rem; text-transform: uppercase; }
+.facility-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.choose-from-details { width: 100%; margin-top: 20px; }
+
+@media (max-width: 600px) {
+    .ground-info { grid-template-columns: 1fr; }
+    .ground-detail-image { height: 180px; }
+}

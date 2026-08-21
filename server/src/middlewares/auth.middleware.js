@@ -10,74 +10,99 @@
 const jwt = require("jsonwebtoken");
 const User = require("../modules/user/user.model");
 
+// ===============================
+// Authentication Middleware
+// ===============================
+
 const auth = async (req, res, next) => {
     try {
-        // ===============================
-        // Check Authorization Header
-        // ===============================
+        // Authorization Header
         const authorization = req.headers.authorization;
 
+        console.log("\n========== AUTH MIDDLEWARE ==========");
+
         if (!authorization) {
+            console.log("Authorization Header Missing");
+
             return res.status(401).json({
                 success: false,
                 message: "Unauthorized Access. Please Login First.",
             });
         }
 
-        // ===============================
-        // Extract Bearer Token
-        // ===============================
-        const token = authorization.startsWith("Bearer ")
-            ? authorization.split(" ")[1]
-            : authorization;
+        console.log("Authorization Header:", authorization);
 
-        if (!token) {
+        // Check Bearer Token
+        if (!authorization.startsWith("Bearer ")) {
+            console.log("Invalid Authorization Format");
+
             return res.status(401).json({
                 success: false,
-                message: "Token Not Found.",
+                message: "Invalid Authorization Format.",
             });
         }
 
-        // ===============================
-        // Verify JWT Token
-        // ===============================
+        // Extract Token
+        const token = authorization.split(" ")[1];
+
+        console.log("Extracted Token:");
+        console.log(token);
+
+        console.log("JWT Secret:");
+        console.log(process.env.JWT_ACCESS_SECRET);
+
+        // Verify Token
         const decoded = jwt.verify(
             token,
             process.env.JWT_ACCESS_SECRET
         );
 
-        // ===============================
+        console.log("Decoded Token:");
+        console.log(decoded);
+
         // Find User
-        // ===============================
         const user = await User.findById(decoded.userId).select("-password");
 
         if (!user) {
+            console.log("User Not Found");
+
             return res.status(404).json({
                 success: false,
                 message: "User Not Found.",
             });
         }
 
-        // ===============================
-        // Check Blocked User
-        // ===============================
         if (user.isBlocked) {
-            return res.status(403).json({
-                success: false,
-                message: "Your Account Has Been Blocked.",
-            });
+            const blockedUntil = user.blockedUntil ? new Date(user.blockedUntil) : null;
+
+            if (blockedUntil && new Date() > blockedUntil) {
+                user.isBlocked = false;
+                user.blockedUntil = null;
+                await user.save();
+            } else {
+                console.log("Blocked User");
+
+                return res.status(403).json({
+                    success: false,
+                    message: "Your account has been blocked.",
+                });
+            }
         }
 
-        // ===============================
-        // Attach User to Request
-        // ===============================
         req.user = user;
+
+        console.log("Authentication Successful");
+        console.log("====================================\n");
 
         next();
     } catch (error) {
+        console.log("\n========== JWT ERROR ==========");
+        console.log(error);
+        console.log("===============================\n");
+
         return res.status(401).json({
             success: false,
-            message: "Invalid or Expired Token.",
+            message: error.message,
         });
     }
 };

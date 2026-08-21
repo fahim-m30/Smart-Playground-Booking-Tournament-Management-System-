@@ -16,6 +16,10 @@ const bcrypt = require("bcrypt");
 
 const userSchema = new mongoose.Schema(
     {
+        // ===============================
+        // Basic Information
+        // ===============================
+
         name: {
             type: String,
             required: true,
@@ -41,21 +45,78 @@ const userSchema = new mongoose.Schema(
             type: String,
             default: null,
         },
+        address: {
+    type: String,
+    default: null,
+    trim: true,
+},
+dateOfBirth: {
+    type: Date,
+    default: null,
+},
+gender: {
+    type: String,
+    enum: ["male", "female", "other"],
+    default: null,
+},
+isDeleted: {
+    type: Boolean,
+    default: false,
+},
+lastLogin: {
+    type: Date,
+    default: null,
+},
+refreshToken: {
+    type: String,
+    default: null,
+},
 
-        profileImage: {
-            type: String,
-            default: null,
-        },
+// ===============================
+// Playground Admin Verification
+// (Only for Playground Admin)
+// ===============================
+nidNumber: {
+    type: String,
+    default: null,
+    trim: true,
+},
+
+nidFrontImage: {
+    type: String,
+    default: null,
+},
+
+nidBackImage: {
+    type: String,
+    default: null,
+},
+
+        // ===============================
+        // Profile Image
+        // ===============================
+
+          profileImage: {
+                  type: String,
+                default: null,
+},
+        // ===============================
+        // User Role
+        // ===============================
 
         role: {
             type: String,
             enum: [
                 "customer",
-                "super-admin",
                 "playground-admin",
+                "super-admin",
             ],
             default: "customer",
         },
+
+        // ===============================
+        // Account Status
+        // ===============================
 
         isVerified: {
             type: Boolean,
@@ -65,6 +126,36 @@ const userSchema = new mongoose.Schema(
         isBlocked: {
             type: Boolean,
             default: false,
+        },
+
+        blockedUntil: {
+            type: Date,
+            default: null,
+        },
+
+        // ===============================
+        // OTP Information
+        // ===============================
+
+        otp: {
+            code: {
+                type: String,
+                default: null,
+            },
+            expiresAt: {
+                type: Date,
+                default: null,
+            },
+            purpose: {
+                type: String,
+                default: null,
+            },
+        },
+        pendingEmail: {
+            type: String,
+            default: null,
+            lowercase: true,
+            trim: true,
         },
     },
     {
@@ -82,8 +173,14 @@ userSchema.pre("save", async function () {
         return;
     }
 
+    const password = this.password;
+
+    if (typeof password !== "string" || password.startsWith("$2")) {
+        return;
+    }
+
     const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
+    this.password = await bcrypt.hash(password, salt);
 });
 
 // ===============================
@@ -91,7 +188,7 @@ userSchema.pre("save", async function () {
 // ===============================
 
 userSchema.methods.comparePassword = async function (plainPassword) {
-    return await bcrypt.compare(plainPassword, this.password);
+    return bcrypt.compare(plainPassword, this.password);
 };
 
 // ===============================

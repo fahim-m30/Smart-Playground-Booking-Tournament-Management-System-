@@ -1,0 +1,346 @@
+/* ==========================================================
+   Project : TURF
+   File    : navbar.css
+   Purpose : Premium Navbar Design
+   Author  : Fahim Muntasir
+========================================================== */
+
+/* =============================
+   Navbar
+============================= */
+
+.navbar{
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 9999;
+
+    background: rgba(255,255,255,.92);
+
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+
+    border-bottom: 1px solid #E2E8F0;
+
+    transition: .35s ease;
+
+    box-shadow:
+    0 8px 30px rgba(15,23,42,.05);
+}
+
+
+/* =============================
+Container
+============================= */
+
+.navbar-container{
+
+    max-width:1400px;
+
+    margin:auto;
+
+    padding:16px 35px;
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:space-between;
+
+    gap:35px;
+
+}
+
+/* =============================
+Logo
+============================= */
+
+.logo{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:12px;
+
+    flex-shrink:0;
+
+}
+
+.logo img{
+
+    width:60px;
+
+    transition:.35s;
+
+}
+
+.logo:hover img{
+
+    transform:scale(1.07);
+
+}
+
+
+.logo-text{
+
+    display:flex;
+
+    flex-direction:column;
+
+}
+
+
+.logo-text h2{
+
+    font-size:24px;
+
+    font-weight:800;
+
+    color:#15803D;
+
+    line-height:1;
+
+    letter-spacing:1px;
+
+}
+
+
+.logo-text span{
+
+    font-size:11px;
+
+    max-width:250px;
+
+    line-height:1.4;
+
+
+/* =============================
+Menu
+============================= */
+
+.nav-menu ul{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:40px;
+
+}
+
+
+.nav-menu a{
+
+    position:relative;
+
+    color:#334155;
+
+    font-size:16px;
+
+    font-weight:600;
+
+    transition:.3s;
+
+}
+.nav-menu{
+
+    flex:1;
+
+    display:flex;
+
+    justify-content:center;
+
+}
+
+
+/* Hover */
+
+.nav-menu a:hover{
+
+    color:#16A34A;
+
+}
+
+
+/* Underline */
+
+.nav-menu a::after{
+
+    content:"";
+
+    position:absolute;
+
+    left:0;
+
+    bottom:-8px;
+
+    width:0;
+
+    height:3px;
+
+    border-radius:10px;
+
+    background:#16A34A;
+
+    transition:.3s;
+
+}
+
+
+.nav-menu a:hover::after{
+
+    width:100%;
+
+}
+
+
+/* Active */
+
+.active{
+
+    color:#16A34A !important;
+
+}
+
+.active::after{
+
+    width:100% !important;
+
+}
+
+
+/* =============================
+Buttons
+============================= */
+
+.nav-buttons{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:18px;
+
+    flex-shrink:0;
+
+}
+
+
+/* Login */
+
+.login-btn{
+
+    padding:12px 28px;
+
+    border-radius:12px;
+
+    border:2px solid #16A34A;
+
+    color:#15803D;
+
+    font-weight:600;
+
+    transition:.35s;
+
+}
+
+
+.login-btn:hover{
+
+    background:#DCFCE7;
+
+}
+
+
+/* Register */
+
+.register-btn{
+
+    padding:12px 28px;
+
+    border-radius:12px;
+
+    background:#16A34A;
+
+    color:#fff;
+
+    font-weight:600;
+
+    transition:.35s;
+
+    box-shadow:
+
+    0 10px 20px rgba(22,163,74,.25);
+
+}
+
+
+.register-btn:hover{
+
+    background:#15803D;
+
+    transform:translateY(-3px);
+
+}
+
+
+/* =============================
+Mobile Icon
+============================= */
+
+.menu-toggle{
+
+    display:none;
+
+    font-size:28px;
+
+    cursor:pointer;
+
+}
+
+
+/* =============================
+Responsive
+============================= */
+
+@media(max-width:992px){
+
+.nav-menu{
+
+display:none;
+
+}
+
+.nav-buttons{
+
+display:none;
+
+}
+
+.menu-toggle{
+
+display:block;
+
+}
+
+.logo img{
+
+width:58px;
+
+}
+
+.logo-text h2{
+
+font-size:24px;
+
+}
+
+.logo-text span{
+
+font-size:11px;
+
+}
+
+}

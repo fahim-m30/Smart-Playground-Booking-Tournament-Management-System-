@@ -1,0 +1,34 @@
+#footer {
+    padding: 48px 0;
+    background: #F8FAFC;
+    color: #334155;
+    text-align: center;
+}
+
+.footer-credit {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+    line-height: 1.8;
+}
+
+.footer-credit p {
+    margin: 0;
+}
+
+.footer-credit strong {
+    color: #15803D;
+    font-weight: 700;
+}
+
+#footer a {
+    color: #16A34A;
+    text-decoration: none;
+}
+
+#footer a:hover {
+    text-decoration: underline;
+}

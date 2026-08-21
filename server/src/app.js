@@ -14,17 +14,13 @@
 const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
+const path = require("path");
 
 // ===============================
-// Import Routes
+// Import Routes & Middlewares
 // ===============================
 
 const routes = require("./routes");
-
-// ===============================
-// Import Middlewares
-// ===============================
-
 const notFound = require("./middlewares/notFound");
 const globalErrorHandler = require("./middlewares/globalErrorHandler");
 
@@ -49,6 +45,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Parse Cookies
 app.use(cookieParser());
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 // ===============================
 // Health Check Route
@@ -69,7 +66,7 @@ app.get("/", (req, res) => {
 app.use("/api/v1", routes);
 
 // ===============================
-// Handle Invalid Routes (404)
+// Handle Invalid Routes
 // ===============================
 
 app.use(notFound);
@@ -83,5 +80,6 @@ app.use(globalErrorHandler);
 // ===============================
 // Export Application
 // ===============================
+
 
 module.exports = app;
