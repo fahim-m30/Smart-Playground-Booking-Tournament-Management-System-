@@ -8,9 +8,10 @@ const req = async (path, options = {}) => { const response = await fetch(API + p
 const say = (message, bad = false) => { const notice = $("#notice"); notice.textContent = message; notice.className = `notice${bad ? " error" : ""}`; notice.style.display = "block"; };
 const dateLabel = (value) => new Date(value).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 let tournaments = [], selected = null, tournamentSearch = new URLSearchParams(location.search).get("search") || "";
+const tournamentListPath = () => user.role === "playground-admin" ? "/tournaments/my-playgrounds/tournaments" : "/tournaments";
 
 async function list() {
-    tournaments = await req("/tournaments");
+    tournaments = await req(tournamentListPath());
     $("#content").innerHTML = tournaments.length ? tournaments.map((tournament) => `<article class="card"><span class="badge">${esc(tournament.status)}</span><h3>${esc(tournament.name)}</h3><p>${esc(tournament.sportType)} · ${dateLabel(tournament.startDate)} – ${dateLabel(tournament.endDate)}<br>${esc(tournament.playground?.name || tournament.playgrounds?.[0]?.name || "Venue TBA")}</p><div class="card-foot"><strong>৳${tournament.registrationFee}</strong>${user.role === "customer" && tournament.status === "Upcoming" ? `<button onclick="join('${tournament._id}')">Join</button>` : `<button class="alt" onclick="detail('${tournament._id}')">Fixtures</button>`}</div></article>`).join("") : '<div class="empty">No tournament is available right now.</div>';
 }
 
@@ -118,7 +119,7 @@ function updateTournamentOverview() {
 }
 
 list = async function () {
-    tournaments = await req("/tournaments");
+    tournaments = await req(tournamentListPath());
     updateTournamentOverview();
     const term = tournamentSearch.trim().toLowerCase();
     const visibleTournaments = term ? tournaments.filter((tournament) => [tournament.name, tournament.sportType, tournament.playground?.name, tournament.playgrounds?.[0]?.name].filter(Boolean).join(" ").toLowerCase().includes(term)) : tournaments;

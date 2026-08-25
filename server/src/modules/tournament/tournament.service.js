@@ -179,15 +179,27 @@ const refreshTournamentStatuses = async () => {
     }, { $set: { status: "Completed" } });
 };
 
-const getAllTournaments = async () => {
+const tournamentVenueFilter = (playgroundIds) => ({
+    $or: [
+        { playground: { $in: playgroundIds } },
+        { playgrounds: { $in: playgroundIds } },
+    ],
+});
+
+const getAllTournaments = async (actor = {}) => {
     await refreshTournamentStatuses();
-    const tournaments = await Tournament.find({
+    const filters = {
         isDeleted: false,
         $or: [
             { venueApprovalStatus: { $in: ["Approved", "Not Required"] } },
             { venueApprovalStatus: { $exists: false } },
         ],
-    })
+    };
+    if (actor.role === "playground-admin") {
+        const playgrounds = await Playground.find({ playgroundAdmin: actor.userId, isDeleted: false }).select("_id");
+        filters.$and = [tournamentVenueFilter(playgrounds.map((playground) => playground._id))];
+    }
+    const tournaments = await Tournament.find(filters)
         .populate("createdBy", "name email")
         .populate("playground", "name address sportType")
         .populate("playgrounds", "name address sportType")
@@ -254,7 +266,7 @@ const getTournamentGroups = async (tournamentId) => {
 // Add Team
 // ===================================================
 
-const addTeam = async (tournamentId, payload) => {
+const addTeam = async (tournamentId, payload, actor) => {
     const tournament = await Tournament.findOne({
         _id: tournamentId,
         isDeleted: false,
@@ -262,6 +274,11 @@ const addTeam = async (tournamentId, payload) => {
 
     if (!tournament) {
         throw new Error("Tournament not found.");
+    }
+
+    if (actor?.role !== "super-admin") {
+        const ownVenue = await Playground.findOne({ _id: tournament.playground, playgroundAdmin: actor?.userId, isDeleted: false });
+        if (!ownVenue) throw new Error("Only the tournament venue admin can add teams.");
     }
 
     const registrationDeadline = new Date(tournament.startDate);
@@ -813,10 +830,8 @@ const getMyPlaygroundTournaments = async (adminId) => {
 
     const playgroundIds = playgrounds.map((p) => p._id);
 
-    const tournaments = await Tournament.find({
-        playgrounds: { $in: playgroundIds },
-        isDeleted: false,
-    })
+    const tournaments = await Tournament.find({ isDeleted: false, ...tournamentVenueFilter(playgroundIds) })
+        .populate("playground", "name address sportType")
         .populate("createdBy", "name email")
         .populate("playgrounds", "name address sportType")
         .sort({ createdAt: -1 });

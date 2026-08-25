@@ -66,7 +66,7 @@ const respondToVenueApprovalController = async (req, res) => {
 
 const getAllTournamentsController = async (req, res) => {
     try {
-        const tournaments = await getAllTournaments();
+        const tournaments = await getAllTournaments(req.user);
 
         res.status(200).json({
             success: true,
@@ -129,7 +129,7 @@ const getTournamentGroupsController = async (req, res) => {
 
 const addTeamController = async (req, res) => {
     try {
-        const team = await addTeam(req.params.id, req.body);
+        const team = await addTeam(req.params.id, req.body, req.user);
 
         res.status(201).json({
             success: true,
