@@ -118,7 +118,7 @@ const sendTournamentNotification = async (tournamentId, type) => {
 
     if (type === "reminder") {
         message =
-            `Reminder: Tournament "${tournamentName}" starts tomorrow (${startDate}). ` +
+            `Reminder: Tournament "${tournamentName}" starts in 2 days (${startDate}). ` +
             `Your complete match schedule is included below.`;
     } else if (type === "start") {
         message =
@@ -148,7 +148,7 @@ const sendTournamentNotification = async (tournamentId, type) => {
             await createNotification({
                 recipient: team.registeredBy,
                 type: type === "reminder" ? "TournamentReminder" : "TournamentPublished",
-                title: type === "reminder" ? "Tournament starts tomorrow" : "Tournament is starting today",
+                title: type === "reminder" ? "Tournament starts in 2 days" : "Tournament is starting today",
                 message: fullMessage,
                 link: "tournament.html",
             });

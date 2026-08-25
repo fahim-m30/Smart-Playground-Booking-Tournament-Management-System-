@@ -7,7 +7,7 @@ if (!token) location = "login.html";
 const req = async (path, options = {}) => { const response = await fetch(API + path, { ...options, headers: { Authorization: `Bearer ${token}`, ...(options.headers || {}) } }); const body = await response.json(); if (!response.ok) throw new Error(body.message || "Request failed"); return body.data; };
 const say = (message, bad = false) => { const notice = $("#notice"); notice.textContent = message; notice.className = `notice${bad ? " error" : ""}`; notice.style.display = "block"; };
 const dateLabel = (value) => new Date(value).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-let tournaments = [], selected = null;
+let tournaments = [], selected = null, tournamentSearch = new URLSearchParams(location.search).get("search") || "";
 
 async function list() {
     tournaments = await req("/tournaments");
@@ -92,6 +92,54 @@ async function manageMatches(tournamentId) {
     } catch (error) { say(error.message, true); }
 }
 
+const registrationOpen = (tournament) => {
+    const deadline = new Date(tournament.startDate);
+    deadline.setHours(0, 0, 0, 0);
+    deadline.setDate(deadline.getDate() - 2);
+    return tournament.status === "Upcoming" && Date.now() < deadline.getTime();
+};
+
+const tournamentStatusLabel = (tournament) => {
+    const start = new Date(tournament.startDate);
+    start.setHours(0, 0, 0, 0);
+    if (tournament.status === "Upcoming" && new Date() >= start) return "Group Stage";
+    return tournament.status;
+};
+
+function updateTournamentOverview() {
+    let overview = document.querySelector(".tournament-overview");
+    if (!overview) {
+        overview = document.createElement("section");
+        overview.className = "tournament-overview";
+        document.querySelector(".portal-head").insertAdjacentElement("afterend", overview);
+    }
+    const upcoming = tournaments.filter((tournament) => registrationOpen(tournament)).length;
+    overview.innerHTML = `<div><span>COMPETITIONS</span><strong>${tournaments.length}</strong><small>Available tournaments</small></div><div><span>READY TO PLAY</span><strong>${upcoming}</strong><small>Upcoming events</small></div><p><b>✦</b> Find your next challenge and register your team today.</p>`;
+}
+
+list = async function () {
+    tournaments = await req("/tournaments");
+    updateTournamentOverview();
+    const term = tournamentSearch.trim().toLowerCase();
+    const visibleTournaments = term ? tournaments.filter((tournament) => [tournament.name, tournament.sportType, tournament.playground?.name, tournament.playgrounds?.[0]?.name].filter(Boolean).join(" ").toLowerCase().includes(term)) : tournaments;
+    $("#content").innerHTML = visibleTournaments.length ? visibleTournaments.map((tournament) => {
+        const canRegister = user.role === "customer" && registrationOpen(tournament);
+        const action = canRegister ? `<button onclick="join('${tournament._id}')">Join tournament</button>` : `<button class="alt" onclick="detail('${tournament._id}')">View competition</button>`;
+        const registrationNote = user.role === "customer" && tournament.status === "Upcoming" && !canRegister ? '<br><small>Registration is closed for this tournament.</small>' : "";
+        return `<article class="card"><span class="badge">${esc(tournamentStatusLabel(tournament))}</span><h3>${esc(tournament.name)}</h3><p>${esc(tournament.sportType)} · ${dateLabel(tournament.startDate)} – ${dateLabel(tournament.endDate)}<br>${esc(tournament.playground?.name || tournament.playgrounds?.[0]?.name || "Venue TBA")}${registrationNote}</p><div class="card-foot"><strong>৳${Number(tournament.registrationFee || 0).toLocaleString()}</strong>${action}</div></article>`;
+    }).join("") : `<div class="empty">${term ? "No tournament matches your search." : "No tournament is available right now."}</div>`;
+};
+
+const searchPanel = document.createElement("section");
+searchPanel.className = "panel tournament-search";
+searchPanel.innerHTML = '<label for="tournament-search">Find a tournament<input id="tournament-search" type="search" placeholder="Search by tournament, sport or venue" autocomplete="off"></label>';
+$("#content").insertAdjacentElement("beforebegin", searchPanel);
+$("#tournament-search").value = tournamentSearch;
+$("#tournament-search").addEventListener("input", (event) => {
+    tournamentSearch = event.target.value;
+    list().then(decorateTournamentManagement).catch((error) => say(error.message, true));
+});
+
 list().then(decorateTournamentManagement).catch((error) => say(error.message, true));
 
 async function loadMyTournamentRegistrations() {
@@ -113,3 +161,23 @@ async function loadMyTournamentRegistrations() {
     } catch (error) { say(error.message, true); }
 }
 loadMyTournamentRegistrations();
+
+document.head.insertAdjacentHTML("beforeend", '<link rel="stylesheet" href="assets/css/tournament-centre.css">');
+
+window.detail = async (id) => {
+    try {
+        const [groups, teams, matches, standings] = await Promise.all([
+            req(`/tournaments/${id}/groups`), req(`/tournaments/${id}/teams`), req(`/tournaments/${id}/matches`), req(`/tournaments/${id}/standings`),
+        ]);
+        const tournament = tournaments.find((item) => item._id === id);
+        const sport = tournament?.sportType || "Tournament";
+        const groupName = (group) => group?.name || "Group stage";
+        const draw = groups.map((group) => `<article class="group-card"><h3>${esc(group.name)}</h3><ol>${teams.filter((team) => String(team.group?._id || team.group) === String(group._id)).map((team) => `<li>${esc(team.teamName)}</li>`).join("") || "<li>Teams are being assigned</li>"}</ol></article>`).join("");
+        const table = standings.map((standing) => `<h3 class="standings-group-title">${esc(standing.group)}</h3><div class="standings-wrap"><table class="standings-table"><thead><tr><th>#</th><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>${sport === "Football" ? "GD" : "Diff"}</th><th>Pts</th></tr></thead><tbody>${standing.teams.map((team, index) => `<tr><td><span class="standing-rank">${index + 1}</span></td><td>${esc(team.teamName)}</td><td>${team.played}</td><td>${team.won}</td><td>${team.drawn}</td><td>${team.lost}</td><td>${team.goalDifference}</td><td><strong>${team.points}</strong></td></tr>`).join("")}</tbody></table></div>`).join("") || '<div class="fixture-empty">The points table will appear once groups are assigned.</div>';
+        const fixtures = matches.map((match) => `<article class="fixture-row ${match.matchStatus === "Live" ? "live" : ""}"><div class="fixture-time">${dateLabel(match.matchDate)}<br>${esc(match.startTime)}–${esc(match.endTime)} · ${esc(groupName(match.group))}</div><div class="fixture-teams">${esc(match.teamA?.teamName || "TBD")} <span>vs</span> ${esc(match.teamB?.teamName || "TBD")}</div><div class="fixture-score">${match.matchStatus === "Live" ? '<span class="live-tag">LIVE</span>' : match.matchStatus === "Completed" ? `${match.teamAScore} – ${match.teamBScore}` : esc(match.matchStatus)}</div></article>`).join("") || '<div class="fixture-empty">Fixtures are released automatically one day before the tournament begins.</div>';
+        const modal = document.createElement("div"); modal.className = "modal show";
+        modal.innerHTML = `<div class="modal-box tournament-centre"><header class="centre-head"><button class="close" type="button">Close</button><span class="eyebrow">${esc(sport.toUpperCase())} COMPETITION</span><h2>${esc(tournament?.name || "Tournament centre")}</h2><p>${dateLabel(tournament?.startDate)} – ${dateLabel(tournament?.endDate)} · ${esc(tournament?.playground?.name || tournament?.playgrounds?.[0]?.name || "Venue TBA")}</p></header><div class="centre-body"><div class="centre-tabs"><button class="active" data-centre-tab="draw">Group draw</button><button data-centre-tab="table">Points table</button><button data-centre-tab="fixtures">Fixtures & results</button></div><section class="centre-panel" data-centre-panel="draw"><div class="group-draw">${draw || '<div class="fixture-empty">Groups will be available after registration closes.</div>'}</div></section><section class="centre-panel" data-centre-panel="table" hidden>${table}</section><section class="centre-panel" data-centre-panel="fixtures" hidden><div class="fixtures-list">${fixtures}</div></section></div></div>`;
+        document.body.append(modal); modal.querySelector(".close").onclick = () => modal.remove();
+        modal.querySelectorAll("[data-centre-tab]").forEach((button) => button.onclick = () => { modal.querySelectorAll("[data-centre-tab]").forEach((tab) => tab.classList.toggle("active", tab === button)); modal.querySelectorAll("[data-centre-panel]").forEach((panel) => { panel.hidden = panel.dataset.centrePanel !== button.dataset.centreTab; }); });
+    } catch (error) { say(error.message, true); }
+};

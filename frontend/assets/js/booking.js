@@ -64,10 +64,18 @@
         const facilities = Array.isArray(ground.facilities) && ground.facilities.length
             ? ground.facilities.map((facility) => `<span class="badge">${escapeHtml(facility)}</span>`).join(" ")
             : '<span class="meta">Facilities will be confirmed by the venue.</span>';
+        const ownerId = String(ground.playgroundAdmin?._id || ground.playgroundAdmin?.id || ground.playgroundAdmin || "");
+        const phone = String(ground.phone || ground.playgroundAdmin?.phone || "").replace(/[^+\d]/g, "");
+        // Venue communication is intentionally available to customers only.
+        // The chat page validates the logged-in user again before sending.
+        const contactActions = user?.role === "customer" ? `<div class="venue-contact-actions">
+            ${ownerId ? '<button class="alt chat-venue" type="button">Chat with venue</button>' : ""}
+            ${phone ? '<a class="button alt call-venue" href="tel:' + escapeHtml(phone) + '">Call venue</a>' : ""}
+        </div>` : "";
         const modal = document.createElement("div");
         modal.id = "ground-details-modal";
         modal.className = "modal show";
-        modal.innerHTML = `<div class="modal-box ground-details"><button class="close" type="button" aria-label="Close details">×</button><img class="ground-detail-image" src="${escapeHtml(image)}" alt="${escapeHtml(ground.name)}"><span class="badge">${escapeHtml(ground.sportType || "Sports")}</span><h2>${escapeHtml(ground.name)}</h2><p class="meta">${escapeHtml(ground.address || ground.area || "Location not provided")}</p><p class="ground-description">${escapeHtml(ground.description || "No additional venue description has been added yet.")}</p><div class="ground-info"><span><strong>Opening hours</strong>${escapeHtml(ground.openingTime || "—")} – ${escapeHtml(ground.closingTime || "—")}</span><span><strong>Players</strong>Up to ${escapeHtml(ground.maxPlayers || "—")} players</span><span><strong>Starting price</strong>৳${Number(ground.pricing?.morning || 0).toLocaleString()} / hour</span></div><h3>Facilities</h3><div class="facility-list">${facilities}</div><button class="choose-from-details" type="button">Choose this playground</button></div>`;
+        modal.innerHTML = `<div class="modal-box ground-details"><button class="close" type="button" aria-label="Close details">×</button><img class="ground-detail-image" src="${escapeHtml(image)}" alt="${escapeHtml(ground.name)}"><span class="badge">${escapeHtml(ground.sportType || "Sports")}</span><h2>${escapeHtml(ground.name)}</h2><p class="meta">${escapeHtml(ground.address || ground.area || "Location not provided")}</p><p class="ground-description">${escapeHtml(ground.description || "No additional venue description has been added yet.")}</p><div class="ground-info"><span><strong>Opening hours</strong>${escapeHtml(ground.openingTime || "—")} – ${escapeHtml(ground.closingTime || "—")}</span><span><strong>Players</strong>Up to ${escapeHtml(ground.maxPlayers || "—")} players</span><span><strong>Starting price</strong>৳${Number(ground.pricing?.morning || 0).toLocaleString()} / hour</span></div><h3>Facilities</h3><div class="facility-list">${facilities}</div>${contactActions}<button class="choose-from-details" type="button">Choose this playground</button></div>`;
         document.body.append(modal);
         const close = () => modal.remove();
         modal.querySelector(".close").addEventListener("click", close);
@@ -78,6 +86,9 @@
             document.querySelector("#booking-panel").scrollIntoView({ behavior: "smooth", block: "start" });
             loadAvailability();
         });
+        modal.querySelector(".chat-venue")?.addEventListener("click", () => {
+            location.href = "chat.html?contact=" + encodeURIComponent(ownerId);
+        });
     }
 
     function renderSlots(slots) {
@@ -86,8 +97,9 @@
             return;
         }
         slotBoard.innerHTML = slots.map((slot, index) => {
-            const booked = slot.status === "Booked";
-            return `<button type="button" class="slot-choice${booked ? " booked" : ""}" data-slot="${index}" ${booked ? "disabled" : ""}><strong>${escapeHtml(slot.startTime)} – ${escapeHtml(slot.endTime)}</strong><small>${booked ? "Already booked" : money(slot.price)}</small></button>`;
+            const expired = slot.status === "Expired";
+            const booked = slot.status === "Booked" || expired;
+            return `<button type="button" class="slot-choice${booked ? " booked" : ""}${expired ? " expired" : ""}" data-slot="${index}" ${booked ? "disabled" : ""}><strong>${escapeHtml(slot.startTime)} – ${escapeHtml(slot.endTime)}</strong><small>${booked ? (expired ? "Slot time has passed" : "Customer Booked") : money(slot.price)}</small></button>`;
         }).join("");
         slotBoard.querySelectorAll("[data-slot]").forEach((button) => button.addEventListener("click", () => {
             selectedSlot = slots[Number(button.dataset.slot)];
@@ -209,11 +221,6 @@
         }
     });
     $("#logout").addEventListener("click", () => { localStorage.removeItem("authToken"); localStorage.removeItem("authUser"); location.replace("login.html"); });
-    $("#show-my").addEventListener("click", loadTickets);
-    document.querySelectorAll("[data-view]").forEach((button) => button.addEventListener("click", () => {
-        document.querySelectorAll("[data-view]").forEach((item) => item.classList.toggle("active", item === button));
-        if (button.dataset.view === "grounds") loadGrounds(); else if (button.dataset.view === "bookings") loadBookings(); else loadTickets();
-    }));
     dateInput.min = localDate(); dateInput.value = localDate();
     if (user.role !== "customer") {
         $("#booking-panel").innerHTML = '<h2>Booking is available to customer accounts</h2><p class="meta">Please sign in with a customer account to reserve a slot.</p>';

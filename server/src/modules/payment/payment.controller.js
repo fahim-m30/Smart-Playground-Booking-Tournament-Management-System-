@@ -17,6 +17,7 @@ const {
     getDemoCheckout,
     completeDemoCheckout,
     cancelDemoCheckout,
+    getPlaygroundAdminIncome,
 } = require("./payment.service");
 
 // ===================================================
@@ -182,6 +183,15 @@ const refundPaymentController = async (req, res) => {
     }
 };
 
+const getPlaygroundAdminIncomeController = async (req, res) => {
+    try {
+        const result = await getPlaygroundAdminIncome(req.user.userId);
+        return res.status(200).json({ success: true, message: "Income summary fetched successfully.", data: result });
+    } catch (error) {
+        return res.status(400).json({ success: false, message: error.message });
+    }
+};
+
 // ===================================================
 // Export Controllers
 // ===================================================
@@ -200,4 +210,5 @@ module.exports = {
     getSinglePayment: getSinglePaymentController,
     verifyQR: verifyQRController,
     refundPayment: refundPaymentController,
+    getPlaygroundAdminIncome: getPlaygroundAdminIncomeController,
 };

@@ -138,6 +138,11 @@ const tournamentSchema = new mongoose.Schema(
             type: Boolean,
             default: false,
         },
+
+        cancellationProcessed: {
+            type: Boolean,
+            default: false,
+        },
     },
     {
         timestamps: true,

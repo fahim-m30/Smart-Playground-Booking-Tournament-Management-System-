@@ -49,7 +49,7 @@ const reportSchema = new mongoose.Schema(
 
         category: {
             type: String,
-            enum: ["Cleanliness", "Maintenance", "Staff Behavior", "Facilities", "Safety", "Booking Issue", "Other"],
+            enum: ["Cleanliness", "Maintenance", "Staff Behavior", "Facilities", "Safety", "Booking Issue", "Customer Misconduct", "Property Damage", "No-show or Late Arrival", "Booking or Payment Issue", "Safety Violation", "Other"],
             default: "Other",
         },
 

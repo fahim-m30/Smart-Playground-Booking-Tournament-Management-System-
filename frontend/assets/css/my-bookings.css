@@ -1,0 +1,1 @@
+.ticket{grid-template-columns:minmax(0,1fr) 132px;min-width:0}.ticket>div{min-width:0}.ticket img{display:block;width:132px;height:132px;padding:6px;border:1px solid #d4ead9;border-radius:8px;object-fit:contain;background:#fff}.ticket .button{display:inline-flex;margin-top:12px;align-items:center}@media(max-width:600px){.ticket{grid-template-columns:1fr}}

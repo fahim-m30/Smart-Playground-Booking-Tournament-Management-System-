@@ -61,4 +61,11 @@ router.get(
     bookingController.getPlaygroundBookings
 );
 
+router.patch(
+    "/:id/admin-cancel",
+    verifyToken,
+    authorize("playground-admin"),
+    bookingController.cancelBookingByAdmin
+);
+
 module.exports = router;

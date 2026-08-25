@@ -11,7 +11,7 @@ const respond = (handler) => async (req, res) => {
 
 module.exports = {
     sendMessage: respond((req) => sendMessage(req.body, req.user.userId, req.user.role)),
-    getContacts: respond((req) => getContacts(req.user.userId, req.query.search)),
-    getConversations: respond((req) => getConversations(req.user.userId)),
-    getMessages: respond((req) => getMessages(req.user.userId, req.params.contactId)),
+    getContacts: respond((req) => getContacts(req.user.userId, req.user.role, req.query.search)),
+    getConversations: respond((req) => getConversations(req.user.userId, req.user.role)),
+    getMessages: respond((req) => getMessages(req.user.userId, req.user.role, req.params.contactId)),
 };

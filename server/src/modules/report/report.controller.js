@@ -9,6 +9,7 @@
 
 const {
     createReport,
+    getReportableCustomers,
     getAllReports,
     getMyReports,
     getSingleReport,
@@ -35,6 +36,15 @@ const createReportController = async (req, res) => {
             success: false,
             message: error.message,
         });
+    }
+};
+
+const getReportableCustomersController = async (req, res) => {
+    try {
+        const customers = await getReportableCustomers(req.user.userId);
+        return res.status(200).json({ success: true, message: "Reportable customers fetched successfully.", data: customers });
+    } catch (error) {
+        return res.status(400).json({ success: false, message: error.message });
     }
 };
 
@@ -158,6 +168,7 @@ const deleteReportController = async (req, res) => {
 
 module.exports = {
     createReport: createReportController,
+    getReportableCustomers: getReportableCustomersController,
     getAllReports: getAllReportsController,
     getMyReports: getMyReportsController,
     getSingleReport: getSingleReportController,

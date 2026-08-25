@@ -13,9 +13,11 @@ const TournamentTeam = require("../tournament/tournamentTeam.model");
 const Tournament = require("../tournament/tournament.model");
 const TournamentMatch = require("../tournament/tournamentMatch.model");
 const User = require("../user/user.model");
+const Playground = require("../playground/playground.model");
 
 const { generateQR, verifyQR: baseVerifyQR } = require("../../utils/generateQR");
 const { sendBookingConfirmation, sendTournamentNotification } = require("../../utils/notificationService");
+const { emitToUser, emitDashboardUpdate } = require("../../config/socket");
 
 // ===================================================
 // Confirm Payment (Dummy API - Always Success)
@@ -74,6 +76,8 @@ const confirmPayment = async (paymentId, paymentMethod, transactionId = null) =>
         });
 
         await sendBookingConfirmation(updatedBooking._id.toString());
+        emitToUser(updatedBooking.customer.toString(), "booking:updated", { bookingId: updatedBooking._id, status: "Confirmed", paymentStatus: "Paid" });
+        emitDashboardUpdate({ type: "booking-confirmed", bookingId: updatedBooking._id });
 
     } else if (payment.tournamentTeam) {
         const updatedTeam = await TournamentTeam.findByIdAndUpdate(
@@ -119,6 +123,7 @@ const confirmPayment = async (paymentId, paymentMethod, transactionId = null) =>
             qrCode: qrCodePath,
             qrExpiresAt: qrExpiresAt,
         });
+        emitToUser(updatedTeam.registeredBy.toString(), "tournament:updated", { tournamentId: updatedTeam.tournament, teamId: updatedTeam._id });
     }
 
     return payment;
@@ -540,6 +545,30 @@ const refundPayment = async (paymentId, refundAmount, reason) => {
     return payment;
 };
 
+const getPlaygroundAdminIncome = async (adminId) => {
+    const grounds = await Playground.find({ playgroundAdmin: adminId, isDeleted: false }).select("_id name");
+    const groundIds = grounds.map((ground) => ground._id);
+    const paid = { paymentStatus: "Paid", isDeleted: false };
+    const [slotPayments, tournamentPayments] = await Promise.all([
+        Payment.find({ ...paid, paymentType: "SlotBooking" }).populate({ path: "booking", select: "playground bookingDate startTime endTime" }),
+        Payment.find({ ...paid, paymentType: "Tournament" }).populate({ path: "tournament", select: "playground name startDate" }).populate("tournamentTeam", "teamName"),
+    ]);
+    const ownsGround = (id) => groundIds.some((groundId) => String(groundId) === String(id));
+    const slots = slotPayments.filter((payment) => payment.booking && ownsGround(payment.booking.playground)).map((payment) => ({
+        paymentId: payment._id, amount: payment.amount, paidAt: payment.paidAt, method: payment.paymentMethod,
+        playground: grounds.find((ground) => String(ground._id) === String(payment.booking.playground))?.name || "Playground",
+        date: payment.booking.bookingDate, startTime: payment.booking.startTime, endTime: payment.booking.endTime,
+    }));
+    const tournaments = tournamentPayments.filter((payment) => payment.tournament && ownsGround(payment.tournament.playground)).map((payment) => ({
+        paymentId: payment._id, amount: payment.amount, paidAt: payment.paidAt, method: payment.paymentMethod,
+        playground: grounds.find((ground) => String(ground._id) === String(payment.tournament.playground))?.name || "Playground",
+        tournament: payment.tournament.name, team: payment.tournamentTeam?.teamName || "Team registration", date: payment.tournament.startDate,
+    }));
+    const slotTotal = slots.reduce((total, payment) => total + payment.amount, 0);
+    const tournamentTotal = tournaments.reduce((total, payment) => total + payment.amount, 0);
+    return { slotTotal, tournamentTotal, total: slotTotal + tournamentTotal, slots, tournaments };
+};
+
 // ===================================================
 // Export Services
 // ===================================================
@@ -555,4 +584,5 @@ module.exports = {
     confirmPayment,
     verifyQR,
     refundPayment,
+    getPlaygroundAdminIncome,
 };

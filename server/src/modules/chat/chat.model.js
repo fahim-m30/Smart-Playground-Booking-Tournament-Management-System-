@@ -84,6 +84,7 @@ const chatSchema = new mongoose.Schema(
 );
 
 chatSchema.index({ participants: 1, conversationKey: 1, createdAt: -1 });
+chatSchema.index({ conversationKey: 1, senderRole: 1, isDeleted: 1, createdAt: -1 });
 
 const Chat = mongoose.model("Chat", chatSchema);
 

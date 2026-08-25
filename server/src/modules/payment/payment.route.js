@@ -43,6 +43,8 @@ router.get(
     paymentController.getMyPayments
 );
 
+router.get("/playground-admin/income", verifyToken, authorize("playground-admin"), paymentController.getPlaygroundAdminIncome);
+
 router.get(
     "/:id",
     verifyToken,

@@ -193,18 +193,25 @@ const getAvailability = async (playgroundId, dateValue) => {
         isDeleted: false,
     }).select("startTime endTime bookingStatus");
 
+    const now = new Date();
+    const isToday = date.getTime() === today.getTime();
+
     return {
         playground: { id: playground._id, name: playground.name, sportType: playground.sportType },
         date: dateValue,
         slots: slots.map((slot) => {
             const booked = bookings.some((booking) => timeToMinutes(booking.startTime) < timeToMinutes(slot.endTime) && timeToMinutes(booking.endTime) > timeToMinutes(slot.startTime));
+            const [hour, minute] = String(slot.startTime).split(":").map(Number);
+            const startsAt = new Date(date);
+            startsAt.setHours(hour, minute, 0, 0);
+            const expired = isToday && startsAt <= now;
             return {
                 id: slot._id,
                 startTime: slot.startTime,
                 endTime: slot.endTime,
                 durationMinutes: slot.durationMinutes,
                 price: slot.price,
-                status: booked ? "Booked" : "Available",
+                status: booked ? "Booked" : expired ? "Expired" : "Available",
             };
         }),
     };

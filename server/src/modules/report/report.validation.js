@@ -27,6 +27,11 @@ const createReportValidation = Joi.object({
         "Facilities",
         "Safety",
         "Booking Issue",
+        "Customer Misconduct",
+        "Property Damage",
+        "No-show or Late Arrival",
+        "Booking or Payment Issue",
+        "Safety Violation",
         "Other"
     ),
 

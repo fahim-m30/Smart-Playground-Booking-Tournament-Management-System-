@@ -39,6 +39,13 @@ router.get(
     reportController.getMyReports
 );
 
+router.get(
+    "/reportable-customers",
+    verifyToken,
+    authorize("playground-admin"),
+    reportController.getReportableCustomers
+);
+
 // Get Single Report
 router.get(
     "/:id",

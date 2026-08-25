@@ -24,10 +24,17 @@
 
     const form = document.querySelector("#hero-search-form");
     const input = document.querySelector("#hero-search-input");
+    const searchType = document.querySelector("#hero-search-type");
+    const updateSearchPlaceholder = () => {
+        if (input) input.placeholder = searchType?.value === "tournaments" ? "Search tournaments..." : "Search playgrounds...";
+    };
+    searchType?.addEventListener("change", updateSearchPlaceholder);
+    updateSearchPlaceholder();
     form?.addEventListener("submit", (event) => {
         event.preventDefault();
         const search = input.value.trim();
-        location.href = "playgrounds.html" + (search ? "?search=" + encodeURIComponent(search) : "");
+        const destination = searchType?.value === "tournaments" ? "tournament.html" : "playgrounds.html";
+        location.href = destination + (search ? "?search=" + encodeURIComponent(search) : "");
     });
 
     if (loggedIn) {

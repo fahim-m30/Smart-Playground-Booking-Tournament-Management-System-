@@ -15,6 +15,7 @@ const Playground = require("../playground/playground.model");
 const User = require("../user/user.model");
 const Slot = require("../slot/slot.model");
 const { createNotification } = require("../notification/notification.service");
+const { emitDashboardUpdate } = require("../../config/socket");
 
 // ===================================================
 // Create Tournament
@@ -158,7 +159,28 @@ const respondToVenueApproval = async (tournamentId, adminId, decision) => {
 // Get All Tournaments
 // ===================================================
 
+// A tournament must never remain "Upcoming" once its start day has begun.
+// This runs while reading tournament data, so it also corrects older records
+// that were created before the lifecycle update existed.
+const refreshTournamentStatuses = async () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    await Tournament.updateMany({
+        isDeleted: false,
+        status: "Upcoming",
+        startDate: { $lte: today },
+    }, { $set: { status: "Group Stage" } });
+
+    await Tournament.updateMany({
+        isDeleted: false,
+        status: { $in: ["Upcoming", "Group Stage", "Knockout Stage"] },
+        endDate: { $lt: today },
+    }, { $set: { status: "Completed" } });
+};
+
 const getAllTournaments = async () => {
+    await refreshTournamentStatuses();
     const tournaments = await Tournament.find({
         isDeleted: false,
         $or: [
@@ -198,6 +220,7 @@ const cancelRegistration = async (teamId, customerId) => {
 // ===================================================
 
 const getSingleTournament = async (id) => {
+    await refreshTournamentStatuses();
     const tournament = await Tournament.findOne({
         _id: id,
         isDeleted: false,
@@ -241,8 +264,11 @@ const addTeam = async (tournamentId, payload) => {
         throw new Error("Tournament not found.");
     }
 
-    if (tournament.status !== "Upcoming") {
-        throw new Error("Teams cannot be added after tournament has started.");
+    const registrationDeadline = new Date(tournament.startDate);
+    registrationDeadline.setHours(0, 0, 0, 0);
+    registrationDeadline.setDate(registrationDeadline.getDate() - 2);
+    if (tournament.status !== "Upcoming" || new Date() >= registrationDeadline) {
+        throw new Error("Teams can only be added until 2 days before the tournament starts.");
     }
 
     const group = await TournamentGroup.findOne({
@@ -307,8 +333,17 @@ const registerTeam = async (tournamentId, payload, customerId) => {
         throw new Error("Tournament not found.");
     }
 
-    if (tournament.status !== "Upcoming") {
+    const tournamentStart = new Date(tournament.startDate);
+    tournamentStart.setHours(0, 0, 0, 0);
+    if (tournament.status !== "Upcoming" || new Date() >= tournamentStart) {
         throw new Error("Tournament registration is closed.");
+    }
+
+    const registrationDeadline = new Date(tournament.startDate);
+    registrationDeadline.setHours(0, 0, 0, 0);
+    registrationDeadline.setDate(registrationDeadline.getDate() - 2);
+    if (new Date() >= registrationDeadline) {
+        throw new Error("Tournament registration closed 2 days before the tournament starts.");
     }
 
     const totalRegistered = await TournamentTeam.countDocuments({
@@ -327,7 +362,7 @@ const registerTeam = async (tournamentId, payload, customerId) => {
     const registeredCount = totalRegistered + 1;
     if (registeredCount === tournament.totalTeams) {
         const totalFixtures = tournament.groupCount * ((tournament.teamsPerGroup * (tournament.teamsPerGroup - 1)) / 2);
-        const requiredDays = Math.ceil(totalFixtures / 4);
+        const requiredDays = Math.ceil(totalFixtures / 3);
         const availableDays = Math.floor((new Date(tournament.endDate).setHours(0, 0, 0, 0) - new Date(tournament.startDate).setHours(0, 0, 0, 0)) / 86400000) + 1;
         if (requiredDays > availableDays) {
             throw new Error(`This tournament needs at least ${requiredDays} day(s) to publish all ${totalFixtures} group-stage fixtures. Extend the end date before the final registration.`);
@@ -344,13 +379,6 @@ const registerTeam = async (tournamentId, payload, customerId) => {
         registeredBy: customerId,
         paymentStatus: "Pending",
     });
-
-    if (registeredCount === tournament.totalTeams) {
-        // Once the final team registers, publish the complete group-stage
-        // fixture automatically.  No customer or admin needs to manually
-        // decide who plays whom.
-        await generateGroupMatches(tournamentId);
-    }
 
     return team;
 };
@@ -409,7 +437,10 @@ const generateGroupMatches = async (tournamentId) => {
     }
 
     const matches = [];
-    const dailyMatchCapacity = 4;
+    // Three professional match windows per day: 09:00–12:00, 13:00–16:00,
+    // and 17:00–20:00. They remain within the venue's 09:00–21:00 window
+    // and leave a practical turnaround buffer between games.
+    const dailyMatchCapacity = 3;
     const startDate = new Date(tournament.startDate);
     startDate.setHours(0, 0, 0, 0);
     const endDate = new Date(tournament.endDate);
@@ -422,8 +453,8 @@ const generateGroupMatches = async (tournamentId) => {
         for (let i = 0; i < groupTeams.length; i++) {
             for (let j = i + 1; j < groupTeams.length; j++) {
                 const dayOffset = Math.floor(fixtureIndex / dailyMatchCapacity);
-                const startHour = 9 + (fixtureIndex % dailyMatchCapacity) * 2;
-                const endHour = startHour + 2;
+                const startHour = [9, 13, 17][fixtureIndex % dailyMatchCapacity];
+                const endHour = startHour + 3;
                 const matchDateClone = new Date(startDate);
                 matchDateClone.setDate(matchDateClone.getDate() + dayOffset);
                 if (matchDateClone > endDate) {
@@ -514,6 +545,7 @@ const updateMatchResult = async (matchId, payload, actor) => {
     match.matchStatus = payload.matchStatus || "Completed";
 
     await match.save();
+    emitDashboardUpdate({ type: "match-result", matchId: match._id, tournamentId: match.tournament });
 
     if (match.stage === "Group") {
         const teamA = await TournamentTeam.findById(match.teamA);

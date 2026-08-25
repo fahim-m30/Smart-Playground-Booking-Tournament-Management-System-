@@ -1,6 +1,12 @@
 const Notification = require("./notification.model");
 
-const createNotification = (payload) => Notification.create(payload);
+const { emitToUser } = require("../../config/socket");
+
+const createNotification = async (payload) => {
+    const notification = await Notification.create(payload);
+    emitToUser(notification.recipient.toString(), "notification:new", notification);
+    return notification;
+};
 
 const getMyNotifications = (userId, limit = 30) => Notification.find({ recipient: userId })
     .sort({ createdAt: -1 })

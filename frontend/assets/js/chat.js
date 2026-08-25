@@ -1,4 +1,5 @@
-const API = "http://localhost:5000/api/v1";
+const SERVER_URL = window.TURF_SERVER_URL || "http://localhost:5000";
+const API = SERVER_URL + "/api/v1";
 const token = localStorage.getItem("authToken");
 let user;
 try { user = JSON.parse(localStorage.getItem("authUser") || "null"); } catch (_) { user = null; }
@@ -23,6 +24,8 @@ let conversations = [];
 let activeContact = null;
 let searchTerm = "";
 let searchTimer;
+let activeRequest;
+let refreshTimer;
 
 const contactOf = (item) => item?.contact || item;
 const contactIdOf = (item) => idOf(contactOf(item)?.id);
@@ -67,10 +70,14 @@ function renderConversations() {
         const preview = item.lastMessage || contact.subtitle || ("New " + displayRole(contact.role) + " chat");
         const meta = item.lastMessageAt ? time(item.lastMessageAt) : "New";
         const unread = item.unreadCount ? '<b class="unread">' + item.unreadCount + "</b>" : "";
-        return '<button class="conversation ' + (selected ? "active" : "") + '" type="button" data-contact-id="' + escapeHTML(contactId) + '">'
+        // The API already limits the contact list by role, so every displayed
+        // contact is a valid business contact for the current account.
+        const canCall = Boolean(contact.phone);
+        const call = canCall ? '<a class="conversation-call" href="tel:' + escapeHTML(String(contact.phone).replace(/[^+\d]/g, "")) + '" title="Call ' + escapeHTML(contact.name) + '" aria-label="Call ' + escapeHTML(contact.name) + '">☎</a>' : "";
+        return '<div class="conversation-row"><button class="conversation ' + (selected ? "active" : "") + '" type="button" data-contact-id="' + escapeHTML(contactId) + '">'
             + '<span class="conversation-avatar">' + escapeHTML(initial(contact.name)) + "</span>"
             + '<span class="conversation-copy"><strong>' + escapeHTML(contact.name) + "</strong><span>" + escapeHTML(preview) + "</span></span>"
-            + '<span class="conversation-meta">' + escapeHTML(meta) + unread + "</span></button>";
+            + '<span class="conversation-meta">' + escapeHTML(meta) + unread + "</span></button>" + call + "</div>";
     }).join("");
     list.querySelectorAll("[data-contact-id]").forEach((button) => {
         button.onclick = () => selectById(button.dataset.contactId);
@@ -94,8 +101,9 @@ function renderThread(messages = []) {
     $("#message-list").innerHTML = messages.length
         ? messages.map((message) => {
             const mine = idOf(message.sender) === idOf(user._id || user.id);
-            return '<article class="message ' + (mine ? "mine" : "theirs") + '"><div class="bubble">' + escapeHTML(message.message)
-                + '</div><small>' + (mine ? "You · " : "") + escapeHTML(time(message.createdAt)) + "</small></article>";
+            const system = message.senderRole === "system";
+            return '<article class="message ' + (system ? "system" : (mine ? "mine" : "theirs")) + '"><div class="bubble">' + escapeHTML(message.message)
+                + '</div><small>' + (system ? "TURF Virtual Assistant · " : (mine ? "You · " : "")) + escapeHTML(time(message.createdAt)) + "</small></article>";
         }).join("")
         : '<div class="thread-empty"><span>💬</span><h2>Start the conversation</h2><p>Write a message to contact ' + escapeHTML(title) + " directly.</p></div>";
     const list = $("#message-list");
@@ -109,8 +117,12 @@ async function selectById(contactId) {
     activeContact = { ...contactOf(item), id: selectedId };
     renderConversations();
     renderThread();
+    // Abort only an older message request. This prevents a slow previous
+    // conversation from replacing the currently selected one.
+    activeRequest?.abort();
+    activeRequest = new AbortController();
     try {
-        const result = await request("/chat/contacts/" + encodeURIComponent(selectedId) + "/messages");
+        const result = await request("/chat/contacts/" + encodeURIComponent(selectedId) + "/messages", { signal: activeRequest.signal });
         if (idOf(activeContact?.id) !== selectedId) return;
         activeContact = { ...activeContact, ...result.contact, id: selectedId };
         const conversation = conversations.find((record) => contactIdOf(record) === selectedId);
@@ -118,6 +130,7 @@ async function selectById(contactId) {
         renderConversations();
         renderThread(result.messages || []);
     } catch (error) {
+        if (error.name === "AbortError") return;
         if (idOf(activeContact?.id) === selectedId) renderThread([]);
         alert(error.message);
     }
@@ -143,6 +156,29 @@ async function load(refreshThread = false) {
     } catch (error) {
         $("#conversation-list").innerHTML = '<p class="empty">' + escapeHTML(error.message) + "</p>";
     }
+}
+
+// Socket events are the source of truth for live updates. Debouncing avoids
+// duplicate fetches when a notification and a chat event arrive together.
+function refreshFromRealtime({ refreshThread = true } = {}) {
+    clearTimeout(refreshTimer);
+    refreshTimer = setTimeout(() => load(refreshThread && Boolean(activeContact)), 150);
+}
+
+function connectRealtime() {
+    if (typeof io === "undefined" || !token) return;
+    const socket = io(SERVER_URL, {
+        auth: { token },
+        transports: ["websocket", "polling"],
+        reconnection: true,
+        reconnectionAttempts: 8,
+        timeout: 10000,
+    });
+    socket.on("chat:message", refreshFromRealtime);
+    socket.on("notification:new", refreshFromRealtime);
+    socket.on("connect_error", () => {
+        // Socket.IO will reconnect automatically; chat remains usable through REST.
+    });
 }
 
 $("#conversation-search").addEventListener("input", (event) => {
@@ -191,12 +227,18 @@ $("#message-form").onsubmit = async (event) => {
     }
 };
 
+$("#message-input").addEventListener("keydown", (event) => {
+    // Keep Shift+Enter available for multi-line messages.
+    if (event.key !== "Enter" || event.shiftKey || event.isComposing) return;
+    event.preventDefault();
+    const form = $("#message-form");
+    if (!form.hidden && !form.querySelector("button").disabled) form.requestSubmit();
+});
+
 $("#logout").onclick = () => {
     localStorage.clear();
     location.replace("login.html");
 };
 $("#chat-title").textContent = displayRole(user?.role) + " messages";
 load();
-setInterval(() => {
-    if (document.visibilityState === "visible") load(Boolean(activeContact));
-}, 10000);
+connectRealtime();

@@ -6,6 +6,10 @@ const Playground = require("./playground.model");
 // ===================================================
 
 const createPlayground = async (payload, adminId) => {
+    if (!payload.coverImage) {
+        throw new Error("A playground cover image is required.");
+    }
+
     const existingPlayground = await Playground.findOne({
         name: payload.name,
         isDeleted: false,
@@ -51,10 +55,15 @@ const getAllPlaygrounds = async (query) => {
     // ===============================
 
     if (query.search) {
-        filter.name = {
-            $regex: query.search,
-            $options: "i",
-        };
+        const escapedSearch = String(query.search).trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        if (escapedSearch) {
+            filter.$or = [
+                { name: { $regex: escapedSearch, $options: "i" } },
+                { area: { $regex: escapedSearch, $options: "i" } },
+                { district: { $regex: escapedSearch, $options: "i" } },
+                { sportType: { $regex: escapedSearch, $options: "i" } },
+            ];
+        }
     }
 
     // ===============================

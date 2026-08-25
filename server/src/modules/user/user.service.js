@@ -14,6 +14,7 @@ const transporter = require("../../config/mail");
 const generateOTP = require("../../utils/generateOTP");
 
 const User = require("../user/user.model");
+const { createNotification } = require("../notification/notification.service");
 
 const convertFileToDataUrl = (file) => {
     if (!file?.buffer) return null;
@@ -432,6 +433,14 @@ const blockUser = async (userId, days = null) => {
     }
 
     await user.save();
+
+    await createNotification({
+        recipient: user._id,
+        type: "AccountSuspended",
+        title: "Account suspended",
+        message: days ? `Your account has been suspended for ${days} day(s).` : "Your account has been suspended until further notice.",
+        link: "login.html",
+    });
 
     return user;
 };

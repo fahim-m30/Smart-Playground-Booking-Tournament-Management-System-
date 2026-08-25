@@ -4,7 +4,7 @@ const notificationSchema = new mongoose.Schema({
     recipient: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
     type: {
         type: String,
-        enum: ["BookingConfirmed", "BookingReminder", "TournamentPublished", "TournamentReminder", "MatchReminder", "MatchCancelled", "AccountSuspended", "VenueApproval", "ChatMessage"],
+        enum: ["BookingConfirmed", "BookingReminder", "BookingCancelled", "TournamentPublished", "TournamentReminder", "MatchReminder", "MatchCancelled", "AccountSuspended", "VenueApproval", "ChatMessage"],
         required: true,
     },
     title: { type: String, required: true, trim: true },

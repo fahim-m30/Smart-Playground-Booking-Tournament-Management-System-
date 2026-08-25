@@ -48,6 +48,9 @@
 .ground-info span { padding: 10px; border-radius: 8px; background: #effbf3; color: #075a2a; font-size: .75rem; }
 .ground-info strong { display: block; margin-bottom: 4px; font-size: .68rem; text-transform: uppercase; }
 .facility-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.venue-contact-actions { display: flex; gap: 10px; margin-top: 20px; }
+.venue-contact-actions > * { flex: 1; text-align: center; }
+.call-venue { display: inline-flex; align-items: center; justify-content: center; }
 .choose-from-details { width: 100%; margin-top: 20px; }
 
 @media (max-width: 600px) {

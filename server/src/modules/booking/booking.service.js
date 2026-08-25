@@ -10,6 +10,9 @@
 const Booking = require("./booking.model");
 const Playground = require("../playground/playground.model");
 const Slot = require("../slot/slot.model");
+const { createNotification } = require("../notification/notification.service");
+const Payment = require("../payment/payment.model");
+const { emitDashboardUpdate } = require("../../config/socket");
 
 const timeToMinutes = (timeStr) => {
     const [h, m] = timeStr.split(":").map(Number);
@@ -79,6 +82,14 @@ const createBooking = async (payload, customerId) => {
         throw new Error("Select one of the published slots shown for this date.");
     }
 
+    // A same-day slot is no longer bookable as soon as its start time passes.
+    const [startHour, startMinute] = payload.startTime.split(":").map(Number);
+    const slotStartAt = new Date(bookingDate);
+    slotStartAt.setHours(startHour, startMinute, 0, 0);
+    if (slotStartAt <= new Date()) {
+        throw new Error("This slot has already started and can no longer be booked.");
+    }
+
     // ===================================================
     // Check Time Slot Overlap
     // ===================================================
@@ -112,18 +123,18 @@ const createBooking = async (payload, customerId) => {
 
     let pricePerHour = playground.pricing.morning;
 
-    const startHour = Number(payload.startTime.split(":")[0]);
+    const pricingStartHour = Number(payload.startTime.split(":")[0]);
 
     // Friday & Saturday
     if (bookingDay === 5 || bookingDay === 6) {
         pricePerHour = playground.pricing.weekend;
     }
     // Morning
-    else if (startHour >= 6 && startHour < 12) {
+    else if (pricingStartHour >= 6 && pricingStartHour < 12) {
         pricePerHour = playground.pricing.morning;
     }
     // Day
-    else if (startHour >= 12 && startHour < 17) {
+    else if (pricingStartHour >= 12 && pricingStartHour < 17) {
         pricePerHour = playground.pricing.day;
     }
     // Evening
@@ -177,6 +188,8 @@ const otpExpiresAt = new Date(
 // ===================================================
 
 const getMyBookings = async (customerId) => {
+    const paidPayments = await Payment.find({ customer: customerId, booking: { $ne: null }, paymentStatus: "Paid", isDeleted: false }).select("booking");
+    if (paidPayments.length) await Booking.updateMany({ _id: { $in: paidPayments.map((payment) => payment.booking) }, bookingStatus: "Pending" }, { $set: { bookingStatus: "Confirmed", paymentStatus: "Paid" } });
     const bookings = await Booking.find({
         customer: customerId,
         isDeleted: false,
@@ -272,6 +285,19 @@ const cancelBooking = async (id, customerId) => {
     return booking;
 };
 
+const cancelBookingByAdmin = async (id, adminId) => {
+    const booking = await Booking.findOne({ _id: id, isDeleted: false }).populate("playground", "name playgroundAdmin");
+    if (!booking) throw new Error("Booking not found.");
+    if (String(booking.playground?.playgroundAdmin) !== String(adminId)) throw new Error("You are not authorized to cancel this booking.");
+    if (["Cancelled", "Completed"].includes(booking.bookingStatus)) throw new Error(`A ${booking.bookingStatus.toLowerCase()} booking cannot be cancelled.`);
+    booking.bookingStatus = "Cancelled";
+    booking.cancelledAt = new Date();
+    await booking.save();
+    await createNotification({ recipient: booking.customer, type: "BookingCancelled", title: "Your booking was cancelled", message: `${booking.playground?.name || "The playground"} cancelled your ${new Date(booking.bookingDate).toLocaleDateString("en-GB")} slot (${booking.startTime}-${booking.endTime}). Please contact the venue about any refund.`, link: "my-bookings.html" });
+    emitDashboardUpdate({ type: "booking-cancelled", bookingId: booking._id });
+    return booking;
+};
+
 // ===================================================
 // Export Services
 // ===================================================
@@ -282,4 +308,5 @@ module.exports = {
     getSingleBooking,
     getPlaygroundBookings,
     cancelBooking,
+    cancelBookingByAdmin,
 };

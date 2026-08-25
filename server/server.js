@@ -18,6 +18,8 @@ const app = require("./src/app");
 const connectDB = require("./src/config/db");
 const createSuperAdmin = require("./src/utils/createSuperAdmin");
 const { startNotificationScheduler } = require("./src/jobs/notificationJob");
+const http = require("http");
+const { initializeSocket } = require("./src/config/socket");
 
 // ===============================
 // Server Configuration
@@ -39,7 +41,9 @@ const startServer = async () => {
 
         }
 
-        app.listen(PORT, () => {
+        const httpServer = http.createServer(app);
+        initializeSocket(httpServer);
+        httpServer.listen(PORT, () => {
             console.log("=================================");
             console.log(`🚀 Server Running on http://localhost:${PORT}`);
 

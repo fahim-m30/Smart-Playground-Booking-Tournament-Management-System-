@@ -580,3 +580,19 @@ font-size:11px;
 }
 
 }
+
+.hero-search select{
+    padding:18px 16px;
+    border-radius:18px;
+    border:1px solid rgba(255,255,255,.22);
+    background:rgba(15,23,42,.42);
+    color:#fff;
+    font:inherit;
+    outline:none;
+    cursor:pointer;
+}
+
+.hero-search select option{
+    color:#0f172a;
+    background:#fff;
+}

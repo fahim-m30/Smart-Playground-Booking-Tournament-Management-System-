@@ -175,10 +175,16 @@
 
             <form id="hero-search-form" class="hero-search">
 
+                <label class="sr-only" for="hero-search-type">Search category</label>
+                <select id="hero-search-type" aria-label="Search category">
+                    <option value="playgrounds">Playgrounds</option>
+                    <option value="tournaments">Tournaments</option>
+                </select>
+
                 <input
                     id="hero-search-input"
                     type="text"
-                    placeholder="Search Playground..."
+                    placeholder="Search playgrounds..."
                 >
 
                 <button type="submit">

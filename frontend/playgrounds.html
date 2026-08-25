@@ -5,25 +5,18 @@
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>TURF | Playgrounds</title>
     <link rel="icon" type="image/png" href="assets/images/favicon.png">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
-    <link rel="stylesheet" href="assets/css/style.css">
-    <link rel="stylesheet" href="assets/css/navbar.css">
-    <link rel="stylesheet" href="assets/css/footer.css">
-    <link rel="stylesheet" href="assets/css/responsive.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/portal.css">
     <link rel="stylesheet" href="assets/css/playground-cards.css">
+    <link rel="stylesheet" href="assets/css/playground-explorer.css">
 </head>
-<body data-page="playgrounds">
-    <div id="page-shell"></div>
-    <main class="portal">
-        <header class="portal-head">
-            <div><h1>Explore playgrounds</h1><p>Find an active venue and continue to slot booking.</p></div>
-            <a class="button" href="booking.html">Book a slot</a>
+<body class="venue-explorer">
+    <main class="portal explorer-shell">
+        <header class="portal-head explorer-head">
+            <div><a class="back-link" href="dashboard.html">← Back to dashboard</a><span class="eyebrow">VENUE DIRECTORY</span><h1>Explore playgrounds</h1><p>Compare active venues, review facilities and choose the right slot with confidence.</p></div>
+            <a id="book-slots-link" class="button" href="booking.html">Book a slot</a>
         </header>
-        <section class="panel form-panel show">
-            <label>Search playground<input id="search" type="search" placeholder="Name, area or sport"></label>
-        </section>
+        <section class="panel form-panel show explorer-search"><label for="search"><span>Find a playground</span><input id="search" type="search" placeholder="Search by name, area, district or sport" autocomplete="off"></label></section>
         <section id="results" class="grid"><p class="empty">Loading playgrounds…</p></section>
     </main>
     <script>
@@ -31,8 +24,42 @@
         const results = document.querySelector("#results");
         const search = document.querySelector("#search");
         const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character]));
+        let user = null;
+        try { user = JSON.parse(localStorage.getItem("authUser") || "null"); } catch (_) { /* browsing remains public */ }
+        const isCustomer = user?.role === "customer";
+        if (!isCustomer) document.querySelector("#book-slots-link").hidden = true;
+
+        const openDetails = (ground) => {
+            document.querySelector("#ground-details-modal")?.remove();
+            const ownerId = String(ground.playgroundAdmin?._id || ground.playgroundAdmin?.id || ground.playgroundAdmin || "");
+            const phone = String(ground.phone || "").replace(/[^+\d]/g, "");
+            const facilities = Array.isArray(ground.facilities) && ground.facilities.length
+                ? ground.facilities.map((facility) => '<span class="badge">' + escapeHtml(facility) + "</span>").join(" ")
+                : '<span class="meta">Facilities will be confirmed by the venue.</span>';
+            const contact = isCustomer ? '<div class="venue-contact-actions">' + (ownerId ? '<a class="button alt" href="chat.html?contact=' + encodeURIComponent(ownerId) + '">Chat with venue</a>' : "") + (phone ? '<a class="button alt call-venue" href="tel:' + escapeHtml(phone) + '">Call venue</a>' : "") + "</div>" : "";
+            const book = isCustomer ? '<a class="button choose-from-details" href="booking.html?playground=' + encodeURIComponent(ground._id) + '">Book this playground</a>' : "";
+            const modal = document.createElement("div");
+            modal.id = "ground-details-modal";
+            modal.className = "modal show";
+            modal.innerHTML = '<div class="modal-box ground-details"><button class="close" type="button" aria-label="Close details">×</button><img class="ground-detail-image" src="' + escapeHtml(ground.coverImage || "assets/images/hero-bg.jpg") + '" alt="' + escapeHtml(ground.name) + '"><span class="badge">' + escapeHtml(ground.sportType || "Sports") + "</span><h2>" + escapeHtml(ground.name) + "</h2><p class=\"meta\">" + escapeHtml(ground.address || ground.area || "Location not provided") + "</p><p class=\"ground-description\">" + escapeHtml(ground.description || "No additional venue description has been added yet.") + "</p><div class=\"ground-info\"><span><strong>Opening hours</strong>" + escapeHtml(ground.openingTime || "—") + " – " + escapeHtml(ground.closingTime || "—") + "</span><span><strong>Players</strong>Up to " + escapeHtml(ground.maxPlayers || "—") + " players</span><span><strong>Starting price</strong>৳" + Number(ground.pricing?.morning || 0).toLocaleString() + " / hour</span></div><h3>Facilities</h3><div class=\"facility-list\">" + facilities + "</div>" + contact + book + "</div>";
+            document.body.append(modal);
+            const close = () => modal.remove();
+            modal.querySelector(".close").onclick = close;
+            modal.onclick = (event) => { if (event.target === modal) close(); };
+        };
+
         const render = (grounds) => {
-            results.innerHTML = grounds.length ? grounds.map((ground) => '<article class="card"><img src="' + escapeHtml(ground.coverImage || "assets/images/hero-bg.jpg") + '" alt="' + escapeHtml(ground.name) + '"><h2>' + escapeHtml(ground.name) + '</h2><p>' + escapeHtml(ground.sportType || "Sports") + ' · ' + escapeHtml(ground.address || ground.area || "Location available after booking") + '</p><a class="button" href="booking.html?playground=' + encodeURIComponent(ground._id) + '">View slots</a></article>').join("") : '<p class="empty">No active playground matches your search.</p>';
+            results.innerHTML = grounds.length ? grounds.map((ground, index) => '<article class="card venue-card"><img class="playground-cover" src="' + escapeHtml(ground.coverImage || "assets/images/hero-bg.jpg") + '" alt="' + escapeHtml(ground.name) + '"><div class="venue-card-body"><span class="badge">' + escapeHtml(ground.sportType || "Sports") + '</span><h2>' + escapeHtml(ground.name) + '</h2><p class="venue-location">' + escapeHtml(ground.area || ground.address || "Location available after booking") + '</p><div class="venue-card-meta"><span>From <strong>৳' + Number(ground.pricing?.morning || 0).toLocaleString() + '</strong> / hour</span><span>' + escapeHtml(ground.openingTime || "Hours on request") + '</span></div><div class="card-foot"><button class="alt details-ground" type="button" data-index="' + index + '">View details</button>' + (isCustomer ? '<a class="button" href="booking.html?playground=' + encodeURIComponent(ground._id) + '">Book now</a>' : "") + '</div></div></article>').join("") : '<p class="empty">No active playground matches your search.</p>';
+            results.querySelectorAll(".details-ground").forEach((button) => { button.onclick = () => openDetails(grounds[Number(button.dataset.index)]); });
+            results.querySelectorAll(".venue-card").forEach((card, index) => {
+                if (!isCustomer) return;
+                if (card.querySelector(".book-ground")) return;
+                const link = document.createElement("a");
+                link.className = "button book-ground";
+                link.href = "booking.html?playground=" + encodeURIComponent(grounds[index]._id);
+                link.textContent = "Book now";
+                card.querySelector(".card-foot").append(link);
+            });
         };
         const load = async () => {
             results.innerHTML = '<p class="empty">Loading playgrounds…</p>';
@@ -48,7 +75,5 @@
         search.addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(load, 250); });
         load();
     </script>
-    <script src="assets/js/site.js"></script>
-    <script src="assets/js/navbar.js"></script>
 </body>
 </html>
