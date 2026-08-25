@@ -18,7 +18,7 @@ const createSlotValidation = Joi.object({
 
     endTime: Joi.string().pattern(/^([01]\d|2[0-3]):[0-5]\d$/).required(),
 
-    durationMinutes: Joi.number().integer().min(15).max(360).default(60),
+    durationMinutes: Joi.number().integer().min(30).max(150).default(60),
 
     price: Joi.number().min(0).allow(null),
 
@@ -32,7 +32,7 @@ const updateSlotValidation = Joi.object({
 
     endTime: Joi.string().pattern(/^([01]\d|2[0-3]):[0-5]\d$/),
 
-    durationMinutes: Joi.number().integer().min(15).max(360),
+    durationMinutes: Joi.number().integer().min(30).max(150),
 
     price: Joi.number().min(0).allow(null),
 

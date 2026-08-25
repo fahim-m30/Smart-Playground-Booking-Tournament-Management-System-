@@ -24,7 +24,7 @@ function formatTime(value) { return `${String(Math.floor(value / 60)).padStart(2
 function buildSchedule() {
     const values = Object.fromEntries(new FormData(form));
     const start = toMinutes(values.openingTime), end = toMinutes(values.closingTime), duration = Number(values.slotDuration), count = Number(values.slotsPerDay);
-    if (!Number.isInteger(duration) || duration < 30 || duration > 360 || !Number.isInteger(count) || count < 1 || count > 24 || end <= start || count * duration > end - start) return [];
+    if (!Number.isInteger(duration) || duration < 30 || duration > 150 || !Number.isInteger(count) || count < 1 || count > 24 || end <= start || count * duration > end - start) return [];
     return selectedDays(values.dayType).flatMap((dayOfWeek) => Array.from({ length: count }, (_, index) => {
         const slotStart = start + index * duration;
         return { dayOfWeek, startTime: formatTime(slotStart), endTime: formatTime(slotStart + duration), durationMinutes: duration };
