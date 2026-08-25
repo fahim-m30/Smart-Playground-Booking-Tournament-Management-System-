@@ -26,6 +26,7 @@ document.head.insertAdjacentHTML("beforeend", '<link rel="stylesheet" href="asse
 document.head.insertAdjacentHTML("beforeend", '<link rel="stylesheet" href="assets/css/profile-sections.css">');
 document.head.insertAdjacentHTML("beforeend", '<link rel="stylesheet" href="assets/css/slot-schedules.css">');
 document.head.insertAdjacentHTML("beforeend", '<link rel="stylesheet" href="assets/css/income.css">');
+document.head.insertAdjacentHTML("beforeend", '<style>.ground-detail-images{display:flex;gap:8px;overflow:auto;margin:16px 0}.ground-detail-images img{width:160px;height:105px;object-fit:cover;border-radius:10px}.ground-detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:10px 0 18px}.ground-detail-grid div{padding:11px;border:1px solid #d9e9de;border-radius:9px;background:#f9fcfa}.ground-detail-grid b,.ground-detail-grid span{display:block}.ground-detail-grid b{font-size:.72rem;color:#68766d;margin-bottom:4px}.ground-detail-grid span{font-size:.84rem;line-height:1.45}</style>');
 
 if (!token || !role) location.replace("login.html");
 
@@ -377,7 +378,14 @@ window.groundAction = async (id, action) => {
 window.viewGround = async (id) => {
     try {
         const ground = await R("/playgrounds/" + id);
-        say(`${ground.name} — ${ground.address || "Address unavailable"}. ${ground.description || "No description provided."}`);
+        const price = (value) => "৳" + new Intl.NumberFormat("en-BD").format(value || 0);
+        const images = [ground.coverImage, ...(ground.galleryImages || [])].filter(Boolean);
+        const modal = document.createElement("div");
+        modal.className = "modal show";
+        modal.innerHTML = `<section class="modal-box"><button class="close" type="button">Close</button><span class="badge">${E(ground.isApproved ? "Approved" : "Pending approval")} · ${E(ground.status)}</span><h2>${E(ground.name)}</h2><p class="meta">${E(ground.sportType)} · ${E(ground.maxPlayers)} max players · ${E(ground.openingTime)}–${E(ground.closingTime)}</p>${images.length ? `<div class="ground-detail-images">${images.map((image) => `<img src="${E(image)}" alt="${E(ground.name)}">`).join("")}</div>` : ""}<h3>About this playground</h3><p class="meta">${E(ground.description || "No description provided.")}</p><div class="ground-detail-grid"><div><b>Location</b><span>${E([ground.address, ground.area, ground.district, ground.division].filter(Boolean).join(", "))}</span></div><div><b>Venue contact</b><span>${E(ground.phone)}<br>${E(ground.email)}</span></div><div><b>Playground admin</b><span>${E(ground.playgroundAdmin?.name || "Not available")}<br>${E(ground.playgroundAdmin?.email || "")}</span></div><div><b>Facilities</b><span>${E((ground.facilities || []).join(", ") || "Not listed")}</span></div></div><h3>Pricing</h3><div class="ground-detail-grid"><div><b>Morning</b><span>${price(ground.pricing?.morning)}</span></div><div><b>Day</b><span>${price(ground.pricing?.day)}</span></div><div><b>Evening</b><span>${price(ground.pricing?.evening)}</span></div><div><b>Weekend</b><span>${price(ground.pricing?.weekend)}</span></div></div>${ground.googleMapLocation ? `<a class="button alt" target="_blank" rel="noopener" href="${E(ground.googleMapLocation)}">Open map location</a>` : ""}</section>`;
+        document.body.append(modal);
+        modal.querySelector(".close").onclick = () => modal.remove();
+        modal.onclick = (event) => { if (event.target === modal) modal.remove(); };
     } catch (error) { say(error.message, true); }
 };
 
