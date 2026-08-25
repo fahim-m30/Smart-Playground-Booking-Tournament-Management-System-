@@ -46,9 +46,9 @@ function setTitle(tab) {
 
 // Reports is a dedicated dashboard destination, not an Account centre tab.
 $("#tabs").innerHTML = tabs.filter((tab) => tab !== "Reports").map((tab) => '<button class="' + (tab === initialTab ? "active" : "") + '" data-tab="' + tab + '">' + tab + "</button>").join("");
-// Account centre is intentionally profile-only. Operational screens are
-// reached from the dashboard navigation and have no account-centre tabs.
-$("#tabs").hidden = initialTab !== "Profile";
+// Account centre is intentionally profile-only. Every operation is reached
+// from dashboard navigation, so this legacy tab bar is never displayed.
+$("#tabs").hidden = true;
 setTitle(initialTab);
 
 async function profile() {
