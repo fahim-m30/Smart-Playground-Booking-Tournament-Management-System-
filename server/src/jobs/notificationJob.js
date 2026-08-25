@@ -196,7 +196,9 @@ const processUnderfilledTournaments = async () => {
     cutoffStart.setDate(cutoffStart.getDate() + 2);
     const cutoffEnd = endOfDay(cutoffStart);
     const tournaments = await Tournament.find({
-        startDate: { $gte: cutoffStart, $lt: cutoffEnd },
+        // Catch up after a missed scheduler run instead of relying on one
+        // exact calendar-day window.
+        startDate: { $gt: startOfDay(new Date()), $lte: cutoffEnd },
         status: "Upcoming",
         cancellationProcessed: { $ne: true },
         isDeleted: false,
@@ -207,6 +209,10 @@ const processUnderfilledTournaments = async () => {
         tournament.status = "Cancelled";
         tournament.cancellationProcessed = true;
         await tournament.save();
+        await TournamentMatch.updateMany({
+            tournament: tournament._id,
+            matchStatus: { $in: ["Scheduled", "Live"] },
+        }, { $set: { matchStatus: "Cancelled" } });
         const payments = await Payment.find({ tournament: tournament._id, paymentStatus: "Paid", isDeleted: false });
         await Promise.all(payments.map((payment) => Payment.updateOne({ _id: payment._id }, {
             $set: { refundAmount: payment.amount, refundStatus: "Pending", refundReason: "Tournament cancelled because required teams were not registered." },
@@ -232,12 +238,18 @@ const processFixturePublication = async () => {
     tomorrowStart.setDate(tomorrowStart.getDate() + 1);
     const tomorrowEnd = endOfDay(tomorrowStart);
     const tournaments = await Tournament.find({
-        startDate: { $gte: tomorrowStart, $lt: tomorrowEnd },
+        // Publish at least one day before start, including a catch-up run if
+        // the worker was unavailable during the original window.
+        startDate: { $gte: startOfDay(new Date()), $lte: tomorrowEnd },
         status: "Upcoming",
         isDeleted: false,
     });
     for (const tournament of tournaments) {
-        const registered = await TournamentTeam.countDocuments({ tournament: tournament._id, isDeleted: false });
+        const registered = await TournamentTeam.countDocuments({
+            tournament: tournament._id,
+            paymentStatus: "Paid",
+            isDeleted: false,
+        });
         if (registered !== tournament.totalTeams) continue;
         try {
             await generateGroupMatches(tournament._id.toString());

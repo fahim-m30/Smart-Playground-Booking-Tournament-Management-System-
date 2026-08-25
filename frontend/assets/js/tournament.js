@@ -151,7 +151,13 @@ async function loadMyTournamentRegistrations() {
         const section = document.createElement("section");
         section.className = "panel";
         section.id = "my-tournament-registrations";
-        section.innerHTML = `<h2>My tournament registrations</h2><div class="grid">${teams.map((team) => `<article class="card"><span class="badge">${esc(team.paymentStatus)}</span><h3>${esc(team.teamName)}</h3><p>${esc(team.tournament?.name || "Tournament")}<br>${dateLabel(team.tournament?.startDate)} – ${dateLabel(team.tournament?.endDate)}</p><div class="card-foot"><button class="alt" type="button" data-team-id="${team._id}">Cancel registration</button></div></article>`).join("")}</div>`;
+        const cancellationAllowed = (team) => {
+            const cutoff = new Date(team.tournament?.startDate);
+            cutoff.setHours(0, 0, 0, 0);
+            cutoff.setDate(cutoff.getDate() - 2);
+            return team.tournament?.status === "Upcoming" && Date.now() < cutoff.getTime();
+        };
+        section.innerHTML = `<h2>My tournament registrations</h2><div class="grid">${teams.map((team) => `<article class="card"><span class="badge">${esc(team.paymentStatus)}</span><h3>${esc(team.teamName)}</h3><p>${esc(team.tournament?.name || "Tournament")}<br>${dateLabel(team.tournament?.startDate)} – ${dateLabel(team.tournament?.endDate)}</p><div class="card-foot">${cancellationAllowed(team) ? `<button class="alt" type="button" data-team-id="${team._id}">Cancel registration</button>` : "<small>Registration cancellation is closed.</small>"}</div></article>`).join("")}</div>`;
         $("#content").before(section);
         section.querySelectorAll("[data-team-id]").forEach((button) => button.addEventListener("click", async () => {
             if (!confirm("Cancel this tournament registration? Cancellation is allowed only at least 2 days before it starts. Any paid refund is handled by the tournament organizer.")) return;
