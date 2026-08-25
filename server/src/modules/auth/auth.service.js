@@ -98,9 +98,10 @@ const registerUser = async ({
     }
 
     if (existingPending) {
-        throw new Error(
-            "A pending registration already exists. Please verify the OTP sent to your email or request a new one."
-        );
+        // A new registration attempt replaces an unfinished one, preventing a
+        // stale or undelivered OTP from permanently blocking this email.
+        await PendingRegistration.deleteOne({ _id: existingPending._id });
+        existingPending = null;
     }
 
     const profileImageDataUrl = convertFileToDataUrl(profileImage);
@@ -157,9 +158,10 @@ const registerPlaygroundOwner = async ({
     }
 
     if (existingPending) {
-        throw new Error(
-            "A pending registration already exists. Please verify the OTP sent to your email or request a new one."
-        );
+        // A new registration attempt replaces an unfinished one, preventing a
+        // stale or undelivered OTP from permanently blocking this email.
+        await PendingRegistration.deleteOne({ _id: existingPending._id });
+        existingPending = null;
     }
 
     const nidFrontImageDataUrl = convertFileToDataUrl(nidFrontImage);
