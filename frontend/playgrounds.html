@@ -14,13 +14,13 @@
     <main class="portal explorer-shell">
         <header class="portal-head explorer-head">
             <div><a class="back-link" href="dashboard.html">← Back to dashboard</a><span class="eyebrow">VENUE DIRECTORY</span><h1>Explore playgrounds</h1><p>Compare active venues, review facilities and choose the right slot with confidence.</p></div>
-            <a id="book-slots-link" class="button" href="booking.html">Book a slot</a>
+            <a id="book-slots-link" class="button header-booking-cta" href="booking.html"><span class="booking-cta-icon" aria-hidden="true">&#9201;</span><span><b>Book a slot</b><small>Choose your time</small></span></a>
         </header>
         <section class="panel form-panel show explorer-search"><label for="search"><span>Find a playground</span><input id="search" type="search" placeholder="Search by name, area, district or sport" autocomplete="off"></label></section>
         <section id="results" class="grid"><p class="empty">Loading playgrounds…</p></section>
     </main>
     <script>
-        const api = "http://localhost:5000/api/v1";
+        const api = "https://smart-playground-booking-tournament.onrender.com/api/v1";
         const results = document.querySelector("#results");
         const search = document.querySelector("#search");
         const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character]));
@@ -51,15 +51,6 @@
         const render = (grounds) => {
             results.innerHTML = grounds.length ? grounds.map((ground, index) => '<article class="card venue-card"><img class="playground-cover" src="' + escapeHtml(ground.coverImage || "assets/images/hero-bg.jpg") + '" alt="' + escapeHtml(ground.name) + '"><div class="venue-card-body"><span class="badge">' + escapeHtml(ground.sportType || "Sports") + '</span><h2>' + escapeHtml(ground.name) + '</h2><p class="venue-location">' + escapeHtml(ground.area || ground.address || "Location available after booking") + '</p><div class="venue-card-meta"><span>From <strong>৳' + Number(ground.pricing?.morning || 0).toLocaleString() + '</strong> / hour</span><span>' + escapeHtml(ground.openingTime || "Hours on request") + '</span></div><div class="card-foot"><button class="alt details-ground" type="button" data-index="' + index + '">View details</button>' + (isCustomer ? '<a class="button" href="booking.html?playground=' + encodeURIComponent(ground._id) + '">Book now</a>' : "") + '</div></div></article>').join("") : '<p class="empty">No active playground matches your search.</p>';
             results.querySelectorAll(".details-ground").forEach((button) => { button.onclick = () => openDetails(grounds[Number(button.dataset.index)]); });
-            results.querySelectorAll(".venue-card").forEach((card, index) => {
-                if (!isCustomer) return;
-                if (card.querySelector(".book-ground")) return;
-                const link = document.createElement("a");
-                link.className = "button book-ground";
-                link.href = "booking.html?playground=" + encodeURIComponent(grounds[index]._id);
-                link.textContent = "Book now";
-                card.querySelector(".card-foot").append(link);
-            });
         };
         const load = async () => {
             results.innerHTML = '<p class="empty">Loading playgrounds…</p>';

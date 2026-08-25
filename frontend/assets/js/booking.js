@@ -1,5 +1,5 @@
 (() => {
-    const API_ROOT = "http://localhost:5000/api/v1";
+    const API_ROOT = "https://smart-playground-booking-tournament.onrender.com/api/v1";
     const token = localStorage.getItem("authToken");
     let user = null;
     try { user = JSON.parse(localStorage.getItem("authUser") || "null"); } catch (_) { /* handled below */ }
@@ -182,7 +182,7 @@
                 const qrPath = booking?.qrCode || team?.qrCode;
                 const title = booking?.playground?.name || team?.tournament?.name || "TURF ticket";
                 const subtitle = booking ? `${bookingDate(String(booking.bookingDate).slice(0, 10))} · ${booking.startTime} – ${booking.endTime}` : `Team: ${team?.teamName || "—"}`;
-                const qrUrl = qrPath ? `http://localhost:5000${qrPath}` : "";
+                const qrUrl = qrPath ? `https://smart-playground-booking-tournament.onrender.com${qrPath}` : "";
                 return `<article class="card ticket"><div><span class="badge">PAID TICKET</span><h3>${escapeHtml(title)}</h3><p>${escapeHtml(subtitle)}<br>Paid: ৳${Number(payment.amount || 0).toLocaleString()}</p><div class="card-foot"><a class="button alt" href="receipt.html?payment=${encodeURIComponent(payment._id)}">View receipt</a>${qrUrl ? `<button class="download-ticket" type="button" data-qr-url="${escapeHtml(qrUrl)}" data-ticket-id="${escapeHtml(payment._id)}">Download QR</button>` : ""}</div></div>${qrUrl ? `<img src="${escapeHtml(qrUrl)}" alt="QR ticket for ${escapeHtml(title)}">` : ""}</article>`;
             }).join("") : '<div class="empty">No paid tickets yet. Complete a payment to receive a QR ticket.</div>');
             content.querySelectorAll(".download-ticket").forEach((button) => button.addEventListener("click", async () => {

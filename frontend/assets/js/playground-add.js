@@ -1,4 +1,4 @@
-const API_ROOT = "http://localhost:5000/api/v1";
+const API_ROOT = "https://smart-playground-booking-tournament.onrender.com/api/v1";
 const token = localStorage.getItem("authToken");
 let user;
 try { user = JSON.parse(localStorage.getItem("authUser") || "null"); } catch (_) { user = null; }

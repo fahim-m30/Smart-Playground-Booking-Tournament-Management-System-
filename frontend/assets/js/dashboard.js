@@ -1,4 +1,4 @@
-const API_ROOT = "http://localhost:5000/api/v1";
+const API_ROOT = "https://smart-playground-booking-tournament.onrender.com/api/v1";
 const token = localStorage.getItem("authToken");
 let user;
 try { user = JSON.parse(localStorage.getItem("authUser") || "null"); } catch (_) { user = null; }
@@ -15,7 +15,7 @@ const refreshRealtime = () => {
     realtimeRefreshTimer = setTimeout(() => init(), 250);
 };
 if (typeof io !== "undefined" && token) {
-    const socket = io("http://localhost:5000", { auth: { token } });
+    const socket = io("https://smart-playground-booking-tournament.onrender.com", { auth: { token } });
     socket.on("notification:new", () => { loadNotifications(); refreshRealtime(); });
     socket.on("booking:updated", refreshRealtime);
     socket.on("tournament:updated", refreshRealtime);
@@ -171,6 +171,9 @@ async function init() {
     if (!token || !user?.role) { location.replace("login.html"); return; }
     const role = String(user.role).toLowerCase();
     nav(role);
+    // Venue setup is available only to playground administrators.
+    // These actions were present in the page but remained permanently hidden.
+    $("#quick-actions").hidden = role !== "playground-admin";
     $("#workspace-label").textContent = `${role.replace("-", " ")} workspace`;
     $("#role-label").textContent = role.replace("-", " ");
     $("#welcome-title").textContent = `Welcome back, ${user.name?.split(" ")[0] || "there"}`;

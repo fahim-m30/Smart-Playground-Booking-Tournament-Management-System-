@@ -1,5 +1,5 @@
 (() => {
-    const API_ROOT = "http://localhost:5000/api/v1";
+    const API_ROOT = "https://smart-playground-booking-tournament.onrender.com/api/v1";
     const token = localStorage.getItem("authToken");
     const user = JSON.parse(localStorage.getItem("authUser") || "null");
     if (!token || !user) { location.replace("login.html"); return; }
@@ -30,7 +30,7 @@
         try {
             const payments = await request("/payments/my-payments");
             const tickets = payments.filter((p) => p.paymentStatus === "Paid");
-            content.innerHTML = tickets.length ? tickets.map((p) => { const b = p.booking, team = p.tournamentTeam, qr = b?.qrCode || team?.qrCode; const title = b?.playground?.name || team?.tournament?.name || "TURF ticket"; return `<article class="card ticket"><div><span class="badge">PAID TICKET</span><h3>${escapeHtml(title)}</h3><p>${b ? `${date(b.bookingDate)} · ${escapeHtml(b.startTime)} – ${escapeHtml(b.endTime)}` : `Team: ${escapeHtml(team?.teamName)}`}<br>Paid: ৳${Number(p.amount || 0).toLocaleString()}</p><a class="button alt" href="receipt.html?payment=${encodeURIComponent(p._id)}">View receipt</a></div>${qr ? `<img src="http://localhost:5000${escapeHtml(qr)}" alt="QR ticket">` : ""}</article>`; }).join("") : '<div class="empty">No paid tickets yet.</div>';
+            content.innerHTML = tickets.length ? tickets.map((p) => { const b = p.booking, team = p.tournamentTeam, qr = b?.qrCode || team?.qrCode; const title = b?.playground?.name || team?.tournament?.name || "TURF ticket"; return `<article class="card ticket"><div><span class="badge">PAID TICKET</span><h3>${escapeHtml(title)}</h3><p>${b ? `${date(b.bookingDate)} · ${escapeHtml(b.startTime)} – ${escapeHtml(b.endTime)}` : `Team: ${escapeHtml(team?.teamName)}`}<br>Paid: ৳${Number(p.amount || 0).toLocaleString()}</p><a class="button alt" href="receipt.html?payment=${encodeURIComponent(p._id)}">View receipt</a></div>${qr ? `<img src="https://smart-playground-booking-tournament.onrender.com${escapeHtml(qr)}" alt="QR ticket">` : ""}</article>`; }).join("") : '<div class="empty">No paid tickets yet.</div>';
         } catch (error) { content.innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`; }
     }
     $("#logout").addEventListener("click", () => { localStorage.removeItem("authToken"); localStorage.removeItem("authUser"); location.replace("login.html"); });

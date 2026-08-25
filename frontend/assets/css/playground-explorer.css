@@ -10,6 +10,23 @@
 .eyebrow { display: block; margin-bottom: 8px; color: #137a39; font-size: .69rem; font-weight: 800; letter-spacing: .14em; }
 .explorer-head h1 { font-size: clamp(2rem, 4vw, 2.7rem); letter-spacing: -.055em; }
 .explorer-head p { max-width: 570px; font-size: .96rem; line-height: 1.6; }
+.header-booking-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 172px;
+    padding: 12px 16px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #14833e, #0d6630);
+    box-shadow: 0 12px 24px rgba(12, 107, 49, .22);
+    color: #fff !important;
+    text-align: left;
+}
+.header-booking-cta:hover { transform: translateY(-2px); color: #fff; }
+.booking-cta-icon { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: rgba(255,255,255,.17); font-size: 1.05rem; }
+.header-booking-cta b, .header-booking-cta small { display: block; color: #fff; line-height: 1.2; }
+.header-booking-cta b { font-size: .8rem; }
+.header-booking-cta small { margin-top: 3px; font-size: .65rem; font-weight: 500; opacity: .82; }
 
 .explorer-search {
     display: block;
@@ -38,7 +55,6 @@
 .venue-card-meta strong { color: #0c6b31; font-size: .88rem; }
 .venue-card .card-foot { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 17px 0 0; padding: 15px 0 0; }
 .venue-card .card-foot > * { min-width: 0; text-align: center; }
-.venue-card .book-ground { display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 8px 18px rgba(19,122,57,.18); }
 .ground-details { max-width: 720px; border-radius: 20px; }
 .ground-details h2 { margin: 10px 0 4px; color: #102a19; letter-spacing: -.035em; }
 .ground-details .close { z-index: 1; box-shadow: 0 5px 15px rgba(11,65,31,.1); }
@@ -47,6 +63,7 @@
     .explorer-shell { padding-top: 25px; }
     .explorer-head { align-items: flex-start; }
     .explorer-head { padding: 22px 20px; }
+    .header-booking-cta { width: 100%; justify-content: center; }
     .explorer-search { padding: 17px; }
     .explorer-search label { grid-template-columns: 1fr; gap: 8px; }
     .explorer-search small { grid-column: auto; }

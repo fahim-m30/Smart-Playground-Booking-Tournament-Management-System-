@@ -1,4 +1,4 @@
-const API = "http://localhost:5000/api/v1";
+const API = "https://smart-playground-booking-tournament.onrender.com/api/v1";
 const token = localStorage.getItem("authToken");
 const user = JSON.parse(localStorage.getItem("authUser") || "{}");
 const $ = (selector) => document.querySelector(selector);

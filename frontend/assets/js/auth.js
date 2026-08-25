@@ -1,4 +1,4 @@
-const BASE_URL = "http://localhost:5000/api/v1/auth";
+const BASE_URL = "https://smart-playground-booking-tournament.onrender.com/api/v1/auth";
 
 const toggleOwnerFields = () => {
     const accountType = document.querySelector("#accountType")?.value;
