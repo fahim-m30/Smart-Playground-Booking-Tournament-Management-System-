@@ -42,6 +42,7 @@ const loginForm = document.querySelector("#login-form");
 const verifyOtpForm = document.querySelector("#verify-otp-form");
 const forgotPasswordForm = document.querySelector("#forgot-password-form");
 const resetPasswordForm = document.querySelector("#reset-password-form");
+let registrationSubmitting = false;
 
 const previewImage = (input, previewBox) => {
     const file = input.files && input.files[0];
@@ -100,6 +101,11 @@ if (registerForm) {
             return;
         }
 
+        if (registrationSubmitting) return;
+        registrationSubmitting = true;
+        const submitButton = registerForm.querySelector('button[type="submit"]');
+        if (submitButton) submitButton.disabled = true;
+
         const formData = new FormData();
         formData.append("name", name);
         formData.append("email", email);
@@ -132,6 +138,9 @@ if (registerForm) {
                 );
             } catch (error) {
                 showMessage(messageContainer, "Unable to connect to the server.");
+            } finally {
+                registrationSubmitting = false;
+                if (submitButton) submitButton.disabled = false;
             }
             return;
         }
@@ -149,6 +158,9 @@ if (registerForm) {
             );
         } catch (error) {
             showMessage(messageContainer, "Unable to connect to the server.");
+        } finally {
+            registrationSubmitting = false;
+            if (submitButton) submitButton.disabled = false;
         }
     });
 }

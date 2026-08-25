@@ -56,6 +56,20 @@ const cleanupExpiredPendingRegistration = async (email) => {
     return pending;
 };
 
+// Atomically create or refresh a pending registration. This avoids a race
+// between simultaneous form submissions that would otherwise trigger E11000.
+const upsertPendingRegistration = async (email, registration) =>
+    PendingRegistration.findOneAndUpdate(
+        { email },
+        { $set: registration },
+        {
+            new: true,
+            upsert: true,
+            runValidators: true,
+            setDefaultsOnInsert: true,
+        }
+    );
+
 const createUserFromPendingRegistration = async (pending) => {
     const user = await User.create({
         name: pending.name,
@@ -86,27 +100,13 @@ const registerUser = async ({
 }) => {
     const normalizedEmail = normalizeEmail(email);
     const existingUser = await User.findOne({ email: normalizedEmail });
-    let existingPending = await PendingRegistration.findOne({ email: normalizedEmail });
-
-    if (existingPending && isPendingExpired(existingPending)) {
-        await PendingRegistration.deleteOne({ _id: existingPending._id });
-        existingPending = null;
-    }
-
     if (existingUser) {
         throw new Error("Email already exists.");
     }
 
-    if (existingPending) {
-        // A new registration attempt replaces an unfinished one, preventing a
-        // stale or undelivered OTP from permanently blocking this email.
-        await PendingRegistration.deleteOne({ _id: existingPending._id });
-        existingPending = null;
-    }
-
     const profileImageDataUrl = convertFileToDataUrl(profileImage);
 
-    const pendingRegistration = await PendingRegistration.create({
+    const pendingRegistration = await upsertPendingRegistration(normalizedEmail, {
         name,
         email: normalizedEmail,
         password: await hashPassword(password),
@@ -146,29 +146,15 @@ const registerPlaygroundOwner = async ({
 }) => {
     const normalizedEmail = normalizeEmail(email);
     const existingUser = await User.findOne({ email: normalizedEmail });
-    let existingPending = await PendingRegistration.findOne({ email: normalizedEmail });
-
-    if (existingPending && isPendingExpired(existingPending)) {
-        await PendingRegistration.deleteOne({ _id: existingPending._id });
-        existingPending = null;
-    }
-
     if (existingUser) {
         throw new Error("Email already exists.");
-    }
-
-    if (existingPending) {
-        // A new registration attempt replaces an unfinished one, preventing a
-        // stale or undelivered OTP from permanently blocking this email.
-        await PendingRegistration.deleteOne({ _id: existingPending._id });
-        existingPending = null;
     }
 
     const nidFrontImageDataUrl = convertFileToDataUrl(nidFrontImage);
     const nidBackImageDataUrl = convertFileToDataUrl(nidBackImage);
     const profileImageDataUrl = convertFileToDataUrl(profileImage);
 
-    const pendingRegistration = await PendingRegistration.create({
+    const pendingRegistration = await upsertPendingRegistration(normalizedEmail, {
         name,
         email: normalizedEmail,
         password: await hashPassword(password),
