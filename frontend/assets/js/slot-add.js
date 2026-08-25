@@ -6,6 +6,8 @@ const submitButton = form.querySelector('button[type="submit"]');
 const playgroundSelect = document.getElementById("playground");
 const previewEl = document.getElementById("schedule-preview");
 const previewCount = document.getElementById("preview-count");
+const warningCard = document.getElementById("prerequisite-warning");
+const formCard = document.getElementById("slot-form-card");
 
 function safeUser() { try { return JSON.parse(localStorage.getItem("authUser")) || null; } catch { return null; } }
 function setMessage(message = "", type = "") { messageEl.textContent = message; messageEl.className = `form-message ${type}`; }
@@ -40,16 +42,23 @@ function updatePreview() {
 async function loadPlaygrounds() {
     if (!token || safeUser()?.role !== "playground-admin") return location.replace("login.html");
     submitButton.disabled = true;
+    warningCard.hidden = true;
+    formCard.hidden = true;
+    playgroundSelect.innerHTML = '<option value="">Choose one of your playgrounds</option>';
     try {
         const grounds = (await authFetch("/playgrounds/my-playgrounds")).data || [];
-        if (!grounds.length) return document.getElementById("prerequisite-warning").hidden = false;
+        if (!grounds.length) {
+            warningCard.hidden = false;
+            return;
+        }
         grounds.forEach((ground) => playgroundSelect.add(new Option(`${ground.name} · ${ground.sportType || "Sport"}`, ground._id)));
         if (grounds.length === 1) playgroundSelect.value = grounds[0]._id;
-        document.getElementById("slot-form-card").hidden = false;
+        formCard.hidden = false;
         updatePreview();
     } catch (error) {
-        setMessage(error.message || "Could not load your playgrounds.", "error");
-        document.getElementById("slot-form-card").hidden = false;
+        warningCard.hidden = false;
+        warningCard.querySelector("h3").textContent = "Could not load your playgrounds";
+        warningCard.querySelector("p").textContent = error.message || "Please refresh the page or add a playground first.";
     } finally { submitButton.disabled = false; }
 }
 

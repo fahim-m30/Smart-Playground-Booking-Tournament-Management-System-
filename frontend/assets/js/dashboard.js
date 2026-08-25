@@ -41,7 +41,7 @@ function nav(role) {
     ];
     if (role === "customer") items.splice(1, 0, { label: "Find playgrounds", icon: "F", href: "playgrounds.html" }, { label: "Book a slot", icon: "B", href: "booking.html" }, { label: "My bookings", icon: "M", href: "management.html?tab=Bookings" });
     if (role === "playground-admin") items.push(
-        { label: "Playgrounds", icon: "G", href: "management.html?tab=Playgrounds" },
+        { label: "Venue management", icon: "G", href: "management.html?tab=Playgrounds" },
         { label: "Slots", icon: "S", href: "management.html?tab=Slots" },
         { label: "Bookings", icon: "B", href: "management.html?tab=Bookings" },
         { label: "Income", icon: "I", href: "management.html?tab=Income" }
