@@ -63,7 +63,7 @@ const upsertPendingRegistration = async (email, registration) =>
         { email },
         { $set: registration },
         {
-            new: true,
+            returnDocument: "after",
             upsert: true,
             runValidators: true,
             setDefaultsOnInsert: true,

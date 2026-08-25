@@ -8,6 +8,11 @@
  */
 
 const nodemailer = require("nodemailer");
+const dns = require("node:dns");
+
+// Render's SMTP route may resolve Gmail to IPv6 first, while the service has
+// no IPv6 egress. Prefer IPv4 so the SMTP connection can be established.
+dns.setDefaultResultOrder("ipv4first");
 
 // ===============================
 // Create Mail Transporter
@@ -24,6 +29,9 @@ const transporter = nodemailer.createTransport({
     tls: {
         rejectUnauthorized: false,
     },
+    connectionTimeout: 15000,
+    greetingTimeout: 15000,
+    socketTimeout: 30000,
 });
 
 module.exports = transporter;
