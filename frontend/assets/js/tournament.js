@@ -100,12 +100,7 @@ const registrationOpen = (tournament) => {
     return tournament.status === "Upcoming" && Date.now() < deadline.getTime();
 };
 
-const tournamentStatusLabel = (tournament) => {
-    const start = new Date(tournament.startDate);
-    start.setHours(0, 0, 0, 0);
-    if (tournament.status === "Upcoming" && new Date() >= start) return "Group Stage";
-    return tournament.status;
-};
+const tournamentStatusLabel = (tournament) => tournament.status;
 
 function updateTournamentOverview() {
     let overview = document.querySelector(".tournament-overview");
@@ -157,7 +152,9 @@ async function loadMyTournamentRegistrations() {
             cutoff.setDate(cutoff.getDate() - 2);
             return team.tournament?.status === "Upcoming" && Date.now() < cutoff.getTime();
         };
-        section.innerHTML = `<h2>My tournament registrations</h2><div class="grid">${teams.map((team) => `<article class="card"><span class="badge">${esc(team.paymentStatus)}</span><h3>${esc(team.teamName)}</h3><p>${esc(team.tournament?.name || "Tournament")}<br>${dateLabel(team.tournament?.startDate)} – ${dateLabel(team.tournament?.endDate)}</p><div class="card-foot">${cancellationAllowed(team) ? `<button class="alt" type="button" data-team-id="${team._id}">Cancel registration</button>` : "<small>Registration cancellation is closed.</small>"}</div></article>`).join("")}</div>`;
+        const payments = await req("/payments/my-payments");
+        const pendingByTeam = new Map(payments.filter((payment) => payment.paymentStatus === "Pending" && payment.tournamentTeam).map((payment) => [String(payment.tournamentTeam?._id || payment.tournamentTeam), payment]));
+        section.innerHTML = `<h2>My tournament registrations</h2><p class="meta">Pending registrations are not confirmed until payment is completed.</p><div class="grid">${teams.map((team) => { const pendingPayment = pendingByTeam.get(String(team._id)); return `<article class="card"><span class="badge">${esc(team.paymentStatus)}</span><h3>${esc(team.teamName)}</h3><p>${esc(team.tournament?.name || "Tournament")}<br>${dateLabel(team.tournament?.startDate)} – ${dateLabel(team.tournament?.endDate)}</p><div class="card-foot">${pendingPayment ? `<a class="button" href="demo-payment.html?payment=${encodeURIComponent(pendingPayment._id)}">Complete payment</a>` : ""}${cancellationAllowed(team) ? `<button class="alt" type="button" data-team-id="${team._id}">Cancel registration</button>` : "<small>Registration cancellation is closed.</small>"}</div></article>`; }).join("")}</div>`;
         $("#content").before(section);
         section.querySelectorAll("[data-team-id]").forEach((button) => button.addEventListener("click", async () => {
             if (!confirm("Cancel this tournament registration? Cancellation is allowed only at least 2 days before it starts. Any paid refund is handled by the tournament organizer.")) return;

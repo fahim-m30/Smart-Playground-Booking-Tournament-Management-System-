@@ -41,7 +41,7 @@ function nav(role) {
     ];
     if (role === "customer") items.splice(1, 0, { label: "Find playgrounds", icon: "F", href: "playgrounds.html" }, { label: "Book a slot", icon: "B", href: "booking.html" }, { label: "My bookings", icon: "M", href: "management.html?tab=Bookings" });
     if (role === "playground-admin") items.push({ label: "Venue management", icon: "G", href: "management.html?tab=Playgrounds" });
-    if (role === "super-admin") items.push({ label: "Playground search", icon: "F", href: "playgrounds.html" }, { label: "Admin control", icon: "A", href: "management.html?tab=Users" });
+    if (role === "super-admin") items.push({ label: "User control", icon: "U", href: "management.html?tab=Users" }, { label: "Playground control", icon: "G", href: "management.html?tab=Playgrounds" });
     $("#side-nav").innerHTML = items.map((item) => `<a class="${item.href === "dashboard.html" ? "active" : ""}" href="${item.href}">${item.icon} &nbsp;${item.label}</a>`).join("");
 }
 
@@ -104,12 +104,13 @@ function availabilityByPlayground(playgrounds, slots) {
     }).join("")}</section>`;
 }
 
-function professionalAdminView(role, tournaments, playgrounds, slots) {
+function professionalAdminView(role, tournaments, playgrounds, slots, users = []) {
     const superAdmin = role === "super-admin";
     const live = tournaments.filter(isLiveTournament);
     const activeSlots = slots.filter((slot) => slot.isActive).length;
     const venueRows = rows(playgrounds.slice(0, 5), (ground) => `<div class="list-row"><div><div class="item-title">${escapeHTML(ground.name)}</div><p class="item-meta">${escapeHTML(ground.address || ground.area || "Location unavailable")}</p></div><span class="status">${escapeHTML(ground.status || "Active")}</span></div>`, "No venues have been added yet.");
-    return `<section class="stats"><article class="stat-card"><span>${superAdmin ? "Platform tournaments" : "Live tournaments"}</span><strong>${live.length}</strong></article><article class="stat-card"><span>${superAdmin ? "Listed playgrounds" : "My playgrounds"}</span><strong>${playgrounds.length}</strong></article><article class="stat-card"><span>${superAdmin ? "Scheduled activity" : "Active slot schedules"}</span><strong>${superAdmin ? live.length : activeSlots}</strong></article></section><div class="section-heading"><div><h2>Live tournament feed</h2><p>Finished tournaments are automatically removed from this dashboard.</p></div><a class="text-link" href="tournament.html">Open tournaments →</a></div>${ticker(live)}${!superAdmin ? `<div class="section-heading"><div><h2>Availability by playground</h2><p>Each venue has a separate schedule for clearer operations.</p></div><a class="text-link" href="management.html?tab=Slots">Manage schedules →</a></div>${availabilityByPlayground(playgrounds, slots)}` : ""}<section class="split-grid"><article class="panel"><h2 class="panel-title">${superAdmin ? "Recent tournaments" : "Tournament activity"}</h2>${rows(live.slice(0, 5), tournamentRow)}</article><article class="panel"><h2 class="panel-title">${superAdmin ? "Venue overview" : "Venue status"}</h2>${venueRows}</article></section>`;
+    const stats = superAdmin ? `<section class="stats"><article class="stat-card"><span>Customers</span><strong>${users.filter((item) => item.role === "customer").length}</strong></article><article class="stat-card"><span>Playgrounds</span><strong>${playgrounds.length}</strong></article><article class="stat-card"><span>Playground admins</span><strong>${users.filter((item) => item.role === "playground-admin").length}</strong></article></section>` : `<section class="stats"><article class="stat-card"><span>Live tournaments</span><strong>${live.length}</strong></article><article class="stat-card"><span>My playgrounds</span><strong>${playgrounds.length}</strong></article><article class="stat-card"><span>Active slot schedules</span><strong>${activeSlots}</strong></article></section>`;
+    return `${stats}<div class="section-heading"><div><h2>Live tournament feed</h2><p>Finished tournaments are automatically removed from this dashboard.</p></div><a class="text-link" href="tournament.html">Open tournaments →</a></div>${ticker(live)}${!superAdmin ? `<div class="section-heading"><div><h2>Availability by playground</h2><p>Each venue has a separate schedule for clearer operations.</p></div><a class="text-link" href="management.html?tab=Slots">Manage schedules →</a></div>${availabilityByPlayground(playgrounds, slots)}` : ""}<section class="split-grid"><article class="panel"><h2 class="panel-title">${superAdmin ? "Recent tournaments" : "Tournament activity"}</h2>${rows(live.slice(0, 5), tournamentRow)}</article><article class="panel"><h2 class="panel-title">${superAdmin ? "Venue overview" : "Venue status"}</h2>${venueRows}</article></section>`;
 }
 
 function incomeDashboard(income) {
@@ -191,6 +192,7 @@ async function init() {
         }
         const playgrounds = await api(role === "playground-admin" ? "/playgrounds/my-playgrounds" : "/playgrounds");
         const tournaments = await tournamentRequest;
+        const users = role === "super-admin" ? await api("/users") : [];
         const matches = await getTournamentMatches(tournaments);
         let slots = [];
         if (role === "playground-admin") {
@@ -201,7 +203,7 @@ async function init() {
             slots = details.flatMap((detail) => detail.slots);
         }
         const income = role === "playground-admin" ? await api("/payments/playground-admin/income").catch(() => null) : null;
-        $("#dashboard-body").innerHTML = incomeDashboard(income) + professionalAdminView(role, tournaments, playgrounds, slots);
+        $("#dashboard-body").innerHTML = incomeDashboard(income) + professionalAdminView(role, tournaments, playgrounds, slots, users);
         mountMatchResults(matches);
     } catch (error) {
         $("#dashboard-body").innerHTML = `<div class="empty-state">We could not load your dashboard data. Please refresh, or make sure the backend server is running.</div>`;

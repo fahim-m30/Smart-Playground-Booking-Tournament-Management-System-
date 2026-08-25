@@ -101,7 +101,7 @@ const registerUser = async ({
     const normalizedEmail = normalizeEmail(email);
     const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) {
-        throw new Error("Email already exists.");
+        throw new Error("An account already exists with this email address. Please log in instead.");
     }
 
     const profileImageDataUrl = convertFileToDataUrl(profileImage);
@@ -147,7 +147,7 @@ const registerPlaygroundOwner = async ({
     const normalizedEmail = normalizeEmail(email);
     const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) {
-        throw new Error("Email already exists.");
+        throw new Error("An account already exists with this email address. Please log in instead.");
     }
 
     const nidFrontImageDataUrl = convertFileToDataUrl(nidFrontImage);

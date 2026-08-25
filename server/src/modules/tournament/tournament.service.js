@@ -159,18 +159,21 @@ const respondToVenueApproval = async (tournamentId, adminId, decision) => {
 // Get All Tournaments
 // ===================================================
 
-// A tournament must never remain "Upcoming" once its start day has begun.
-// This runs while reading tournament data, so it also corrects older records
-// that were created before the lifecycle update existed.
+// Tournament stages are driven by actual fixtures, never only by the date.
+// This also repairs older records that were marked "Group Stage" before any
+// match was generated.
 const refreshTournamentStatuses = async () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    await Tournament.updateMany({
+    const prematureGroupStages = await Tournament.find({
         isDeleted: false,
-        status: "Upcoming",
-        startDate: { $lte: today },
-    }, { $set: { status: "Group Stage" } });
+        status: "Group Stage",
+    }).select("_id");
+    for (const tournament of prematureGroupStages) {
+        const hasFixture = await TournamentMatch.exists({ tournament: tournament._id });
+        if (!hasFixture) await Tournament.updateOne({ _id: tournament._id }, { $set: { status: "Upcoming" } });
+    }
 
     await Tournament.updateMany({
         isDeleted: false,

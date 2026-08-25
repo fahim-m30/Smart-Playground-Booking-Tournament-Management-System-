@@ -32,6 +32,8 @@ const router = express.Router();
 router.post(
     "/",
     verifyToken,
+    // Customers can register a team, but only platform/venue operators can
+    // publish a tournament.
     authorize("super-admin", "playground-admin"),
     validate(createTournamentValidation),
     tournamentController.createTournament

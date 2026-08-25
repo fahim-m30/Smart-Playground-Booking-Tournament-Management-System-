@@ -30,10 +30,10 @@ document.head.insertAdjacentHTML("beforeend", '<link rel="stylesheet" href="asse
 if (!token || !role) location.replace("login.html");
 
 const tabs = role === "customer"
-    ? ["Profile", "Reports"]
+    ? ["Profile"]
     : role === "playground-admin"
         ? ["Profile", "Playgrounds", "Slots", "Bookings", "Income", "Reports"]
-        : ["Profile", "Reports", "Users", "Playgrounds"];
+        : ["Profile", "Users", "Playgrounds"];
 const requestedTab = new URLSearchParams(location.search).get("tab");
 const initialTab = tabs.includes(requestedTab) ? requestedTab : tabs[0];
 
@@ -149,7 +149,7 @@ async function profile() {
             }
             me = { ...me, ...updatedUser };
             localStorage.setItem("authUser", JSON.stringify(me));
-            say("Profile updated.");
+            say("Profile saved successfully. Your account details are now up to date.");
             profile();
         } catch (error) {
             say(error.message, true);
@@ -358,9 +358,23 @@ window.block = async (id, blocked) => {
 async function superGrounds() {
     const grounds = await R("/playgrounds/admin/all");
     $("#panel").innerHTML = grounds.map((ground) => '<article class="card"><span class="badge">' + (ground.isApproved ? "Approved" : "Pending") + " · " + E(ground.status) + "</span><h3>" + E(ground.name) + "</h3><p>" + E(ground.playgroundAdmin?.name || "Owner") + " · " + E(ground.address) + '</p><div class="card-foot">' + (!ground.isApproved ? '<button onclick="groundAction(&quot;' + ground._id + '&quot;,&quot;approve&quot;)">Approve</button>' : "") + '<button class="alt" onclick="groundAction(&quot;' + ground._id + '&quot;,&quot;' + (ground.status === "Active" ? "deactivate" : "activate") + '&quot;)">' + (ground.status === "Active" ? "Deactivate" : "Activate") + "</button></div></article>").join("");
+    $("#panel").querySelectorAll(".card").forEach((card, index) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "alt";
+        button.textContent = "View details";
+        button.onclick = () => viewGround(grounds[index]._id);
+        card.querySelector(".card-foot").prepend(button);
+    });
 }
 window.groundAction = async (id, action) => {
     try { await R("/playgrounds/" + id + "/" + action, { method: "PATCH" }); say("Playground " + action + "d."); superGrounds(); } catch (error) { say(error.message, true); }
+};
+window.viewGround = async (id) => {
+    try {
+        const ground = await R("/playgrounds/" + id);
+        say(`${ground.name} — ${ground.address || "Address unavailable"}. ${ground.description || "No description provided."}`);
+    } catch (error) { say(error.message, true); }
 };
 
 const loaders = { Profile: profile, Reports: role === "super-admin" ? adminReports : reports, Playgrounds: role === "super-admin" ? superGrounds : myGrounds, Slots: dailySlots, Bookings: bookings, Income: income, Users: users };
