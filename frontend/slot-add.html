@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TURF | Slot schedules</title>
-    <script>location.replace("management.html?tab=Slots");</script>
     <link rel="icon" type="image/png" href="assets/images/favicon.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -51,24 +50,14 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="sportType">Sport Type</label>
-                        <select id="sportType" name="sportType" required>
-                            <option value="">Select sport</option>
-                            <option value="Football">Football</option>
-                            <option value="Cricket">Cricket</option>
-                            <option value="Badminton">Badminton</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
                         <label for="slotsPerDay">Slots Per Day</label>
-                        <input type="number" id="slotsPerDay" name="slotsPerDay" min="1" max="24" placeholder="e.g. 11" required>
+                        <input type="number" id="slotsPerDay" name="slotsPerDay" min="1" max="24" value="8" required>
                         <span class="field-hint">How many time slots will be available each day for this sport.</span>
                     </div>
 
                     <div class="form-group">
                         <label for="slotDuration">Slot Duration (minutes)</label>
-                        <input type="number" id="slotDuration" name="slotDuration" min="30" step="30" placeholder="e.g. 60" required>
+                        <input type="number" id="slotDuration" name="slotDuration" min="30" step="15" value="60" required>
                         <span class="field-hint">Duration of each slot in minutes (e.g., 60 for 1 hour, 90 for 1.5 hours).</span>
                     </div>
 
@@ -105,7 +94,7 @@
                     </div>
 
                     <div class="form-actions">
-                        <button type="submit" class="btn-primary">Generate Slots</button>
+                        <button type="submit" class="btn-primary">Create schedule</button>
                         <p id="slot-form-message" class="form-message"></p>
                     </div>
                 </form>

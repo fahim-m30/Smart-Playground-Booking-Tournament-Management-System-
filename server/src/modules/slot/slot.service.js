@@ -75,11 +75,43 @@ const createSlots = async (payload, adminId) => {
     if (!Array.isArray(payload.slots) || payload.slots.length === 0 || payload.slots.length > 168) {
         throw new Error("Provide between 1 and 168 slots in a schedule.");
     }
-    const created = [];
+    const keys = new Set();
     for (const slot of payload.slots) {
-        created.push(await createSlot(slot, adminId));
+        assertValidRange(slot);
+        const key = `${slot.playground}:${slot.dayOfWeek}:${slot.startTime}:${slot.endTime}`;
+        if (keys.has(key)) throw new Error("Your schedule contains duplicate slots.");
+        keys.add(key);
     }
-    return created;
+
+    const playgroundIds = [...new Set(payload.slots.map((slot) => String(slot.playground)))];
+    if (playgroundIds.length !== 1) throw new Error("Create a schedule for one playground at a time.");
+
+    const playground = await Playground.findOne({ _id: playgroundIds[0], isDeleted: false });
+    if (!playground) throw new Error("Playground not found.");
+    if (playground.playgroundAdmin.toString() !== adminId) {
+        throw new Error("You are not authorized to manage slots for this playground.");
+    }
+
+    const existing = await Slot.find({
+        playground: playground._id,
+        isDeleted: false,
+        $or: payload.slots.map((slot) => ({
+            dayOfWeek: slot.dayOfWeek,
+            startTime: slot.startTime,
+            endTime: slot.endTime,
+        })),
+    }).select("dayOfWeek startTime endTime");
+    if (existing.length) throw new Error("One or more slots already exist. Review the existing schedule before adding new slots.");
+
+    return Slot.insertMany(payload.slots.map((slot) => ({
+        playground: playground._id,
+        dayOfWeek: slot.dayOfWeek,
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+        durationMinutes: slot.durationMinutes || timeToMinutes(slot.endTime) - timeToMinutes(slot.startTime),
+        price: slot.price ?? null,
+        isActive: slot.isActive !== undefined ? slot.isActive : true,
+    })));
 };
 
 // ===================================================

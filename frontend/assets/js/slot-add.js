@@ -1,6 +1,8 @@
 const API_ROOT = "https://smart-playground-booking-tournament.onrender.com/api/v1";
 const token = localStorage.getItem("authToken");
 const user = safeUser();
+const form = document.getElementById("slot-form");
+const messageEl = document.getElementById("slot-form-message");
 
 function safeUser() {
     try { return JSON.parse(localStorage.getItem("authUser")) || null; }
@@ -31,7 +33,12 @@ async function api(path) {
 }
 
 async function loadPlaygrounds() {
+    submitButton.disabled = true;
     try {
+        if (!token || user?.role !== "playground-admin") {
+            location.replace("login.html");
+            return;
+        }
         const grounds = await api("/playgrounds/my-playgrounds");
         const select = document.getElementById("playground");
 
@@ -47,26 +54,27 @@ async function loadPlaygrounds() {
         grounds.forEach(g => {
             const option = document.createElement("option");
             option.value = g._id;
-            option.textContent = escapeHTML(g.name);
+            option.textContent = `${g.name} · ${g.sportType || "Sport"}`;
             select.appendChild(option);
         });
+
+        if (grounds.length === 1) select.value = grounds[0]._id;
     } catch (error) {
         console.error("Failed to load playgrounds:", error);
+        messageEl.textContent = "Could not load your playgrounds. Please refresh and try again.";
     }
 }
 
-document.getElementById("slot-form").addEventListener("submit", async (event) => {
+form.addEventListener("submit", async (event) => {
     event.preventDefault();
-    const form = event.currentTarget;
-    const messageEl = document.getElementById("slot-form-message");
     const payload = Object.fromEntries(new FormData(form));
+    const submitButton = form.querySelector('button[type="submit"]');
 
     const openingTime = payload.openingTime;
     const closingTime = payload.closingTime;
     const slotsPerDay = parseInt(payload.slotsPerDay, 10);
     const slotDuration = parseInt(payload.slotDuration, 10);
     const playgroundId = payload.playground;
-    const sportType = payload.sportType;
     const dayType = payload.dayType || "all";
     const pricePerSlot = Number(payload.pricePerSlot);
     const isActive = payload.isActive === "true";
@@ -135,10 +143,12 @@ document.getElementById("slot-form").addEventListener("submit", async (event) =>
         });
         const result = await response.json();
         if (!response.ok) throw new Error(result.message);
-        messageEl.textContent = `${slots.length} slots generated successfully.`;
+        messageEl.textContent = `${slots.length} slots created successfully. You can manage them from Venue management.`;
         form.reset();
     } catch (error) {
         messageEl.textContent = error.message || "Could not generate slots.";
+    } finally {
+        submitButton.disabled = false;
     }
 });
 
