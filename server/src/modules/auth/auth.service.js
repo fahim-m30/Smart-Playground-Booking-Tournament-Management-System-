@@ -105,7 +105,7 @@ const registerUser = async ({
 
     const profileImageDataUrl = convertFileToDataUrl(profileImage);
 
-    await PendingRegistration.create({
+    const pendingRegistration = await PendingRegistration.create({
         name,
         email: normalizedEmail,
         password: await hashPassword(password),
@@ -114,7 +114,13 @@ const registerUser = async ({
         profileImage: profileImageDataUrl,
     });
 
-    await sendOTP(normalizedEmail);
+    try {
+        await sendOTP(normalizedEmail);
+    } catch (error) {
+        // Do not leave the email locked when the SMTP provider rejects the OTP.
+        await PendingRegistration.deleteOne({ _id: pendingRegistration._id });
+        throw error;
+    }
 
     return {
         success: true,
@@ -160,7 +166,7 @@ const registerPlaygroundOwner = async ({
     const nidBackImageDataUrl = convertFileToDataUrl(nidBackImage);
     const profileImageDataUrl = convertFileToDataUrl(profileImage);
 
-    await PendingRegistration.create({
+    const pendingRegistration = await PendingRegistration.create({
         name,
         email: normalizedEmail,
         password: await hashPassword(password),
@@ -172,7 +178,13 @@ const registerPlaygroundOwner = async ({
         nidBackImage: nidBackImageDataUrl,
     });
 
-    await sendOTP(normalizedEmail);
+    try {
+        await sendOTP(normalizedEmail);
+    } catch (error) {
+        // Do not leave the email locked when the SMTP provider rejects the OTP.
+        await PendingRegistration.deleteOne({ _id: pendingRegistration._id });
+        throw error;
+    }
 
     return {
         success: true,
