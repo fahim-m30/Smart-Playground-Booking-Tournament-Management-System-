@@ -104,7 +104,11 @@ if (registerForm) {
         if (registrationSubmitting) return;
         registrationSubmitting = true;
         const submitButton = registerForm.querySelector('button[type="submit"]');
-        if (submitButton) submitButton.disabled = true;
+        const originalButtonText = submitButton?.textContent;
+        if (submitButton) {
+            submitButton.disabled = true;
+            submitButton.textContent = "Sending OTP…";
+        }
 
         const formData = new FormData();
         formData.append("name", name);
@@ -140,7 +144,10 @@ if (registerForm) {
                 showMessage(messageContainer, "Unable to connect to the server.");
             } finally {
                 registrationSubmitting = false;
-                if (submitButton) submitButton.disabled = false;
+                if (submitButton) {
+                    submitButton.disabled = false;
+                    submitButton.textContent = originalButtonText;
+                }
             }
             return;
         }
@@ -160,7 +167,10 @@ if (registerForm) {
             showMessage(messageContainer, "Unable to connect to the server.");
         } finally {
             registrationSubmitting = false;
-            if (submitButton) submitButton.disabled = false;
+            if (submitButton) {
+                submitButton.disabled = false;
+                submitButton.textContent = originalButtonText;
+            }
         }
     });
 }

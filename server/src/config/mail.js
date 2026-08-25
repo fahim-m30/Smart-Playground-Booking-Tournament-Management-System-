@@ -2,63 +2,54 @@
  * ==============================================================
  * Project : Smart Playground Booking & Tournament Management System
  * File    : mail.js
- * Purpose : Nodemailer Configuration
- * Author  : Fahim Muntasir
+ * Purpose : Deliver transactional email through Brevo's HTTPS API
  * ==============================================================
  */
 
-const nodemailer = require("nodemailer");
-const dns = require("node:dns");
-const net = require("node:net");
+const axios = require("axios");
 
-// Render's SMTP route may resolve Gmail to IPv6 first, while the service has
-// no IPv6 egress. Prefer IPv4 so the SMTP connection can be established.
-dns.setDefaultResultOrder("ipv4first");
+const BREVO_API_URL = "https://api.brevo.com/v3/smtp/email";
 
-const getGmailIpv4Socket = (options, callback) => {
-    dns.resolve4("smtp.gmail.com", (resolveError, addresses) => {
-        if (resolveError || !addresses?.length) {
-            callback(resolveError || new Error("No IPv4 address found for smtp.gmail.com"));
-            return;
-        }
+const sendMail = async ({ to, subject, text, html }) => {
+    const apiKey = process.env.BREVO_API_KEY;
+    const senderEmail = process.env.BREVO_SENDER_EMAIL || process.env.EMAIL_USER;
+    const senderName = process.env.BREVO_SENDER_NAME || "Smart Playground";
 
-        const socket = net.connect({
-            host: addresses[0],
-            port: options.port,
-            family: 4,
-        });
+    if (!apiKey) {
+        throw new Error("BREVO_API_KEY is missing from the server environment.");
+    }
 
-        const onError = (error) => callback(error);
-        socket.once("connect", () => {
-            socket.removeListener("error", onError);
-            callback(null, { connection: socket });
-        });
-        socket.once("error", onError);
-    });
+    if (!senderEmail) {
+        throw new Error("BREVO_SENDER_EMAIL is missing from the server environment.");
+    }
+
+    const recipient = typeof to === "string" ? { email: to } : to;
+    try {
+        await axios.post(
+            BREVO_API_URL,
+            {
+                sender: {
+                    name: senderName,
+                    email: senderEmail,
+                },
+                to: [recipient],
+                subject,
+                textContent: text,
+                htmlContent: html,
+            },
+            {
+                headers: {
+                    "api-key": apiKey,
+                    "content-type": "application/json",
+                },
+                timeout: 15000,
+            }
+        );
+    } catch (error) {
+        const status = error.response?.status;
+        const message = error.response?.data?.message || error.message;
+        throw new Error(`Brevo email delivery failed${status ? ` (${status})` : ""}: ${message}`);
+    }
 };
 
-// ===============================
-// Create Mail Transporter
-// ===============================
-
-const transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    // STARTTLS on 587 avoids the blocked/timing-out implicit TLS route (465)
-    // seen from the production host.
-    port: Number(process.env.SMTP_PORT) || 587,
-    secure: false,
-    requireTLS: true,
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-    },
-    tls: {
-        rejectUnauthorized: false,
-    },
-    connectionTimeout: 15000,
-    greetingTimeout: 15000,
-    socketTimeout: 30000,
-    getSocket: getGmailIpv4Socket,
-});
-
-module.exports = transporter;
+module.exports = { sendMail };
