@@ -169,7 +169,11 @@ const getSingleReport = async (reportId, requesterId, isSuperAdmin = false) => {
 // Update Report Status (Super Admin)
 // ===================================================
 
-const updateReportStatus = async (reportId, adminId, payload) => {
+const updateReportStatus = async (reportId, actor, payload) => {
+    if (actor?.role !== "super-admin") {
+        throw new Error("Only a super administrator can update a report status.");
+    }
+
     const report = await Report.findOne({
         _id: reportId,
         isDeleted: false,
@@ -189,7 +193,7 @@ const updateReportStatus = async (reportId, adminId, payload) => {
         report.adminNote = payload.adminNote;
     }
 
-    report.reviewedBy = adminId;
+    report.reviewedBy = actor.userId;
     report.reviewedAt = new Date();
 
     await report.save();

@@ -106,7 +106,7 @@ const getSingleReportController = async (req, res) => {
 
 const updateReportStatusController = async (req, res) => {
     try {
-        const result = await updateReportStatus(req.params.id, req.user.userId, req.body);
+        const result = await updateReportStatus(req.params.id, req.user, req.body);
 
         return res.status(200).json({
             success: true,
