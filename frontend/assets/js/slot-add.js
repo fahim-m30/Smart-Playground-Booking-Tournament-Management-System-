@@ -11,6 +11,16 @@ const formCard = document.getElementById("slot-form-card");
 
 function safeUser() { try { return JSON.parse(localStorage.getItem("authUser")) || null; } catch { return null; } }
 function setMessage(message = "", type = "") { messageEl.textContent = message; messageEl.className = `form-message ${type}`; }
+function showPrerequisite(title = "No playground found", text = "You need to add a playground first before creating slots.") {
+    formCard.hidden = true;
+    warningCard.hidden = false;
+    warningCard.querySelector("h3").textContent = title;
+    warningCard.querySelector("p").textContent = text;
+}
+function showSlotForm() {
+    warningCard.hidden = true;
+    formCard.hidden = false;
+}
 
 async function authFetch(path, options = {}) {
     const response = await fetch(`${API_ROOT}${path}`, { ...options, headers: { Authorization: `Bearer ${token}`, ...(options.headers || {}) } });
@@ -42,23 +52,19 @@ function updatePreview() {
 async function loadPlaygrounds() {
     if (!token || safeUser()?.role !== "playground-admin") return location.replace("login.html");
     submitButton.disabled = true;
-    warningCard.hidden = true;
-    formCard.hidden = true;
+    showPrerequisite();
     playgroundSelect.innerHTML = '<option value="">Choose one of your playgrounds</option>';
     try {
         const grounds = (await authFetch("/playgrounds/my-playgrounds")).data || [];
         if (!grounds.length) {
-            warningCard.hidden = false;
             return;
         }
         grounds.forEach((ground) => playgroundSelect.add(new Option(`${ground.name} · ${ground.sportType || "Sport"}`, ground._id)));
         if (grounds.length === 1) playgroundSelect.value = grounds[0]._id;
-        formCard.hidden = false;
+        showSlotForm();
         updatePreview();
     } catch (error) {
-        warningCard.hidden = false;
-        warningCard.querySelector("h3").textContent = "Could not load your playgrounds";
-        warningCard.querySelector("p").textContent = error.message || "Please refresh the page or add a playground first.";
+        showPrerequisite("Could not load your playgrounds", error.message || "Please refresh the page or add a playground first.");
     } finally { submitButton.disabled = false; }
 }
 

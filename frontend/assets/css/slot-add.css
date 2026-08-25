@@ -257,6 +257,11 @@ body {
     color: var(--green-dark);
 }
 
+#prerequisite-warning[hidden],
+#slot-form-card[hidden] {
+    display: none !important;
+}
+
 .form-message.error { color: #b42318; }
 .form-message.loading { color: #475569; }
 .form-message.success { color: var(--green-dark); }
