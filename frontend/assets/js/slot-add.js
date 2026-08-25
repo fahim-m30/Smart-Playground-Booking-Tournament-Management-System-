@@ -1,155 +1,77 @@
 const API_ROOT = "https://smart-playground-booking-tournament.onrender.com/api/v1";
 const token = localStorage.getItem("authToken");
-const user = safeUser();
 const form = document.getElementById("slot-form");
 const messageEl = document.getElementById("slot-form-message");
+const submitButton = form.querySelector('button[type="submit"]');
+const playgroundSelect = document.getElementById("playground");
+const previewEl = document.getElementById("schedule-preview");
+const previewCount = document.getElementById("preview-count");
 
-function safeUser() {
-    try { return JSON.parse(localStorage.getItem("authUser")) || null; }
-    catch { return null; }
+function safeUser() { try { return JSON.parse(localStorage.getItem("authUser")) || null; } catch { return null; } }
+function setMessage(message = "", type = "") { messageEl.textContent = message; messageEl.className = `form-message ${type}`; }
+
+async function authFetch(path, options = {}) {
+    const response = await fetch(`${API_ROOT}${path}`, { ...options, headers: { Authorization: `Bearer ${token}`, ...(options.headers || {}) } });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.message || "Something went wrong. Please try again.");
+    return body;
 }
 
-function escapeHTML(value = "") {
-    const box = document.createElement("div");
-    box.textContent = value;
-    return box.innerHTML;
+function selectedDays(type) { return type === "weekdays" ? [0, 1, 2, 3, 4] : type === "weekend" ? [5, 6] : [0, 1, 2, 3, 4, 5, 6]; }
+function toMinutes(value) { const [hour, minute] = String(value || "").split(":").map(Number); return Number.isInteger(hour) && Number.isInteger(minute) ? hour * 60 + minute : NaN; }
+function formatTime(value) { return `${String(Math.floor(value / 60)).padStart(2, "0")}:${String(value % 60).padStart(2, "0")}`; }
+
+function buildSchedule() {
+    const values = Object.fromEntries(new FormData(form));
+    const start = toMinutes(values.openingTime), end = toMinutes(values.closingTime), duration = Number(values.slotDuration), count = Number(values.slotsPerDay);
+    if (!Number.isInteger(duration) || duration < 30 || duration > 360 || !Number.isInteger(count) || count < 1 || count > 24 || end <= start || count * duration > end - start) return [];
+    return selectedDays(values.dayType).flatMap((dayOfWeek) => Array.from({ length: count }, (_, index) => {
+        const slotStart = start + index * duration;
+        return { dayOfWeek, startTime: formatTime(slotStart), endTime: formatTime(slotStart + duration), durationMinutes: duration };
+    }));
 }
 
-function authFetch(path, options = {}) {
-    return fetch(`${API_ROOT}${path}`, {
-        ...options,
-        headers: {
-            Authorization: `Bearer ${token}`,
-            ...(options.headers || {})
-        }
-    });
-}
-
-async function api(path) {
-    const res = await authFetch(path);
-    if (!res.ok) throw new Error("Could not load data");
-    const json = await res.json();
-    return json.data || [];
+function updatePreview() {
+    const slots = buildSchedule();
+    previewCount.textContent = slots.length ? `${slots.length} slots will be created` : "Check the schedule settings";
+    previewEl.innerHTML = slots.length ? slots.slice(0, 8).map((slot) => `<span>${slot.startTime} – ${slot.endTime}</span>`).join("") + (slots.length > 8 ? `<span>+${slots.length - 8} more</span>` : "") : "<span>Set operating hours, duration, and slot count to preview the schedule.</span>";
 }
 
 async function loadPlaygrounds() {
+    if (!token || safeUser()?.role !== "playground-admin") return location.replace("login.html");
     submitButton.disabled = true;
     try {
-        if (!token || user?.role !== "playground-admin") {
-            location.replace("login.html");
-            return;
-        }
-        const grounds = await api("/playgrounds/my-playgrounds");
-        const select = document.getElementById("playground");
-
-        if (!grounds.length) {
-            document.getElementById("prerequisite-warning").hidden = false;
-            document.getElementById("slot-form-card").hidden = true;
-            return;
-        }
-
-        document.getElementById("prerequisite-warning").hidden = true;
+        const grounds = (await authFetch("/playgrounds/my-playgrounds")).data || [];
+        if (!grounds.length) return document.getElementById("prerequisite-warning").hidden = false;
+        grounds.forEach((ground) => playgroundSelect.add(new Option(`${ground.name} · ${ground.sportType || "Sport"}`, ground._id)));
+        if (grounds.length === 1) playgroundSelect.value = grounds[0]._id;
         document.getElementById("slot-form-card").hidden = false;
-
-        grounds.forEach(g => {
-            const option = document.createElement("option");
-            option.value = g._id;
-            option.textContent = `${g.name} · ${g.sportType || "Sport"}`;
-            select.appendChild(option);
-        });
-
-        if (grounds.length === 1) select.value = grounds[0]._id;
+        updatePreview();
     } catch (error) {
-        console.error("Failed to load playgrounds:", error);
-        messageEl.textContent = "Could not load your playgrounds. Please refresh and try again.";
-    }
+        setMessage(error.message || "Could not load your playgrounds.", "error");
+        document.getElementById("slot-form-card").hidden = false;
+    } finally { submitButton.disabled = false; }
 }
 
+form.addEventListener("input", updatePreview);
+form.addEventListener("change", updatePreview);
 form.addEventListener("submit", async (event) => {
     event.preventDefault();
-    const payload = Object.fromEntries(new FormData(form));
-    const submitButton = form.querySelector('button[type="submit"]');
-
-    const openingTime = payload.openingTime;
-    const closingTime = payload.closingTime;
-    const slotsPerDay = parseInt(payload.slotsPerDay, 10);
-    const slotDuration = parseInt(payload.slotDuration, 10);
-    const playgroundId = payload.playground;
-    const dayType = payload.dayType || "all";
-    const pricePerSlot = Number(payload.pricePerSlot);
-    const isActive = payload.isActive === "true";
-
-    if (!playgroundId) {
-        messageEl.textContent = "Please select a playground.";
-        return;
-    }
-
-    if (!Number.isInteger(slotsPerDay) || slotsPerDay < 1 || !Number.isInteger(slotDuration) || slotDuration < 30) {
-        messageEl.textContent = "Choose a valid slot count and duration.";
-        return;
-    }
-    const openingMinutes = openingTime.split(":").reduce((total, value, index) => total + Number(value) * (index === 0 ? 60 : 1), 0);
-    const closingMinutes = closingTime.split(":").reduce((total, value, index) => total + Number(value) * (index === 0 ? 60 : 1), 0);
-    if (closingMinutes <= openingMinutes || slotsPerDay * slotDuration > closingMinutes - openingMinutes) {
-        messageEl.textContent = "The selected number of slots does not fit between opening and closing time.";
-        return;
-    }
-
-    messageEl.textContent = "Generating slots…";
-
-    const days = [];
-    if (dayType === "all") {
-        for (let i = 0; i < 7; i++) days.push(i);
-    } else if (dayType === "weekdays") {
-        days.push(0, 1, 2, 3, 4);
-    } else {
-        days.push(5, 6);
-    }
-
-    const slots = [];
-    for (const day of days) {
-        const [openH, openM] = openingTime.split(":").map(Number);
-        const [closeH, closeM] = closingTime.split(":").map(Number);
-        let current = openH * 60 + openM;
-        const end = closeH * 60 + closeM;
-
-        for (let i = 0; i < slotsPerDay && (current + slotDuration) <= end; i++) {
-            const startH = Math.floor(current / 60);
-            const startM = current % 60;
-            const slotEnd = current + slotDuration;
-            const endH = Math.floor(slotEnd / 60);
-            const endM = slotEnd % 60;
-
-            const fmt = (h, m) => `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-            slots.push({
-                playground: playgroundId,
-                dayOfWeek: day,
-                startTime: fmt(startH, startM),
-                endTime: fmt(endH, endM),
-                durationMinutes: slotDuration,
-                price: pricePerSlot,
-                isActive
-            });
-
-            current = slotEnd;
-        }
-    }
-
+    const values = Object.fromEntries(new FormData(form)), slots = buildSchedule(), price = Number(values.pricePerSlot);
+    if (!values.playground) return setMessage("Please select a playground.", "error");
+    if (!slots.length) return setMessage("Slots must fit within the selected operating hours.", "error");
+    if (!Number.isFinite(price) || price < 0) return setMessage("Enter a valid non-negative price per slot.", "error");
+    submitButton.disabled = true;
+    setMessage("Creating your recurring schedule…", "loading");
     try {
-        const response = await authFetch("/slots/bulk", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ slots })
-        });
-        const result = await response.json();
-        if (!response.ok) throw new Error(result.message);
-        messageEl.textContent = `${slots.length} slots created successfully. You can manage them from Venue management.`;
+        const schedule = slots.map((slot) => ({ ...slot, playground: values.playground, price, isActive: values.isActive === "true" }));
+        const result = await authFetch("/slots/bulk", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slots: schedule }) });
+        setMessage(result.message || `${schedule.length} slots created successfully.`, "success");
         form.reset();
-    } catch (error) {
-        messageEl.textContent = error.message || "Could not generate slots.";
-    } finally {
-        submitButton.disabled = false;
-    }
+        if (playgroundSelect.options.length === 2) playgroundSelect.selectedIndex = 1;
+        updatePreview();
+    } catch (error) { setMessage(error.message || "Could not create the schedule.", "error"); }
+    finally { submitButton.disabled = false; }
 });
 
 loadPlaygrounds();

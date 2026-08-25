@@ -12,9 +12,14 @@ const Playground = require("../playground/playground.model");
 const Booking = require("../booking/booking.model");
 
 const timeToMinutes = (time) => {
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(String(time))) return NaN;
     const [hour, minute] = String(time).split(":").map(Number);
     return hour * 60 + minute;
 };
+
+const overlaps = (first, second) =>
+    timeToMinutes(first.startTime) < timeToMinutes(second.endTime)
+    && timeToMinutes(first.endTime) > timeToMinutes(second.startTime);
 
 const assertValidRange = ({ startTime, endTime, durationMinutes }) => {
     const start = timeToMinutes(startTime);
@@ -46,16 +51,14 @@ const createSlot = async (payload, adminId) => {
         throw new Error("You are not authorized to manage slots for this playground.");
     }
 
-    const existingSlot = await Slot.findOne({
+    const existingSlots = await Slot.find({
         playground: payload.playground,
         dayOfWeek: payload.dayOfWeek,
-        startTime: payload.startTime,
-        endTime: payload.endTime,
         isDeleted: false,
     });
 
-    if (existingSlot) {
-        throw new Error("Slot already exists for this playground on this day.");
+    if (existingSlots.some((slot) => overlaps(slot, payload))) {
+        throw new Error("This slot overlaps an existing slot for the selected day.");
     }
 
     const slot = await Slot.create({
@@ -83,6 +86,16 @@ const createSlots = async (payload, adminId) => {
         keys.add(key);
     }
 
+    for (let index = 0; index < payload.slots.length; index += 1) {
+        for (let compareIndex = index + 1; compareIndex < payload.slots.length; compareIndex += 1) {
+            const first = payload.slots[index];
+            const second = payload.slots[compareIndex];
+            if (String(first.playground) === String(second.playground) && first.dayOfWeek === second.dayOfWeek && overlaps(first, second)) {
+                throw new Error("Your schedule contains overlapping slots.");
+            }
+        }
+    }
+
     const playgroundIds = [...new Set(payload.slots.map((slot) => String(slot.playground)))];
     if (playgroundIds.length !== 1) throw new Error("Create a schedule for one playground at a time.");
 
@@ -95,13 +108,10 @@ const createSlots = async (payload, adminId) => {
     const existing = await Slot.find({
         playground: playground._id,
         isDeleted: false,
-        $or: payload.slots.map((slot) => ({
-            dayOfWeek: slot.dayOfWeek,
-            startTime: slot.startTime,
-            endTime: slot.endTime,
-        })),
     }).select("dayOfWeek startTime endTime");
-    if (existing.length) throw new Error("One or more slots already exist. Review the existing schedule before adding new slots.");
+    if (payload.slots.some((slot) => existing.some((saved) => saved.dayOfWeek === slot.dayOfWeek && overlaps(saved, slot)))) {
+        throw new Error("One or more slots overlap an existing schedule. Review existing slots before creating new ones.");
+    }
 
     return Slot.insertMany(payload.slots.map((slot) => ({
         playground: playground._id,
@@ -193,6 +203,21 @@ const updateSlot = async (slotId, payload, adminId) => {
         endTime: payload.endTime || slot.endTime,
         durationMinutes: payload.durationMinutes || slot.durationMinutes,
     });
+
+    const proposed = {
+        dayOfWeek: payload.dayOfWeek ?? slot.dayOfWeek,
+        startTime: payload.startTime ?? slot.startTime,
+        endTime: payload.endTime ?? slot.endTime,
+    };
+    const conflicts = await Slot.find({
+        playground: slot.playground,
+        _id: { $ne: slotId },
+        dayOfWeek: proposed.dayOfWeek,
+        isDeleted: false,
+    }).select("startTime endTime");
+    if (conflicts.some((other) => overlaps(other, proposed))) {
+        throw new Error("This update would overlap an existing slot.");
+    }
 
     const updatedSlot = await Slot.findByIdAndUpdate(
         slotId,

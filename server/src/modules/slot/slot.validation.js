@@ -39,7 +39,12 @@ const updateSlotValidation = Joi.object({
     isActive: Joi.boolean(),
 });
 
+const createSlotsValidation = Joi.object({
+    slots: Joi.array().items(createSlotValidation).min(1).max(168).required(),
+});
+
 module.exports = {
     createSlotValidation,
+    createSlotsValidation,
     updateSlotValidation,
 };
