@@ -40,7 +40,12 @@ function nav(role) {
         { label: "Account centre", icon: "P", href: "management.html?tab=Profile" },
     ];
     if (role === "customer") items.splice(1, 0, { label: "Find playgrounds", icon: "F", href: "playgrounds.html" }, { label: "Book a slot", icon: "B", href: "booking.html" }, { label: "My bookings", icon: "M", href: "management.html?tab=Bookings" });
-    if (role === "playground-admin") items.push({ label: "Venue management", icon: "G", href: "management.html?tab=Playgrounds" });
+    if (role === "playground-admin") items.push(
+        { label: "Playgrounds", icon: "G", href: "management.html?tab=Playgrounds" },
+        { label: "Slots", icon: "S", href: "management.html?tab=Slots" },
+        { label: "Bookings", icon: "B", href: "management.html?tab=Bookings" },
+        { label: "Income", icon: "I", href: "management.html?tab=Income" }
+    );
     items.push({ label: "Reports", icon: "R", href: "management.html?tab=Reports" });
     if (role === "super-admin") items.push({ label: "User control", icon: "U", href: "management.html?tab=Users" }, { label: "Playground control", icon: "G", href: "management.html?tab=Playgrounds" });
     $("#side-nav").innerHTML = items.map((item) => `<a class="${item.href === "dashboard.html" ? "active" : ""}" href="${item.href}">${item.icon} &nbsp;${item.label}</a>`).join("");
