@@ -30,10 +30,10 @@ document.head.insertAdjacentHTML("beforeend", '<link rel="stylesheet" href="asse
 if (!token || !role) location.replace("login.html");
 
 const tabs = role === "customer"
-    ? ["Profile"]
+    ? ["Profile", "Reports"]
     : role === "playground-admin"
         ? ["Profile", "Playgrounds", "Slots", "Bookings", "Income", "Reports"]
-        : ["Profile", "Users", "Playgrounds"];
+        : ["Profile", "Users", "Playgrounds", "Reports"];
 const requestedTab = new URLSearchParams(location.search).get("tab");
 const initialTab = tabs.includes(requestedTab) ? requestedTab : tabs[0];
 
@@ -44,7 +44,9 @@ function setTitle(tab) {
         : "Manage your TURF account and activity.";
 }
 
-$("#tabs").innerHTML = tabs.map((tab) => '<button class="' + (tab === initialTab ? "active" : "") + '" data-tab="' + tab + '">' + tab + "</button>").join("");
+// Reports is a dedicated dashboard destination, not an Account centre tab.
+$("#tabs").innerHTML = tabs.filter((tab) => tab !== "Reports").map((tab) => '<button class="' + (tab === initialTab ? "active" : "") + '" data-tab="' + tab + '">' + tab + "</button>").join("");
+$("#tabs").hidden = initialTab === "Reports";
 setTitle(initialTab);
 
 async function profile() {
