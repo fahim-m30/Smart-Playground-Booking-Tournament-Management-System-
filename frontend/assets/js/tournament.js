@@ -50,9 +50,13 @@ $("#join-form").onsubmit = async (event) => {
 };
 
 async function venues() { const grounds = await req(user.role === "playground-admin" ? "/playgrounds/my-playgrounds" : "/playgrounds"); $("#venue").innerHTML = '<option value="">Select the tournament playground</option>' + grounds.map((ground) => `<option value="${ground._id}">${esc(ground.name)} · ${esc(ground.area || ground.address)}</option>`).join(""); }
-$("#create-toggle").onclick = () => $("#create-panel").classList.toggle("show");
+const canCreateTournament = ["super-admin", "playground-admin"].includes(user.role);
+$("#create-toggle").onclick = () => {
+    if (!canCreateTournament) return say("Only playground administrators and super administrators can create tournaments.", true);
+    $("#create-panel").classList.toggle("show");
+};
 $("#create-form").onsubmit = async (event) => { const form = event.currentTarget; event.preventDefault(); const raw = Object.fromEntries(new FormData(form)); const payload = { ...raw, playground: $("#venue").value, totalTeams: Number(raw.totalTeams), groupCount: Number(raw.groupCount), playingMembers: Number(raw.playingMembers), extraMembers: Number(raw.extraMembers), registrationFee: Number(raw.registrationFee) }; if (payload.totalTeams % payload.groupCount !== 0) return say("Total teams must be divisible by the number of groups.", true); try { const result = await req("/tournaments", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }); say(result.venueApprovalStatus === "Pending" ? "Venue approval request sent to the playground admin." : "Tournament created successfully."); form.reset(); $("#create-panel").classList.remove("show"); list(); } catch (error) { say(error.message, true); } };
-if (["super-admin", "playground-admin"].includes(user.role)) { $("#create-toggle").hidden = false; venues().catch((error) => say(error.message, true)); }
+if (canCreateTournament) { $("#create-toggle").hidden = false; venues().catch((error) => say(error.message, true)); }
 $("#logout").onclick = () => { localStorage.clear(); location = "login.html"; };
 function decorateTournamentManagement() {
     if (!["super-admin", "playground-admin"].includes(user.role)) return;
