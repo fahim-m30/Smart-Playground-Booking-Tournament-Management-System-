@@ -983,4 +983,5 @@ module.exports = {
     scheduleMatch,
     generateKnockoutStage,
     getTournamentStandings,
+    getMyPlaygroundTournaments,
 };
