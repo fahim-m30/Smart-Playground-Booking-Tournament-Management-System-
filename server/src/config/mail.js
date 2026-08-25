@@ -20,8 +20,11 @@ dns.setDefaultResultOrder("ipv4first");
 
 const transporter = nodemailer.createTransport({
     host: "smtp.gmail.com",
-    port: 465,
-    secure: true,
+    // STARTTLS on 587 avoids the blocked/timing-out implicit TLS route (465)
+    // seen from the production host.
+    port: Number(process.env.SMTP_PORT) || 587,
+    secure: false,
+    requireTLS: true,
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
