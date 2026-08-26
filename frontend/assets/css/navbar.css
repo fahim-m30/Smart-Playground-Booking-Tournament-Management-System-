@@ -115,6 +115,8 @@ Logo
 
     line-height:1.4;
 
+}
+
 
 /* =============================
 Menu
@@ -343,4 +345,80 @@ font-size:11px;
 
 }
 
+/* Mobile navigation: keep both account actions inside the open drawer. */
+@media (max-width: 992px) {
+    .navbar-container {
+        position: relative;
+        min-height: 78px;
+        padding: 11px 18px;
+        gap: 14px;
+    }
+
+    .logo img { width: 46px; }
+    .logo-text span { display: none; }
+    .logo-text h2 { font-size: 1.35rem; }
+
+    .menu-toggle {
+        display: grid;
+        place-items: center;
+        width: 44px;
+        height: 44px;
+        border: 1px solid #bbdfc5;
+        border-radius: 12px;
+        background: #f5fcf6;
+        color: #137a39;
+        font-size: 1.2rem;
+    }
+
+    .nav-menu {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        width: auto;
+        margin: 0;
+        padding: 20px 24px 10px;
+        border-top: 1px solid #e7efe9;
+        background: #fff;
+        box-shadow: 0 18px 32px rgba(15, 45, 25, .12);
+    }
+
+    .nav-menu ul { gap: 4px; }
+    .nav-menu a {
+        display: block;
+        padding: 12px 14px;
+        border-radius: 10px;
+        text-align: center;
+        font-size: 1rem;
+    }
+    .nav-menu a::after { bottom: 5px; left: 25%; width: 50%; }
+    .nav-menu a:hover, .nav-menu a.active { background: #effbf3; }
+
+    .nav-buttons.show-buttons {
+        position: absolute;
+        z-index: 1;
+        top: calc(100% + 286px);
+        left: 0;
+        right: 0;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        padding: 14px 24px 22px;
+        border-top: 1px solid #e7efe9;
+        background: #fff;
+        box-shadow: 0 20px 32px rgba(15, 45, 25, .12);
+    }
+
+    .nav-buttons .login-btn, .nav-buttons .register-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 46px;
+        padding: 10px 12px;
+        text-align: center;
+    }
+}
+
+@media (max-width: 390px) {
+    .nav-buttons.show-buttons { grid-template-columns: 1fr; top: calc(100% + 286px); }
 }

@@ -26,9 +26,16 @@ const initNavbar = () => {
     });
 
     menuToggle.addEventListener("click", () => {
-        navMenu.classList.toggle("show-menu");
-        navButtons.classList.toggle("show-buttons");
+        const isOpen = navMenu.classList.toggle("show-menu");
+        navButtons.classList.toggle("show-buttons", isOpen);
+        menuToggle.setAttribute("aria-expanded", String(isOpen));
     });
+
+    navMenu.querySelectorAll("a").forEach((link) => link.addEventListener("click", () => {
+        navMenu.classList.remove("show-menu");
+        navButtons.classList.remove("show-buttons");
+        menuToggle.setAttribute("aria-expanded", "false");
+    }));
 };
 
 if (document.readyState === "loading") {
