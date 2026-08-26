@@ -1,10 +1,34 @@
 /* Shared responsive guardrails for every TURF workspace. */
 *, *::before, *::after { box-sizing: border-box; }
-html { min-width: 320px; }
-img, svg, video, canvas { max-width: 100%; height: auto; }
+html { min-width: 320px; overflow-x: hidden; }
+body { min-width: 320px; overflow-x: hidden; }
+img, svg, video, canvas { display: block; max-width: 100%; height: auto; }
 button, input, select, textarea { max-width: 100%; font: inherit; }
 button, a, input, select, textarea { touch-action: manipulation; }
+input, select, textarea { min-width: 0; }
 table { max-width: 100%; }
+
+/* Prevent long dynamic values (names, emails, booking IDs) from widening layouts. */
+.portal, .admin-container, .main-content, .dashboard-body, .modal-box,
+.card, .panel, .admin-card, .dashboard-card-link, .auth-card,
+.chat-shell, .chat-main, .conversation-copy, .message, .receipt {
+    min-width: 0;
+}
+
+/* Horizontal scrolling is intentional inside data tables, never on the page. */
+.table-wrap, .table-responsive, .standings-wrap, .schedule-table-wrap,
+.booking-table-wrap, .report-table-wrap {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 1100px) {
+    .portal { width: min(100%, 1180px); }
+    .dashboard-shell { min-width: 0; }
+    .topbar, .portal-head, .admin-header { min-width: 0; }
+    .topbar > *, .portal-head > *, .admin-header > * { min-width: 0; }
+}
 
 @media (max-width: 900px) {
     .portal { padding: 24px 18px 42px; }
@@ -42,6 +66,32 @@ table { max-width: 100%; }
     .ticket { gap: 14px; }
     .notice { font-size: .8rem; }
     .receipt { width: 100%; }
+
+    /* Keep action controls usable without forcing a horizontal page scroll. */
+    .portal-head > .user-actions, .portal-head > div:last-child:not(:first-child) {
+        width: 100%;
+    }
+    .button, button, input[type="submit"], input[type="button"] {
+        min-height: 44px;
+    }
+    .modal { align-items: end; }
+    .modal-box { width: 100%; max-height: calc(100dvh - 16px); border-radius: 16px 16px 0 0; }
+    .ticket img { margin: 0 auto; }
+    .auth-page { padding: 14px; }
+    .auth-card { width: 100%; }
+    .admin-nav { margin-left: -2px; margin-right: -2px; }
+
+    /* Common compact layouts used by dashboards, booking and tournament pages. */
+    .stats, .income-stat-grid, .admin-grid, .panel-grid, .dashboard-hero,
+    .split-grid, .ground-form, .profile-grid, .report-summary,
+    .schedule-summary, .booking-summary { grid-template-columns: 1fr; }
+    .booking-panel-heading, .daily-schedule-toolbar, .filter-toolbar,
+    .toolbar, .report-toolbar { align-items: stretch; flex-direction: column; }
+    .booking-panel-heading > *, .daily-schedule-toolbar > *, .filter-toolbar > *,
+    .toolbar > *, .report-toolbar > * { width: 100%; }
+    .fixture-row { grid-template-columns: 1fr; }
+    .fixture-score { text-align: left; }
+    .tournament-overview { gap: 12px; }
 
     .admin-page { padding: 14px 12px 32px; }
     .admin-header { gap: 14px; padding: 18px; border-radius: 16px; }
