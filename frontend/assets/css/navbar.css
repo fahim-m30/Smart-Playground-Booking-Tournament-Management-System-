@@ -345,6 +345,8 @@ font-size:11px;
 
 }
 
+}
+
 /* Mobile navigation: keep both account actions inside the open drawer. */
 @media (max-width: 992px) {
     .navbar-container {
@@ -421,4 +423,19 @@ font-size:11px;
 
 @media (max-width: 390px) {
     .nav-buttons.show-buttons { grid-template-columns: 1fr; top: calc(100% + 286px); }
+}
+
+/* Tablet landscape / compact laptop: preserve the full desktop navigation. */
+@media (min-width: 993px) and (max-width: 1200px) {
+    .navbar-container { padding: 13px 24px; gap: 20px; }
+    .logo img { width: 50px; }
+    .logo-text span { display: none; }
+    .nav-menu ul { gap: clamp(14px, 2vw, 26px); }
+    .nav-menu a { font-size: .9rem; }
+    .nav-buttons { gap: 9px; }
+    .login-btn, .register-btn { padding: 10px 15px; font-size: .9rem; }
+}
+
+@media (min-width: 1201px) {
+    .navbar-container { padding-left: clamp(28px, 4vw, 56px); padding-right: clamp(28px, 4vw, 56px); }
 }
