@@ -13,6 +13,7 @@ const Slot = require("../slot/slot.model");
 const { createNotification } = require("../notification/notification.service");
 const Payment = require("../payment/payment.model");
 const { emitDashboardUpdate } = require("../../config/socket");
+const { bookingStartsAt, calendarDate, dayRange } = require("../../utils/scheduleTime");
 
 const timeToMinutes = (timeStr) => {
     const [h, m] = timeStr.split(":").map(Number);
@@ -44,13 +45,10 @@ const createBooking = async (payload, customerId) => {
     // Booking Date Validation
     // ===================================================
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
     const bookingDate = new Date(payload.bookingDate);
-    bookingDate.setHours(0, 0, 0, 0);
+    const todayRange = dayRange(calendarDate());
 
-    if (bookingDate < today) {
+    if (bookingDate < todayRange.start) {
         throw new Error("Past booking date is not allowed.");
     }
 
@@ -83,9 +81,7 @@ const createBooking = async (payload, customerId) => {
     }
 
     // A same-day slot is no longer bookable as soon as its start time passes.
-    const [startHour, startMinute] = payload.startTime.split(":").map(Number);
-    const slotStartAt = new Date(bookingDate);
-    slotStartAt.setHours(startHour, startMinute, 0, 0);
+    const slotStartAt = bookingStartsAt(bookingDate, payload.startTime);
     if (slotStartAt <= new Date()) {
         throw new Error("This slot has already started and can no longer be booked.");
     }
@@ -269,9 +265,7 @@ const cancelBooking = async (id, customerId) => {
         throw new Error("Booking is already cancelled.");
     }
 
-    const [hour, minute] = String(booking.startTime || "00:00").split(":").map(Number);
-    const startAt = new Date(booking.bookingDate);
-    startAt.setHours(hour, minute, 0, 0);
+    const startAt = bookingStartsAt(booking.bookingDate, booking.startTime);
     const cancellationDeadline = new Date(startAt.getTime() - 2 * 60 * 60 * 1000);
     if (new Date() > cancellationDeadline) {
         throw new Error("Bookings can only be cancelled at least 2 hours before the slot starts.");

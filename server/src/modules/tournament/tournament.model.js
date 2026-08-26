@@ -139,6 +139,13 @@ const tournamentSchema = new mongoose.Schema(
             default: false,
         },
 
+        // Set only after every registered captain has been notified that the
+        // final fixture list is available one day before the tournament.
+        fixturesPublishedAt: {
+            type: Date,
+            default: null,
+        },
+
         cancellationProcessed: {
             type: Boolean,
             default: false,

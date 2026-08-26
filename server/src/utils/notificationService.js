@@ -52,7 +52,7 @@ const sendBookingConfirmation = async (bookingId) => {
     if (!booking) return;
 
     const customer = booking.customer;
-    if (!customer || !customer.phone) return;
+    if (!customer) return;
 
     const message =
         `Dear ${customer.name}, your slot at ${booking.playground?.name || "the playground"} ` +
@@ -61,7 +61,7 @@ const sendBookingConfirmation = async (bookingId) => {
         `Amount: BDT ${booking.totalAmount}. Show your QR code at the venue. Thank you!`;
 
     await Promise.all([
-        sendSMS(customer.phone, message),
+        customer.phone ? sendSMS(customer.phone, message) : Promise.resolve(),
         createNotification({ recipient: customer._id, type: "BookingConfirmed", title: "Booking confirmed", message, link: "booking.html" }),
     ]);
 };
@@ -78,7 +78,7 @@ const sendBookingReminder = async (bookingId) => {
     if (!booking) return;
 
     const customer = booking.customer;
-    if (!customer || !customer.phone) return;
+    if (!customer) return;
 
     const message =
         `Reminder: Your slot at ${booking.playground?.name || "the playground"} ` +
@@ -86,7 +86,7 @@ const sendBookingReminder = async (bookingId) => {
         `Please bring your QR code. Thank you!`;
 
     await Promise.all([
-        sendSMS(customer.phone, message),
+        customer.phone ? sendSMS(customer.phone, message) : Promise.resolve(),
         createNotification({ recipient: customer._id, type: "BookingReminder", title: "Your slot starts in 2 hours", message, link: "booking.html" }),
     ]);
 };
@@ -108,18 +108,12 @@ const sendTournamentNotification = async (tournamentId, type) => {
 
     const tournamentName = tournament.name;
     const startDate = tournament.startDate.toISOString().split("T")[0];
-    const matches = type === "reminder" ? await TournamentMatch.find({ tournament: tournamentId })
-        .populate("teamA", "teamName")
-        .populate("teamB", "teamName")
-        .populate("group", "name")
-        .sort({ matchDate: 1, startTime: 1 }) : [];
-
     let message = "";
 
     if (type === "reminder") {
         message =
             `Reminder: Tournament "${tournamentName}" starts in 2 days (${startDate}). ` +
-            `Your complete match schedule is included below.`;
+            `Final fixtures will be published here one day before kick-off.`;
     } else if (type === "start") {
         message =
             `Dear participant, tournament "${tournamentName}" has started today (${startDate}). ` +
@@ -129,17 +123,7 @@ const sendTournamentNotification = async (tournamentId, type) => {
     }
 
     for (const team of teams) {
-        const teamFixtures = matches.filter((match) =>
-            String(match.teamA?._id) === String(team._id) || String(match.teamB?._id) === String(team._id)
-        );
-        const fixtureText = teamFixtures.length
-            ? teamFixtures.map((match, index) => {
-                const opponent = String(match.teamA?._id) === String(team._id) ? match.teamB?.teamName : match.teamA?.teamName;
-                const date = new Date(match.matchDate).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-                return `${index + 1}. ${date}, ${match.startTime}-${match.endTime}: ${team.teamName} vs ${opponent}${match.group?.name ? ` (${match.group.name})` : ""}`;
-            }).join("\n")
-            : "Fixtures are being finalized and will appear in the tournament centre.";
-        const fullMessage = `${message}\n\n${fixtureText}`;
+        const fullMessage = message;
         if (team.contactNumber) {
             await sendSMS(team.contactNumber, fullMessage);
         }

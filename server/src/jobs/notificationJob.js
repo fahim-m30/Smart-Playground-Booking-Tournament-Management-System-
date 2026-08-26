@@ -15,27 +15,13 @@ const Payment = require("../modules/payment/payment.model");
 const { createNotification } = require("../modules/notification/notification.service");
 const { sendBookingReminder, sendTournamentNotification } = require("../utils/notificationService");
 const { generateGroupMatches } = require("../modules/tournament/tournament.service");
+const { bookingStartsAt, calendarDate, dayRange } = require("../utils/scheduleTime");
 
 // ===================================================
 // Helpers
 // ===================================================
 
-const timeToMinutes = (timeStr) => {
-    const [h, m] = timeStr.split(":").map(Number);
-    return h * 60 + m;
-};
-
-const startOfDay = (date) => {
-    const d = new Date(date);
-    d.setHours(0, 0, 0, 0);
-    return d;
-};
-
-const endOfDay = (date) => {
-    const d = startOfDay(date);
-    d.setDate(d.getDate() + 1);
-    return d;
-};
+const rangeForCalendarDay = (offset = 0) => dayRange(calendarDate(new Date(), offset));
 
 // ===================================================
 // Process Booking Reminders (2 hours before)
@@ -43,13 +29,14 @@ const endOfDay = (date) => {
 
 const processBookingReminders = async () => {
     const now = new Date();
-    const todayStart = startOfDay(now);
-    const reminderWindowStart = new Date(now.getTime() + 115 * 60 * 1000);
-    const reminderWindowEnd = new Date(now.getTime() + 125 * 60 * 1000);
-    const lastRelevantDayEnd = endOfDay(reminderWindowEnd);
+    // A job runs every minute; retain a small tolerance for normal process
+    // jitter while never issuing a reminder after the slot has started.
+    const reminderWindowStart = new Date(now.getTime() - 2 * 60 * 1000);
+    const candidateStart = rangeForCalendarDay();
+    const candidateEnd = rangeForCalendarDay(2);
 
     const bookings = await Booking.find({
-        bookingDate: { $gte: todayStart, $lt: lastRelevantDayEnd },
+        bookingDate: { $gte: candidateStart.start, $lt: candidateEnd.start },
         bookingStatus: "Confirmed",
         paymentStatus: "Paid",
         reminderSent: false,
@@ -57,11 +44,10 @@ const processBookingReminders = async () => {
     });
 
     for (const booking of bookings) {
-        const [hour, minute] = booking.startTime.split(":").map(Number);
-        const slotStart = new Date(booking.bookingDate);
-        slotStart.setHours(hour, minute, 0, 0);
+        const slotStart = bookingStartsAt(booking.bookingDate, booking.startTime);
+        const reminderAt = new Date(slotStart.getTime() - 2 * 60 * 60 * 1000);
 
-        if (slotStart >= reminderWindowStart && slotStart <= reminderWindowEnd) {
+        if (reminderAt >= reminderWindowStart && reminderAt <= now && slotStart > now) {
             await sendBookingReminder(booking._id.toString());
 
             booking.reminderSent = true;
@@ -75,13 +61,10 @@ const processBookingReminders = async () => {
 // ===================================================
 
 const processTournamentReminders = async () => {
-    const todayStart = startOfDay(new Date());
-    const twoDaysFromNowStart = startOfDay(new Date());
-    twoDaysFromNowStart.setDate(twoDaysFromNowStart.getDate() + 2);
-    const twoDaysFromNowEnd = endOfDay(twoDaysFromNowStart);
+    const twoDaysFromNow = rangeForCalendarDay(2);
 
     const tournaments = await Tournament.find({
-        startDate: { $gte: twoDaysFromNowStart, $lt: twoDaysFromNowEnd },
+        startDate: { $gte: twoDaysFromNow.start, $lt: twoDaysFromNow.end },
         status: { $nin: ["Completed", "Cancelled"] },
         reminderSent: false,
         isDeleted: false,
@@ -100,11 +83,10 @@ const processTournamentReminders = async () => {
 // ===================================================
 
 const processTournamentStartNotifications = async () => {
-    const todayStart = startOfDay(new Date());
-    const todayEnd = endOfDay(new Date());
+    const today = rangeForCalendarDay();
 
     const tournaments = await Tournament.find({
-        startDate: { $gte: todayStart, $lt: todayEnd },
+        startDate: { $gte: today.start, $lt: today.end },
         status: { $nin: ["Completed", "Cancelled"] },
         startNotificationSent: false,
         isDeleted: false,
@@ -119,18 +101,19 @@ const processTournamentStartNotifications = async () => {
 };
 
 const processMatchReminders = async () => {
-    const target = new Date(Date.now() + 6 * 60 * 60 * 1000);
-    const dayStart = startOfDay(target);
-    const dayEnd = endOfDay(target);
-    const targetMinutes = target.getHours() * 60 + target.getMinutes();
+    const now = new Date();
+    const firstCandidate = rangeForCalendarDay();
+    const lastCandidate = rangeForCalendarDay(2);
     const matches = await TournamentMatch.find({
-        matchDate: { $gte: dayStart, $lt: dayEnd },
+        matchDate: { $gte: firstCandidate.start, $lt: lastCandidate.start },
         matchStatus: "Scheduled",
         reminderSent: false,
     }).populate("teamA teamB", "registeredBy teamName");
 
     for (const match of matches) {
-        if (Math.abs(timeToMinutes(match.startTime) - targetMinutes) > 5) continue;
+        const matchStart = bookingStartsAt(match.matchDate, match.startTime);
+        const reminderAt = new Date(matchStart.getTime() - 6 * 60 * 60 * 1000);
+        if (reminderAt > now || reminderAt < new Date(now.getTime() - 2 * 60 * 1000) || matchStart <= now) continue;
         for (const team of [match.teamA, match.teamB]) {
             if (team?.registeredBy) {
                 await createNotification({
@@ -151,39 +134,39 @@ const processMatchReminders = async () => {
 // for receipts and history, but no longer appear as live slots or events.
 const processExpiredSchedule = async () => {
     const now = new Date();
-    const todayStart = startOfDay(now);
-    const currentTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+    const today = rangeForCalendarDay();
+    const currentTime = new Intl.DateTimeFormat("en-GB", { timeZone: process.env.APP_TIME_ZONE || "Asia/Dhaka", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(now);
 
     await Booking.updateMany({
         bookingStatus: { $in: ["Pending", "Confirmed"] },
         isDeleted: false,
-        bookingDate: { $lt: todayStart },
+        bookingDate: { $lt: today.start },
     }, { $set: { bookingStatus: "Completed" } });
 
     await Booking.updateMany({
         bookingStatus: { $in: ["Pending", "Confirmed"] },
         isDeleted: false,
-        bookingDate: { $gte: todayStart, $lt: endOfDay(todayStart) },
+        bookingDate: { $gte: today.start, $lt: today.end },
         endTime: { $lte: currentTime },
     }, { $set: { bookingStatus: "Completed" } });
 
     await Tournament.updateMany({
         status: { $nin: ["Completed", "Cancelled"] },
         isDeleted: false,
-        endDate: { $lt: todayStart },
+        endDate: { $lt: today.start },
     }, { $set: { status: "Completed" } });
 
     await TournamentMatch.updateMany({
         matchStatus: "Scheduled",
-        matchDate: { $gte: todayStart, $lt: endOfDay(todayStart) },
+        matchDate: { $gte: today.start, $lt: today.end },
         startTime: { $lte: currentTime },
         endTime: { $gt: currentTime },
     }, { $set: { matchStatus: "Live" } });
     await TournamentMatch.updateMany({
         matchStatus: "Live",
         $or: [
-            { matchDate: { $lt: todayStart } },
-            { matchDate: { $gte: todayStart, $lt: endOfDay(todayStart) }, endTime: { $lte: currentTime } },
+            { matchDate: { $lt: today.start } },
+            { matchDate: { $gte: today.start, $lt: today.end }, endTime: { $lte: currentTime } },
         ],
     }, { $set: { matchStatus: "Completed" } });
 };
@@ -192,13 +175,12 @@ const processExpiredSchedule = async () => {
 // tournament cannot produce a fair fixture, so cancel it once and notify every
 // registered captain. Paid registrations are marked for a full refund.
 const processUnderfilledTournaments = async () => {
-    const cutoffStart = startOfDay(new Date());
-    cutoffStart.setDate(cutoffStart.getDate() + 2);
-    const cutoffEnd = endOfDay(cutoffStart);
+    const today = rangeForCalendarDay();
+    const cutoff = rangeForCalendarDay(2);
     const tournaments = await Tournament.find({
         // Catch up after a missed scheduler run instead of relying on one
         // exact calendar-day window.
-        startDate: { $gt: startOfDay(new Date()), $lte: cutoffEnd },
+        startDate: { $gt: today.start, $lte: cutoff.end },
         status: "Upcoming",
         cancellationProcessed: { $ne: true },
         isDeleted: false,
@@ -234,14 +216,12 @@ const processUnderfilledTournaments = async () => {
 // registered team is known. This gives participants their complete FIFA-style
 // group schedule without exposing a provisional draw weeks earlier.
 const processFixturePublication = async () => {
-    const tomorrowStart = startOfDay(new Date());
-    tomorrowStart.setDate(tomorrowStart.getDate() + 1);
-    const tomorrowEnd = endOfDay(tomorrowStart);
+    const tomorrow = rangeForCalendarDay(1);
     const tournaments = await Tournament.find({
-        // Publish at least one day before start, including a catch-up run if
-        // the worker was unavailable during the original window.
-        startDate: { $gte: startOfDay(new Date()), $lte: tomorrowEnd },
+        // Publish precisely on the calendar day before kick-off.
+        startDate: { $gte: tomorrow.start, $lt: tomorrow.end },
         status: "Upcoming",
+        fixturesPublishedAt: null,
         isDeleted: false,
     });
     for (const tournament of tournaments) {
@@ -252,7 +232,8 @@ const processFixturePublication = async () => {
         });
         if (registered !== tournament.totalTeams) continue;
         try {
-            await generateGroupMatches(tournament._id.toString());
+            const existingFixtures = await TournamentMatch.exists({ tournament: tournament._id });
+            if (!existingFixtures) await generateGroupMatches(tournament._id.toString());
             const teams = await TournamentTeam.find({ tournament: tournament._id, isDeleted: false }).select("registeredBy teamName");
             await Promise.all(teams.filter((team) => team.registeredBy).map((team) => createNotification({
                 recipient: team.registeredBy,
@@ -261,9 +242,9 @@ const processFixturePublication = async () => {
                 message: `${tournament.name} starts tomorrow. Your team ${team.teamName} can now view its complete fixture list.`,
                 link: "tournament.html",
             })));
-        } catch (error) {
-            if (!String(error.message).includes("already been generated")) throw error;
-        }
+            tournament.fixturesPublishedAt = new Date();
+            await tournament.save();
+        } catch (error) { throw error; }
     }
 };
 
