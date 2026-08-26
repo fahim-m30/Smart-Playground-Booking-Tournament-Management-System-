@@ -234,8 +234,13 @@ const processFixturePublication = async () => {
         try {
             const existingFixtures = await TournamentMatch.exists({ tournament: tournament._id });
             if (!existingFixtures) await generateGroupMatches(tournament._id.toString());
-            const teams = await TournamentTeam.find({ tournament: tournament._id, isDeleted: false }).select("registeredBy teamName");
-            await Promise.all(teams.filter((team) => team.registeredBy).map((team) => createNotification({
+            const teams = await TournamentTeam.find({
+                tournament: tournament._id,
+                paymentStatus: "Paid",
+                registeredBy: { $ne: null },
+                isDeleted: false,
+            }).select("registeredBy teamName");
+            await Promise.all(teams.map((team) => createNotification({
                 recipient: team.registeredBy,
                 type: "TournamentPublished",
                 title: "Your tournament fixtures are ready",

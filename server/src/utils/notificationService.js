@@ -102,6 +102,8 @@ const sendTournamentNotification = async (tournamentId, type) => {
     const teams = await TournamentTeam.find({
         tournament: tournamentId,
         paymentStatus: "Paid",
+        registeredBy: { $ne: null },
+        isDeleted: false,
     }).populate("tournament", "name");
 
     if (teams.length === 0) return;
