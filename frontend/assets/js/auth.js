@@ -44,6 +44,18 @@ const forgotPasswordForm = document.querySelector("#forgot-password-form");
 const resetPasswordForm = document.querySelector("#reset-password-form");
 let registrationSubmitting = false;
 
+document.querySelectorAll(".password-toggle").forEach((button) => {
+    button.addEventListener("click", () => {
+        const input = button.closest(".password-field")?.querySelector("input");
+        if (!input) return;
+        const visible = input.type === "text";
+        input.type = visible ? "password" : "text";
+        button.textContent = visible ? "Show" : "Hide";
+        button.setAttribute("aria-label", visible ? "Show password" : "Hide password");
+        button.setAttribute("aria-pressed", String(!visible));
+    });
+});
+
 const previewImage = (input, previewBox) => {
     const file = input.files && input.files[0];
     if (!file) return;

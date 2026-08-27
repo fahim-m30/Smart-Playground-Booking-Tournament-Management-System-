@@ -596,3 +596,8 @@ font-size:11px;
     color:#0f172a;
     background:#fff;
 }
+
+.hero-trust { display: flex; flex-wrap: wrap; gap: 10px 22px; margin-top: 24px; color: rgba(255,255,255,.8); font-size: .82rem; }
+.hero-trust span { display: inline-flex; align-items: center; gap: 6px; }
+.hero-trust b { color: #bbf7d0; font-size: .88rem; letter-spacing: .04em; }
+@media (max-width: 860px) { .hero-trust { color: #475569; } .hero-trust b { color: #15803d; } }

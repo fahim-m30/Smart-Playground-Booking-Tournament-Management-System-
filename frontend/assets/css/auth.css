@@ -270,3 +270,29 @@ body {
         border-radius: 28px;
     }
 }
+
+/* Refined account experience */
+body { background: radial-gradient(circle at top left, #dff8e8 0, transparent 28%), #f7faf8; }
+.auth-page { position: relative; overflow: hidden; }
+.auth-page::before, .auth-page::after { content: ""; position: fixed; width: 28rem; height: 28rem; border-radius: 50%; pointer-events: none; z-index: -1; }
+.auth-page::before { right: -12rem; top: -12rem; background: rgba(34, 197, 94, .1); }
+.auth-page::after { left: -16rem; bottom: -15rem; background: rgba(15, 118, 110, .08); }
+.auth-card { width: min(1040px, 100%); border-radius: 28px; }
+.auth-card__visual { background-image: linear-gradient(145deg, rgba(3, 68, 45, .94), rgba(5, 125, 76, .68)), url('../images/hero-bg.jpg'); }
+.auth-brand { display: inline-flex; align-items: center; gap: 10px; margin-bottom: 44px; color: #fff; font-size: 1.2rem; font-weight: 800; letter-spacing: .08em; width: fit-content; }
+.auth-brand img { width: 38px; height: 38px; object-fit: contain; }
+.auth-card__visual .brand-pill { font-size: .7rem; letter-spacing: .12em; }
+.auth-benefits { display: grid; gap: 12px; margin-top: 34px; font-size: .84rem; font-weight: 600; color: rgba(255, 255, 255, .94); }
+.auth-benefits span { display: flex; align-items: center; gap: 9px; }
+.auth-form { padding: 48px 46px; }
+.form-kicker { display: block; margin-bottom: 10px; color: #15803d; font-size: .7rem; font-weight: 800; letter-spacing: .16em; }
+.auth-back { display: inline-flex; align-items: center; width: fit-content; margin-bottom: -5px; color: #475569; font-size: .82rem; font-weight: 600; transition: color .2s ease, transform .2s ease; }
+.auth-back:hover { color: #15803d; transform: translateX(-2px); }
+.auth-form__group input, .auth-form__group select { min-width: 0; padding: 14px 16px; border-radius: 14px; }
+.password-field { display: flex; align-items: center; border: 1px solid #D1D5DB; border-radius: 14px; background: #F8FAFC; transition: .25s ease; }
+.password-field:focus-within { border-color: #34D399; box-shadow: 0 0 0 4px rgba(34, 211, 153, .12); }
+.password-field input { border: 0; box-shadow: none !important; background: transparent; }
+.password-toggle { flex: 0 0 auto; margin-right: 8px; border: 0; background: transparent; color: #15803d; font: inherit; font-size: .76rem; font-weight: 700; cursor: pointer; padding: 8px; }
+.auth-btn { border-radius: 14px; }
+.auth-btn:disabled { cursor: wait; opacity: .7; transform: none; }
+@media (max-width: 520px) { .auth-page { padding: 16px; } .auth-form__actions { align-items: stretch; } .auth-btn { width: 100%; } }

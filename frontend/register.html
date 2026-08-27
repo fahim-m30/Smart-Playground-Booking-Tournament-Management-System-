@@ -14,13 +14,17 @@
         <div class="auth-card">
             <div class="auth-card__visual">
                 <div class="auth-card__visual-content">
-                    <span class="brand-pill">SmartPlayground Booking & Tournament Management System</span>
+                    <a class="auth-brand" href="index.html"><img src="assets/images/favicon.png" alt="TURF"><span>TURF</span></a>
+                    <span class="brand-pill">JOIN THE COMMUNITY</span>
                     <h2>Create Your Account</h2>
-                    <p>Register now and verify your email to unlock easy slot booking and tournament management features.</p>
+                    <p>Create your verified profile to book a venue, manage entry passes and join your next tournament.</p>
+                    <div class="auth-benefits" aria-label="Account benefits"><span>✓ Free account</span><span>✓ Verified bookings</span><span>✓ Owner tools available</span></div>
                 </div>
             </div>
             <form id="register-form" class="auth-form">
+                <a class="auth-back" href="index.html" aria-label="Back to TURF home">← Back to home</a>
                 <div>
+                    <span class="form-kicker">CREATE ACCOUNT</span>
                     <h1>Register</h1>
                     <p>Fill in your details to create a customer account and receive an OTP for email verification.</p>
                 </div>
@@ -51,11 +55,11 @@
                 </div>
                 <div class="auth-form__group">
                     <label for="password">Password</label>
-                    <input type="password" id="password" name="password" placeholder="Create a strong password" required>
+                    <div class="password-field"><input type="password" id="password" name="password" placeholder="Create a strong password" required><button type="button" class="password-toggle" aria-label="Show password" aria-pressed="false">Show</button></div>
                 </div>
                 <div class="auth-form__group">
                     <label for="confirmPassword">Confirm password</label>
-                    <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Repeat your password" required>
+                    <div class="password-field"><input type="password" id="confirmPassword" name="confirmPassword" placeholder="Repeat your password" required><button type="button" class="password-toggle" aria-label="Show password" aria-pressed="false">Show</button></div>
                 </div>
 
                 <div id="ownerFields" class="auth-form__group" style="display:none;">
@@ -71,7 +75,6 @@
                 </div>
 
                 <div class="auth-form__actions">
-                    <a class="auth-link" href="index.html">← Back to website</a>
                     <button type="submit" class="auth-btn auth-btn--primary">Register</button>
                     <a class="auth-link" href="login.html">Already have an account?</a>
                 </div>

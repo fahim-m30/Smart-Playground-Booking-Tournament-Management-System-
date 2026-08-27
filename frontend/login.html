@@ -14,13 +14,17 @@
         <div class="auth-card">
             <div class="auth-card__visual">
                 <div class="auth-card__visual-content">
-                    <span class="brand-pill">SmartPlayground Booking & Tournament Management System</span>
+                    <a class="auth-brand" href="index.html"><img src="assets/images/favicon.png" alt="TURF"><span>TURF</span></a>
+                    <span class="brand-pill">SMART SPORTS BOOKING</span>
                     <h2>Welcome Back!</h2>
-                    <p>Login to continue booking premium football, cricket and badminton playgrounds with secure access and email verification.</p>
+                    <p>Pick up where you left off—your bookings, entry passes and tournament updates are all in one place.</p>
+                    <div class="auth-benefits" aria-label="TURF benefits"><span>✓ Secure account</span><span>✓ Instant booking access</span><span>✓ QR entry pass</span></div>
                 </div>
             </div>
             <form id="login-form" class="auth-form">
+                <a class="auth-back" href="index.html" aria-label="Back to TURF home">← Back to home</a>
                 <div>
+                    <span class="form-kicker">ACCOUNT ACCESS</span>
                     <h1>Login</h1>
                     <p>Enter your registered email and password to access your account.</p>
                 </div>
@@ -31,16 +35,13 @@
                 </div>
                 <div class="auth-form__group">
                     <label for="password">Password</label>
-                    <input type="password" id="password" name="password" placeholder="Enter your password" required>
+                    <div class="password-field"><input type="password" id="password" name="password" placeholder="Enter your password" required><button type="button" class="password-toggle" aria-label="Show password" aria-pressed="false">Show</button></div>
                 </div>
                 <div class="auth-form__actions">
                     <button type="submit" class="auth-btn auth-btn--primary">Login</button>
-                    <a class="auth-link" href="register.html">Create an account</a>
-                </div>
-                <p class="auth-footer">
                     <a class="auth-link" href="forgot-password.html">Forgot password?</a>
-                </p>
-                <p class="auth-footer">Don't have an account yet? Register now to start booking.</p>
+                </div>
+                <p class="auth-footer">New to TURF? <a class="auth-link" href="register.html">Create your account</a></p>
             </form>
         </div>
     </section>
