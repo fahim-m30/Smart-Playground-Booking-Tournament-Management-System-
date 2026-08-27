@@ -29,9 +29,6 @@ const rangeForCalendarDay = (offset = 0) => dayRange(calendarDate(new Date(), of
 
 const processBookingReminders = async () => {
     const now = new Date();
-    // A job runs every minute; retain a small tolerance for normal process
-    // jitter while never issuing a reminder after the slot has started.
-    const reminderWindowStart = new Date(now.getTime() - 2 * 60 * 1000);
     const candidateStart = rangeForCalendarDay();
     const candidateEnd = rangeForCalendarDay(2);
 
@@ -47,7 +44,10 @@ const processBookingReminders = async () => {
         const slotStart = bookingStartsAt(booking.bookingDate, booking.startTime);
         const reminderAt = new Date(slotStart.getTime() - 2 * 60 * 60 * 1000);
 
-        if (reminderAt >= reminderWindowStart && reminderAt <= now && slotStart > now) {
+        // A deployment, server restart, or sleeping host can miss the exact
+        // two-hour minute.  Deliver one catch-up reminder while the slot is
+        // still upcoming instead of silently losing it forever.
+        if (reminderAt <= now && slotStart > now) {
             await sendBookingReminder(booking._id.toString());
 
             booking.reminderSent = true;

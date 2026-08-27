@@ -67,7 +67,7 @@ const sendBookingConfirmation = async (bookingId) => {
 };
 
 // ===================================================
-// Booking Reminder SMS (2 hours before)
+// Booking Reminder SMS
 // ===================================================
 
 const sendBookingReminder = async (bookingId) => {
@@ -82,12 +82,12 @@ const sendBookingReminder = async (bookingId) => {
 
     const message =
         `Reminder: Your slot at ${booking.playground?.name || "the playground"} ` +
-        `is in 2 hours (${booking.startTime} - ${booking.endTime}). ` +
+        `starts at ${booking.startTime} (${booking.startTime} - ${booking.endTime}). ` +
         `Please bring your QR code. Thank you!`;
 
     await Promise.all([
         customer.phone ? sendSMS(customer.phone, message) : Promise.resolve(),
-        createNotification({ recipient: customer._id, type: "BookingReminder", title: "Your slot starts in 2 hours", message, link: "booking.html" }),
+        createNotification({ recipient: customer._id, type: "BookingReminder", title: "Your slot starts soon", message, link: "booking.html" }),
     ]);
 };
 
