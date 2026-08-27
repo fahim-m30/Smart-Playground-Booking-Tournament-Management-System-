@@ -171,12 +171,12 @@ const processExpiredSchedule = async () => {
     }, { $set: { matchStatus: "Completed" } });
 };
 
-// Registration closes two days before kick-off.  At that point an underfilled
+// Registration closes the day before kick-off. At that point an underfilled
 // tournament cannot produce a fair fixture, so cancel it once and notify every
 // registered captain. Paid registrations are marked for a full refund.
 const processUnderfilledTournaments = async () => {
     const today = rangeForCalendarDay();
-    const cutoff = rangeForCalendarDay(2);
+    const cutoff = rangeForCalendarDay(1);
     const tournaments = await Tournament.find({
         // Catch up after a missed scheduler run instead of relying on one
         // exact calendar-day window.
