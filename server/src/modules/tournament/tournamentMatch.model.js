@@ -29,6 +29,14 @@ const tournamentMatchSchema = new mongoose.Schema(
             required: true,
         },
 
+        // FIFA-style group fixtures are organised into matchdays. A team can
+        // appear only once in each matchday before moving to the next round.
+        matchday: {
+            type: Number,
+            default: null,
+            min: 1,
+        },
+
         teamA: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "TournamentTeam",

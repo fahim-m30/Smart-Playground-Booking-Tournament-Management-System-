@@ -458,6 +458,28 @@ const getTournamentTeams = async (tournamentId, groupId, actor) => {
 // Generate Group Stage Matches
 // ===================================================
 
+// Circle-method round robin: every group plays one opponent per matchday,
+// exactly like a FIFA group-stage draw. It supports 2–8 teams (and a bye if
+// an odd-sized legacy group is ever encountered).
+const buildRoundRobinMatchdays = (teams) => {
+    const rotation = [...teams];
+    if (rotation.length % 2) rotation.push(null);
+    const matchdays = [];
+    const rounds = rotation.length - 1;
+
+    for (let round = 0; round < rounds; round += 1) {
+        const matches = [];
+        for (let index = 0; index < rotation.length / 2; index += 1) {
+            const teamA = rotation[index];
+            const teamB = rotation[rotation.length - 1 - index];
+            if (teamA && teamB) matches.push({ teamA, teamB });
+        }
+        matchdays.push(matches);
+        rotation.splice(1, 0, rotation.pop());
+    }
+    return matchdays;
+};
+
 const generateGroupMatches = async (tournamentId) => {
     const tournament = await Tournament.findById(tournamentId);
 
@@ -492,7 +514,7 @@ const generateGroupMatches = async (tournamentId) => {
         tournament: tournamentId,
         paymentStatus: "Paid",
         isDeleted: false,
-    }).populate("group");
+    }).populate("group").sort({ createdAt: 1 });
 
     if (allTeams.length !== tournament.totalTeams) {
         throw new Error("Not all teams have been registered yet.");
@@ -509,11 +531,18 @@ const generateGroupMatches = async (tournamentId) => {
     endDate.setHours(23, 59, 59, 999);
     let fixtureIndex = 0;
 
-    for (const group of groups) {
-        const groupTeams = allTeams.filter((t) => t.group._id.toString() === group._id.toString());
+    const groupSchedules = groups.map((group) => ({
+        group,
+        matchdays: buildRoundRobinMatchdays(allTeams.filter((team) => String(team.group._id) === String(group._id))),
+    }));
+    const totalMatchdays = Math.max(...groupSchedules.map((schedule) => schedule.matchdays.length));
 
-        for (let i = 0; i < groupTeams.length; i++) {
-            for (let j = i + 1; j < groupTeams.length; j++) {
+    // Schedule every group's Matchday 1 before Matchday 2, then Matchday 3.
+    // This guarantees recovery time and prevents any team from playing twice
+    // in the same FIFA-style matchday.
+    for (let matchday = 0; matchday < totalMatchdays; matchday += 1) {
+        for (const schedule of groupSchedules) {
+            for (const pairing of schedule.matchdays[matchday] || []) {
                 const dayOffset = Math.floor(fixtureIndex / dailyMatchCapacity);
                 const startHour = [9, 13, 17][fixtureIndex % dailyMatchCapacity];
                 const endHour = startHour + 3;
@@ -528,11 +557,12 @@ const generateGroupMatches = async (tournamentId) => {
 
                 const match = await TournamentMatch.create({
                     tournament: tournamentId,
-                    group: group._id,
+                    group: schedule.group._id,
                     stage: "Group",
-                    teamA: groupTeams[i]._id,
-                    teamB: groupTeams[j]._id,
-                    playground: group.playground._id,
+                    matchday: matchday + 1,
+                    teamA: pairing.teamA._id,
+                    teamB: pairing.teamB._id,
+                    playground: schedule.group.playground._id,
                     matchDate: matchDateClone,
                     startTime: startTimeStr,
                     endTime: endTimeStr,

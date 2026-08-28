@@ -19,6 +19,16 @@ const sportProfile = (sport) => ({
     Cricket: { icon: "Cricket", format: "World Cup-style group stage and knockout draw" },
     Badminton: { icon: "Badminton", format: "World Championship-style group draw" },
 }[sport] || { icon: "Tournament", format: "Professional group-stage competition" });
+const roundRobinMatchdays = (teams) => {
+    const rotation = [...teams];
+    if (rotation.length % 2) rotation.push(null);
+    return Array.from({ length: rotation.length - 1 }, () => {
+        const pairs = Array.from({ length: rotation.length / 2 }, (_, index) => [rotation[index], rotation[rotation.length - 1 - index]])
+            .filter(([teamA, teamB]) => teamA && teamB);
+        rotation.splice(1, 0, rotation.pop());
+        return pairs;
+    });
+};
 let tournaments = [], selected = null, tournamentSearch = new URLSearchParams(location.search).get("search") || "";
 const requestedFixtureId = new URLSearchParams(location.search).get("fixture");
 const tournamentListPath = () => user.role === "playground-admin" ? "/tournaments/my-playgrounds/tournaments" : "/tournaments";
@@ -209,30 +219,36 @@ window.detail = async (id) => {
         const sport = tournament?.sportType || "Tournament";
         const groupName = (group) => group?.name || "Group stage";
         const draw = groups.map((group) => `<article class="group-card"><h3>${esc(group.name)}</h3><ol>${teams.filter((team) => String(team.group?._id || team.group) === String(group._id)).map((team) => `<li>${esc(team.teamName)}</li>`).join("") || "<li>Teams are being assigned</li>"}</ol></article>`).join("");
-        let demoFixtureIndex = 0;
-        const previewFixtures = groups.flatMap((group) => {
+        const groupSchedules = groups.map((group) => {
             const groupTeams = teams.filter((team) => String(team.group?._id || team.group) === String(group._id));
             const slots = Array.from({ length: Number(tournament?.teamsPerGroup || 0) }, (_, index) => groupTeams[index]?.teamName || `Open team slot ${index + 1}`);
-            return slots.flatMap((teamA, index) => slots.slice(index + 1).map((teamB) => {
+            return { group: group.name, matchdays: roundRobinMatchdays(slots) };
+        });
+        let demoFixtureIndex = 0;
+        const previewFixtures = [];
+        const totalMatchdays = Math.max(...groupSchedules.map((schedule) => schedule.matchdays.length));
+        for (let matchday = 0; matchday < totalMatchdays; matchday += 1) {
+            groupSchedules.forEach((schedule) => (schedule.matchdays[matchday] || []).forEach(([teamA, teamB]) => {
                 const matchDate = new Date(tournament.startDate);
                 matchDate.setUTCDate(matchDate.getUTCDate() + Math.floor(demoFixtureIndex / 3));
                 const startHour = [9, 13, 17][demoFixtureIndex % 3];
                 demoFixtureIndex += 1;
-                return {
-                    group: group.name,
+                previewFixtures.push({
+                    group: schedule.group,
+                    matchday: matchday + 1,
                     teamA,
                     teamB,
                     matchDate,
                     startTime: `${String(startHour).padStart(2, "0")}:00`,
                     endTime: `${String(startHour + 3).padStart(2, "0")}:00`,
-                };
+                });
             }));
-        });
+        }
         const preview = previewFixtures.length
-            ? `<p class="fixture-preview-note">Demo fixture — registered team names are shown now; open team slots are provisional. Dates and time windows show the planned tournament schedule. The final ${esc(sportProfile(sport).format)} fixture is published one day before kick-off.</p><div class="fixtures-list">${previewFixtures.map((match, index) => `<article class="fixture-row preview"><div class="fixture-time">Match ${index + 1}<br>${dateLabel(match.matchDate)} · ${esc(match.startTime)}–${esc(match.endTime)}<br>${esc(match.group)}</div><div class="fixture-teams">${esc(match.teamA)} <span>vs</span> ${esc(match.teamB)}</div><div class="fixture-score">Demo draw</div></article>`).join("")}</div>`
+            ? `<p class="fixture-preview-note">FIFA-style demo draw — every team plays once per matchday. Registered team names are shown now; open slots are provisional. The final ${esc(sportProfile(sport).format)} fixture is published one day before kick-off.</p><div class="fixtures-list">${previewFixtures.map((match, index) => `<article class="fixture-row preview"><div class="fixture-time">Match ${index + 1}<br>${dateLabel(match.matchDate)} · ${esc(match.startTime)}–${esc(match.endTime)}<br>${esc(match.group)} · Matchday ${match.matchday}</div><div class="fixture-teams">${esc(match.teamA)} <span>vs</span> ${esc(match.teamB)}</div><div class="fixture-score">Demo draw</div></article>`).join("")}</div>`
             : '<div class="fixture-empty">The draw preview will appear when the tournament groups are ready.</div>';
         const table = standings.map((standing) => `<h3 class="standings-group-title">${esc(standing.group)}</h3><div class="standings-wrap"><table class="standings-table"><thead><tr><th>#</th><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>${sport === "Football" ? "GD" : "Diff"}</th><th>Pts</th></tr></thead><tbody>${standing.teams.map((team, index) => `<tr><td><span class="standing-rank">${index + 1}</span></td><td>${esc(team.teamName)}</td><td>${team.played}</td><td>${team.won}</td><td>${team.drawn}</td><td>${team.lost}</td><td>${team.goalDifference}</td><td><strong>${team.points}</strong></td></tr>`).join("")}</tbody></table></div>`).join("") || '<div class="fixture-empty">The points table will appear once groups are assigned.</div>';
-        const fixtures = matches.map((match) => `<article class="fixture-row ${match.matchStatus === "Live" ? "live" : ""}"><div class="fixture-time">${dateLabel(match.matchDate)}<br>${esc(match.startTime)}–${esc(match.endTime)} · ${esc(groupName(match.group))}</div><div class="fixture-teams">${esc(match.teamA?.teamName || "TBD")} <span>vs</span> ${esc(match.teamB?.teamName || "TBD")}</div><div class="fixture-score">${match.matchStatus === "Live" ? '<span class="live-tag">LIVE</span>' : match.matchStatus === "Completed" ? `${match.teamAScore} – ${match.teamBScore}` : esc(match.matchStatus)}</div></article>`).join("") || '<div class="fixture-empty">Fixtures are released automatically one day before the tournament begins.</div>';
+        const fixtures = matches.map((match) => `<article class="fixture-row ${match.matchStatus === "Live" ? "live" : ""}"><div class="fixture-time">${dateLabel(match.matchDate)}<br>${esc(match.startTime)}–${esc(match.endTime)} · ${esc(groupName(match.group))}${match.matchday ? `<br>Matchday ${match.matchday}` : `<br>${esc(match.stage)}`}</div><div class="fixture-teams">${esc(match.teamA?.teamName || "TBD")} <span>vs</span> ${esc(match.teamB?.teamName || "TBD")}</div><div class="fixture-score">${match.matchStatus === "Live" ? '<span class="live-tag">LIVE</span>' : match.matchStatus === "Completed" ? `${match.teamAScore} – ${match.teamBScore}` : esc(match.matchStatus)}</div></article>`).join("") || '<div class="fixture-empty">Fixtures are released automatically one day before the tournament begins.</div>';
         const modal = document.createElement("div"); modal.className = "modal show";
         modal.innerHTML = `<div class="modal-box tournament-centre"><header class="centre-head"><button class="close" type="button">Close</button><span class="eyebrow">${esc(sport.toUpperCase())} COMPETITION</span><h2>${esc(tournament?.name || "Tournament centre")}</h2><p>${dateLabel(tournament?.startDate)} – ${dateLabel(tournament?.endDate)} · ${esc(tournament?.playground?.name || tournament?.playgrounds?.[0]?.name || "Venue TBA")}<br><strong>${esc(sportProfile(sport).format)}</strong></p>${matches.length ? '<button class="fixture-pdf" type="button">Save fixture as PDF</button>' : ""}</header><div class="centre-body"><div class="centre-tabs"><button class="active" data-centre-tab="draw">Group draw</button><button data-centre-tab="preview">Demo fixture</button><button data-centre-tab="table">Points table</button><button data-centre-tab="fixtures">Official fixtures</button></div><section class="centre-panel" data-centre-panel="draw"><div class="group-draw">${draw || '<div class="fixture-empty">Groups will be available after registration closes.</div>'}</div></section><section class="centre-panel" data-centre-panel="preview" hidden>${preview}</section><section class="centre-panel" data-centre-panel="table" hidden>${table}</section><section class="centre-panel" data-centre-panel="fixtures" hidden><div class="fixtures-list">${fixtures}</div></section></div></div>`;
         document.body.append(modal); modal.querySelector(".close").onclick = () => modal.remove();
