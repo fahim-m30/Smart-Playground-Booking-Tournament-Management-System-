@@ -290,9 +290,8 @@ function updateTournamentOverview() {
         overview.className = "tournament-overview";
         document.querySelector(".portal-head").insertAdjacentElement("afterend", overview);
     }
-    const available = tournaments.filter((tournament) => !["Cancelled", "Completed"].includes(tournament.status)).length;
     const upcoming = tournaments.filter((tournament) => registrationOpen(tournament)).length;
-    overview.innerHTML = `<div><span>COMPETITIONS</span><strong>${available}</strong><small>Available tournaments</small></div><div><span>READY TO PLAY</span><strong>${upcoming}</strong><small>Open registrations</small></div><p><b>✦</b> Find your next challenge and register your team today.</p>`;
+    overview.innerHTML = `<div><span>COMPETITIONS</span><strong>${upcoming}</strong><small>Available tournaments</small></div><div><span>READY TO PLAY</span><strong>${upcoming}</strong><small>Open registrations</small></div><p><b>✦</b> Find your next challenge and register your team today.</p>`;
 }
 
 list = async function () {
