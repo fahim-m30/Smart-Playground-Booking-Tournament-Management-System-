@@ -6,6 +6,29 @@ const esc = (value) => String(value ?? "").replace(/[&<>'"]/g, (c) => ({ "&": "&
 if (!token) location = "login.html";
 const req = async (path, options = {}) => { const response = await fetch(API + path, { ...options, headers: { Authorization: `Bearer ${token}`, ...(options.headers || {}) } }); const body = await response.json(); if (!response.ok) throw new Error(body.message || "Request failed"); return body.data; };
 const say = (message, bad = false) => { const notice = $("#notice"); notice.textContent = message; notice.className = `notice${bad ? " error" : ""}`; notice.style.display = "block"; };
+const openTournamentPayment = (teamId) => {
+    const modal = document.createElement("div");
+    modal.className = "modal show payment-method-modal";
+    modal.innerHTML = `<section class="modal-box payment-method-box"><button class="close" type="button" aria-label="Close">Close</button><span class="eyebrow">SECURE DEMO CHECKOUT</span><h2>Complete registration</h2><p class="meta">Choose how you would like to pay the tournament registration fee.</p><div class="payment-method-grid"><button type="button" data-method="bKash"><strong>bKash</strong><small>Mobile wallet</small></button><button type="button" data-method="Nagad"><strong>Nagad</strong><small>Mobile wallet</small></button><button type="button" data-method="Rocket"><strong>Rocket</strong><small>Mobile wallet</small></button><button type="button" data-method="Card"><strong>Card</strong><small>Debit or credit card</small></button></div><p class="method-error" hidden></p></section>`;
+    const close = () => modal.remove();
+    modal.querySelector(".close").onclick = close;
+    modal.onclick = (event) => { if (event.target === modal) close(); };
+    modal.querySelectorAll("[data-method]").forEach((button) => button.addEventListener("click", async () => {
+        const error = modal.querySelector(".method-error");
+        modal.querySelectorAll("[data-method]").forEach((item) => { item.disabled = true; });
+        button.textContent = "Opening checkout…";
+        try {
+            const checkout = await req("/payments/demo/checkout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tournamentTeam: teamId, paymentMethod: button.dataset.method }) });
+            location.href = `demo-payment.html?payment=${checkout.payment._id}`;
+        } catch (requestError) {
+            error.textContent = requestError.message || "Could not start payment. Please try again.";
+            error.hidden = false;
+            modal.querySelectorAll("[data-method]").forEach((item) => { item.disabled = false; });
+            button.innerHTML = `<strong>${esc(button.dataset.method)}</strong><small>${button.dataset.method === "Card" ? "Debit or credit card" : "Mobile wallet"}</small>`;
+        }
+    }));
+    document.body.append(modal);
+};
 const dateLabel = (value) => new Date(value).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 const tournamentDateParts = (value) => String(value || "").slice(0, 10).split("-").map(Number);
 // Bangladesh is UTC+06 without daylight-saving changes.  Tournament dates are
@@ -318,17 +341,7 @@ async function loadMyTournamentRegistrations() {
         section.innerHTML = `<header class="registration-heading"><div><span>Your teams</span><h2>My tournament registrations</h2><p class="meta">Complete payment to confirm a pending team. The final fixture is released one day before the tournament.</p></div></header><div class="grid registration-grid">${teams.map((team) => { const pendingPayment = pendingByTeam.get(String(team._id)); const paymentAction = team.paymentStatus === "Pending" ? (pendingPayment ? `<a class="button registration-pay" href="demo-payment.html?payment=${encodeURIComponent(pendingPayment._id)}">Complete payment <span>→</span></a>` : `<button class="registration-pay" type="button" data-complete-team="${team._id}">Complete registration <span>→</span></button>`) : ""; const secondaryAction = cancellationAllowed(team) ? `<button class="alt registration-cancel" type="button" data-team-id="${team._id}">Cancel registration</button>` : ""; return `<article class="card registration-card ${team.paymentStatus === "Pending" ? "is-pending" : ""}"><div class="registration-card-top"><span class="badge">${esc(team.paymentStatus)}</span>${team.paymentStatus === "Pending" ? '<span class="payment-note">Payment needed</span>' : ""}</div><h3>${esc(team.teamName)}</h3><p>${esc(team.tournament?.name || "Tournament")}<br>${dateLabel(team.tournament?.startDate)} – ${dateLabel(team.tournament?.endDate)}</p><div class="registration-actions">${paymentAction}<div class="registration-secondary"><button class="alt" type="button" data-fixture-tournament="${team.tournament?._id}">View demo fixture</button>${secondaryAction}</div>${!secondaryAction && team.paymentStatus === "Pending" ? '<small>Registration cancellation is closed.</small>' : ""}</div></article>`; }).join("")}</div>`;
         $("#content").before(section);
         section.querySelectorAll("[data-fixture-tournament]").forEach((button) => button.addEventListener("click", () => detail(button.dataset.fixtureTournament)));
-        section.querySelectorAll("[data-complete-team]").forEach((button) => button.addEventListener("click", async () => {
-            const method = prompt("Choose payment method: bKash, Nagad, Rocket or Card", "bKash");
-            if (method === null) return;
-            const paymentMethod = { bkash: "bKash", nagad: "Nagad", rocket: "Rocket", card: "Card" }[String(method).trim().toLowerCase()];
-            if (!paymentMethod) return say("Choose bKash, Nagad, Rocket or Card.", true);
-            button.disabled = true;
-            try {
-                const checkout = await req("/payments/demo/checkout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tournamentTeam: button.dataset.completeTeam, paymentMethod }) });
-                location.href = `demo-payment.html?payment=${checkout.payment._id}`;
-            } catch (error) { say(error.message, true); button.disabled = false; }
-        }));
+        section.querySelectorAll("[data-complete-team]").forEach((button) => button.addEventListener("click", () => openTournamentPayment(button.dataset.completeTeam)));
         section.querySelectorAll("[data-team-id]").forEach((button) => button.addEventListener("click", async () => {
             if (!confirm("Cancel this tournament registration? Cancellation is allowed only at least 2 days before it starts. Any paid refund is handled by the tournament organizer.")) return;
             button.disabled = true;
