@@ -259,20 +259,26 @@ const tournamentVenueFilter = (playgroundIds) => ({
     ],
 });
 
-// Older data may contain events created before duplicate protection existed.
-// Keep one canonical card per venue/name/start-day, favouring an active event
-// over a cancelled one, so operators and customers never see the same event
-// twice while the legacy record remains safely preserved in the database.
+// Older data may contain the same event twice with an off-by-one-day date.
+// Keep one canonical card for identical venue/name/format records created for
+// the same start window, favouring an active event over a cancelled one.
 const withoutLegacyDuplicates = (tournaments) => {
-    const canonical = new Map();
+    const canonical = [];
     for (const tournament of tournaments) {
         const venue = String(tournament.playground?._id || tournament.playground || tournament.playgrounds?.[0]?._id || "");
-        const startDay = new Date(tournament.startDate).toISOString().slice(0, 10);
-        const key = `${venue}|${startDay}|${tournamentNameKey(tournament.name)}`;
-        const saved = canonical.get(key);
-        if (!saved || (saved.status === "Cancelled" && tournament.status !== "Cancelled")) canonical.set(key, tournament);
+        const signature = `${venue}|${tournamentNameKey(tournament.name)}|${tournament.sportType}|${tournament.registrationFee}|${tournament.totalTeams}`;
+        const startAt = new Date(tournament.startDate).getTime();
+        const savedIndex = canonical.findIndex(({ item, key, start }) => key === signature && Math.abs(start - startAt) <= 36 * 60 * 60 * 1000);
+        if (savedIndex === -1) {
+            canonical.push({ item: tournament, key: signature, start: startAt });
+            continue;
+        }
+        const saved = canonical[savedIndex].item;
+        if (saved.status === "Cancelled" && tournament.status !== "Cancelled") {
+            canonical[savedIndex] = { item: tournament, key: signature, start: startAt };
+        }
     }
-    return [...canonical.values()];
+    return canonical.map(({ item }) => item);
 };
 
 const getAllTournaments = async (actor = {}) => {
