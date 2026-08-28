@@ -13,6 +13,7 @@ const TournamentTeam = require("./tournamentTeam.model");
 const TournamentMatch = require("./tournamentMatch.model");
 const Playground = require("../playground/playground.model");
 const User = require("../user/user.model");
+const Payment = require("../payment/payment.model");
 const Slot = require("../slot/slot.model");
 const { createNotification } = require("../notification/notification.service");
 const { emitDashboardUpdate } = require("../../config/socket");
@@ -194,6 +195,7 @@ const respondToVenueApproval = async (tournamentId, adminId, decision) => {
     tournament.venueApprovalStatus = decision === "approve" ? "Approved" : "Rejected";
     tournament.venueApprovalRespondedAt = new Date();
     tournament.status = decision === "approve" ? "Upcoming" : "Cancelled";
+    tournament.cancelledAt = decision === "approve" ? null : new Date();
     await tournament.save();
     if (decision === "approve") {
         await createTournamentGroups(tournament);
@@ -236,9 +238,9 @@ const refreshTournamentStatuses = async () => {
         isDeleted: false,
         status: "Cancelled",
         cancellationProcessed: true,
-    }).select("_id startDate");
+    }).select("_id startDate cancelledAt");
     for (const tournament of schedulerCancelled) {
-        if (new Date() < tournamentRegistrationClosesAt(tournament.startDate)) {
+        if (!tournament.cancelledAt && new Date() < tournamentRegistrationClosesAt(tournament.startDate)) {
             await Tournament.updateOne({ _id: tournament._id }, { $set: { status: "Upcoming", cancellationProcessed: false } });
         }
     }
@@ -310,7 +312,13 @@ const cancelRegistration = async (teamId, customerId) => {
         throw new Error("Tournament registrations can only be cancelled at least 2 days before the tournament starts.");
     }
     team.isDeleted = true;
-    await team.save();
+    await Promise.all([
+        team.save(),
+        Payment.updateMany(
+            { tournamentTeam: team._id, customer: customerId, paymentStatus: "Pending", isDeleted: false },
+            { $set: { paymentStatus: "Cancelled" } }
+        ),
+    ]);
     return team;
 };
 

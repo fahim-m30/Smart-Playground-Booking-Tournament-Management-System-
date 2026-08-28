@@ -9,13 +9,16 @@
 
 const Booking = require("../modules/booking/booking.model");
 const Tournament = require("../modules/tournament/tournament.model");
+const TournamentGroup = require("../modules/tournament/tournamentGroup.model");
 const TournamentTeam = require("../modules/tournament/tournamentTeam.model");
 const TournamentMatch = require("../modules/tournament/tournamentMatch.model");
 const Payment = require("../modules/payment/payment.model");
+const Playground = require("../modules/playground/playground.model");
 const { createNotification } = require("../modules/notification/notification.service");
 const { sendBookingReminder, sendSMS, sendTournamentNotification } = require("../utils/notificationService");
 const { generateGroupMatches } = require("../modules/tournament/tournament.service");
 const { bookingStartsAt, calendarDate, dayRange } = require("../utils/scheduleTime");
+const { emitDashboardUpdate } = require("../config/socket");
 
 // ===================================================
 // Helpers
@@ -190,6 +193,7 @@ const processUnderfilledTournaments = async () => {
         if (teams.length >= tournament.totalTeams) continue;
         tournament.status = "Cancelled";
         tournament.cancellationProcessed = true;
+        tournament.cancelledAt = new Date();
         await tournament.save();
         await TournamentMatch.updateMany({
             tournament: tournament._id,
@@ -210,6 +214,45 @@ const processUnderfilledTournaments = async () => {
             });
         }));
     }
+};
+
+// A cancelled event remains visible for 48 hours so organisers and customers
+// can read its cancellation/refund notice. Then all event-owned data is
+// permanently deleted, which also removes it from every server/UI listing.
+const processCancelledTournamentDeletion = async () => {
+    const expiresAt = new Date(Date.now() - 48 * 60 * 60 * 1000);
+    const tournaments = await Tournament.find({
+        status: "Cancelled",
+        isDeleted: false,
+        $or: [
+            { cancelledAt: { $lte: expiresAt } },
+            // Legacy cancelled records did not store the precise time. Their
+            // last update is the closest reliable retention timestamp.
+            { cancelledAt: null, updatedAt: { $lte: expiresAt } },
+        ],
+    }).select("_id playground venueApprovalStatus");
+
+    for (const tournament of tournaments) {
+        const tournamentId = tournament._id;
+        await Promise.all([
+            Payment.deleteMany({ tournament: tournamentId }),
+            TournamentMatch.deleteMany({ tournament: tournamentId }),
+            TournamentTeam.deleteMany({ tournament: tournamentId }),
+            TournamentGroup.deleteMany({ tournament: tournamentId }),
+        ]);
+        await Tournament.deleteOne({ _id: tournamentId });
+
+        // Rejected venue requests never increased this count, whereas every
+        // approved/normal tournament did.
+        if (["Approved", "Not Required"].includes(tournament.venueApprovalStatus)) {
+            await Playground.updateOne(
+                { _id: tournament.playground, tournamentCount: { $gt: 0 } },
+                { $inc: { tournamentCount: -1 } }
+            );
+        }
+    }
+
+    if (tournaments.length) emitDashboardUpdate({ type: "tournament:deleted", count: tournaments.length });
 };
 
 // Fixtures are deliberately released one day before kick-off, once every
@@ -268,6 +311,7 @@ const runNotificationJobs = async () => {
         await processBookingReminders();
         await processTournamentReminders();
         await processUnderfilledTournaments();
+        await processCancelledTournamentDeletion();
         await processTournamentStartNotifications();
         await processFixturePublication();
         await processMatchReminders();

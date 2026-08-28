@@ -157,6 +157,14 @@ const tournamentSchema = new mongoose.Schema(
             type: Boolean,
             default: false,
         },
+
+        // Starts the fixed retention period before a cancelled tournament is
+        // permanently removed with its tournament-only records.
+        cancelledAt: {
+            type: Date,
+            default: null,
+            index: true,
+        },
     },
     {
         timestamps: true,
