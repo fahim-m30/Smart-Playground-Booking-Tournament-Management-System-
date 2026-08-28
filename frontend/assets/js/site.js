@@ -110,6 +110,7 @@ const buildFooter = () => {
             <div class="container footer-credit">
                 <p><strong>TURF</strong> — Smart Playground Booking & Tournament Management System</p>
                 <p>© ${year} TURF. All rights reserved.</p>
+                <p class="footer-owner">Created by <strong>Fahim Muntasir</strong></p>
                 <p><a href="about.html">About</a> · <a href="contact.html">Contact</a> · <a href="playgrounds.html">Playgrounds</a></p>
             </div>
         </footer>
