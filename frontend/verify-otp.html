@@ -10,19 +10,28 @@
 </head>
 <body>
     <section class="auth-page">
-        <div class="auth-card">
+        <div class="auth-card auth-card--otp">
             <div class="auth-card__visual">
                 <div class="auth-card__visual-content">
-                    <span class="brand-pill">Email Verification</span>
-                    <h2>Verify Your Email</h2>
-                    <p>Enter the OTP sent to your email to activate your account and unlock login.</p>
+                    <span class="brand-pill">ACCOUNT SECURITY</span>
+                    <h2>Your account is almost ready.</h2>
+                    <p>Confirm the private code sent to your email. This last step protects your account before you sign in.</p>
+                    <div class="otp-visual-points" aria-label="Verification benefits">
+                        <span><b>01</b> Email ownership confirmed</span>
+                        <span><b>02</b> Secure access enabled</span>
+                        <span><b>03</b> Ready to book and compete</span>
+                    </div>
                 </div>
             </div>
 
             <form id="verify-otp-form" class="auth-form">
-                <div>
-                    <h1>Verify OTP</h1>
-                    <p>Check your inbox and enter the 6-digit code below.</p>
+                <div class="otp-form-intro">
+                    <span class="form-kicker">EMAIL VERIFICATION</span>
+                    <div class="otp-form-intro__icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m4.5 7 7.5 5.5L19.5 7"/><path d="M16.5 3.5v3M19 4.5l-1.5 1.5"/></svg>
+                    </div>
+                    <h1>Check your inbox</h1>
+                    <p>Enter the 6-digit verification code we sent to your email address.</p>
                 </div>
                 <div id="verify-message"></div>
                 <div class="auth-form__group">
@@ -30,14 +39,15 @@
                     <input type="email" id="email" name="email" placeholder="your@email.com" required>
                 </div>
                 <div class="auth-form__group">
-                    <label for="otp">OTP code</label>
-                    <input type="text" id="otp" name="otp" placeholder="Enter 6-digit code" required maxlength="6">
+                    <label for="otp">Verification code</label>
+                    <input class="otp-code-input" type="text" id="otp" name="otp" placeholder="• • • • • •" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" required maxlength="6">
+                    <small class="otp-code-help">The code expires shortly. Do not share it with anyone.</small>
                 </div>
                 <div class="auth-form__actions">
-                    <button type="submit" class="auth-btn auth-btn--primary">Verify</button>
-                    <a class="auth-link" href="login.html">Back to login</a>
+                    <button type="submit" class="auth-btn auth-btn--primary">Verify email <span aria-hidden="true">→</span></button>
+                    <a class="auth-link" href="login.html">← Back to login</a>
                 </div>
-                <p class="auth-footer">If you did not receive the code, you can request a new one from the backend.</p>
+                <p class="auth-footer"><span aria-hidden="true">⌁</span> Didn’t receive the email? Check Spam or Promotions, then request a new code from support.</p>
             </form>
         </div>
     </section>

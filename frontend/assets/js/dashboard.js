@@ -315,3 +315,66 @@ async function loadWeather() {
 }
 showWeather("☀️", "Loading weather");
 loadWeather();
+
+// Customer-facing live sport board. It is rebuilt by the existing socket and
+// timed refreshes, so new, updated and cancelled tournaments appear promptly.
+function tournamentSport(tournament) {
+    const sport = String(tournament.sportType || tournament.sport || "Sport").trim();
+    return sport || "Sport";
+}
+
+function tournamentPhase(tournament) {
+    const now = new Date();
+    const start = new Date(tournament.startDate);
+    const end = new Date(tournament.endDate || tournament.startDate);
+    end.setHours(23, 59, 59, 999);
+    return start <= now && now <= end ? "Live now" : "Upcoming";
+}
+
+function tournamentSportBoard(tournaments) {
+    const grouped = tournaments.filter(isLiveTournament).reduce((sports, tournament) => {
+        const name = tournamentSport(tournament);
+        const key = name.toLowerCase();
+        if (!sports[key]) sports[key] = { name, tournaments: [] };
+        sports[key].tournaments.push(tournament);
+        return sports;
+    }, {});
+    const sports = Object.values(grouped).sort((left, right) => {
+        const leftLive = left.tournaments.filter((item) => tournamentPhase(item) === "Live now").length;
+        const rightLive = right.tournaments.filter((item) => tournamentPhase(item) === "Live now").length;
+        return rightLive - leftLive || right.tournaments.length - left.tournaments.length;
+    });
+    if (!sports.length) return `<div class="sport-board-empty">No tournament sport has been announced yet. New competitions will appear here as soon as they are published.</div>`;
+    return `<section class="tournament-sport-board" aria-label="Live tournament sport board">${sports.map(({ name, tournaments: entries }) => {
+        const liveCount = entries.filter((item) => tournamentPhase(item) === "Live now").length;
+        const next = entries.slice().sort((a, b) => new Date(a.startDate) - new Date(b.startDate))[0];
+        const competitionLabel = entries.length === 1 ? "competition" : "competitions";
+        return `<a class="sport-board-card" href="tournament.html?search=${encodeURIComponent(name)}"><div class="sport-board-card__top"><span class="sport-board-icon" aria-hidden="true">${escapeHTML(name.slice(0, 1).toUpperCase())}</span><div><span class="sport-board-kicker">${liveCount ? "LIVE TOURNAMENT" : "UPCOMING TOURNAMENT"}</span><h3>${escapeHTML(name)}</h3></div><span class="sport-board-status ${liveCount ? "is-live" : ""}">${liveCount ? `${liveCount} live` : "Upcoming"}</span></div><p>${entries.length} ${competitionLabel} available to explore</p><div class="sport-board-card__foot"><span>${liveCount ? "Matches are in progress" : `Starts ${formatDate(next.startDate)}`}</span><b>View tournaments &rarr;</b></div></a>`;
+    }).join("")}</section>`;
+}
+
+function customerView(bookings, tournaments) {
+    const active = bookings.filter(isUpcomingBooking);
+    const live = tournaments.filter(isLiveTournament);
+    const pinned = active.length ? active.slice(0, 3).map((booking) => {
+        const ground = booking.playground || {};
+        return `<article class="pin-card"><h3>${escapeHTML(ground.name || "Your playground booking")}</h3><p>${formatDate(booking.bookingDate)} &middot; ${escapeHTML(booking.startTime)}&ndash;${escapeHTML(booking.endTime)}<br>${escapeHTML(ground.address || "Location details will be shared")}</p></article>`;
+    }).join("") : `<div class="empty-state">No active booking yet. Book a slot and it will appear here.</div>`;
+    return `<section class="stats"><article class="stat-card"><span>Active bookings</span><strong>${active.length}</strong></article><article class="stat-card"><span>Available tournaments</span><strong>${live.length}</strong></article><article class="stat-card"><span>Booking history</span><strong>${bookings.length}</strong></article></section><div class="section-heading"><div><h2>Pinned for you</h2><p>Your upcoming bookings stay at the top.</p></div><a class="text-link" href="booking.html">Manage bookings &rarr;</a></div><section class="pinned-grid">${pinned}</section><div class="section-heading tournament-board-heading"><div><h2>Tournament sport board <span>LIVE</span></h2><p>See which sports are running now and which competitions are coming next.</p></div><a class="text-link" href="tournament.html">Browse all &rarr;</a></div>${tournamentSportBoard(tournaments)}<div class="section-heading"><div><h2>Live tournament feed</h2><p>Competition changes appear here automatically.</p></div><a class="text-link" href="tournament.html">View fixtures &rarr;</a></div>${ticker(live)}<section class="split-grid"><article class="panel"><h2 class="panel-title">Upcoming bookings</h2>${rows(active.slice(0, 5), bookingRow, "You have not made an upcoming booking yet.")}</article><article class="panel"><h2 class="panel-title">Tournament updates</h2>${rows(live.slice(0, 4), tournamentRow)}</article></section>`;
+}
+
+function ticker(tournaments) {
+    if (!tournaments.length) return `<div class="tournament-live-empty">No live or upcoming tournaments are available right now.</div>`;
+    const visible = tournaments.slice().sort((left, right) => {
+        const liveFirst = Number(tournamentPhase(right) === "Live now") - Number(tournamentPhase(left) === "Live now");
+        return liveFirst || new Date(left.startDate) - new Date(right.startDate);
+    }).slice(0, 6);
+    return `<section class="tournament-live-board" aria-label="Live and upcoming tournaments">${visible.map((tournament) => {
+        const ground = tournament.playgrounds?.[0] || tournament.playground || {};
+        const phase = tournamentPhase(tournament);
+        const sport = tournamentSport(tournament);
+        const status = phase === "Live now" ? "Live now" : "Upcoming";
+        const detail = phase === "Live now" ? `Ends ${formatDate(tournament.endDate || tournament.startDate)}` : `Starts ${formatDate(tournament.startDate)}`;
+        return `<a class="live-tournament-card ${phase === "Live now" ? "is-live" : ""}" href="tournament.html?search=${encodeURIComponent(tournament.name)}"><div class="live-tournament-card__status"><span>${status}</span><small>${escapeHTML(sport)}</small></div><div class="live-tournament-card__body"><h3>${escapeHTML(tournament.name)}</h3><p>${escapeHTML(ground.name || "Venue to be confirmed")}</p></div><div class="live-tournament-card__meta"><time>${detail}</time><b>View &rarr;</b></div></a>`;
+    }).join("")}</section>`;
+}
