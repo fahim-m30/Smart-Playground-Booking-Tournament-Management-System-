@@ -76,6 +76,24 @@ const createTournament = async (payload, createdBy) => {
     if (teamsPerGroup < 2 || teamsPerGroup > 8) {
         throw new Error("International group play requires 2 to 8 teams in each group.");
     }
+    if (![2, 4].includes(groupCount)) {
+        throw new Error("Professional tournament fixtures currently support two or four groups so every knockout pairing can be scheduled accurately.");
+    }
+
+    // One approved venue has three protected match windows each day. Reserve
+    // enough calendar days for every group match plus the full knockout route:
+    // 4 groups need QF (2 days), SF (1) and final day (1); 2 groups need SF
+    // and final day. Football's third-place match shares the final-day window.
+    const groupFixtures = groupCount * ((teamsPerGroup * (teamsPerGroup - 1)) / 2);
+    const groupDays = Math.ceil(groupFixtures / 3);
+    const knockoutDays = groupCount === 4 ? 4 : 2;
+    const requiredFixtureDays = groupDays + knockoutDays;
+    const scheduleStartDay = dateRangeFor(payload.startDate);
+    const scheduleEndDay = dateRangeFor(payload.endDate);
+    const availableFixtureDays = Math.round((scheduleEndDay.start - scheduleStartDay.start) / 86400000) + 1;
+    if (availableFixtureDays < requiredFixtureDays) {
+        throw new Error(`This ${groupCount}-group format needs at least ${requiredFixtureDays} calendar day(s): ${groupFixtures} group fixtures plus the complete knockout route. Extend the tournament dates before creating it.`);
+    }
 
     const requiresApproval = creator.role === "super-admin" && playground.playgroundAdmin.toString() !== String(createdBy);
 
@@ -672,6 +690,47 @@ const getTournamentMatches = async (tournamentId, stage, actor) => {
 // Update Match Result
 // ===================================================
 
+const advanceKnockoutBracket = async (completedMatch) => {
+    if (!['Quarter Final', 'Semi Final'].includes(completedMatch.stage)) return;
+    const tournament = await Tournament.findById(completedMatch.tournament).select('sportType playground endDate');
+    if (!tournament) return;
+    const withinTournament = (date) => {
+        const end = new Date(tournament.endDate);
+        end.setHours(23, 59, 59, 999);
+        if (date > end) throw new Error('The tournament end date is too early for the next knockout round. Extend the tournament dates before recording the final qualifying result.');
+    };
+    const nextDay = (matches) => {
+        const latest = [...matches].sort((first, second) => new Date(second.matchDate) - new Date(first.matchDate))[0];
+        const date = new Date(latest.matchDate);
+        date.setDate(date.getDate() + 1);
+        withinTournament(date);
+        return date;
+    };
+
+    if (completedMatch.stage === 'Quarter Final') {
+        const quarterFinals = await TournamentMatch.find({ tournament: tournament._id, stage: 'Quarter Final' }).sort({ matchDate: 1, startTime: 1 });
+        if (quarterFinals.length !== 4 || quarterFinals.some((match) => match.matchStatus !== 'Completed') || await TournamentMatch.exists({ tournament: tournament._id, stage: 'Semi Final' })) return;
+        const date = nextDay(quarterFinals);
+        await Promise.all([
+            TournamentMatch.create({ tournament: tournament._id, stage: 'Semi Final', teamA: quarterFinals[0].winner, teamB: quarterFinals[2].winner, playground: tournament.playground, matchDate: date, startTime: '13:00', endTime: '16:00', matchStatus: 'Scheduled' }),
+            TournamentMatch.create({ tournament: tournament._id, stage: 'Semi Final', teamA: quarterFinals[1].winner, teamB: quarterFinals[3].winner, playground: tournament.playground, matchDate: date, startTime: '17:00', endTime: '20:00', matchStatus: 'Scheduled' }),
+        ]);
+        return;
+    }
+
+    const semiFinals = await TournamentMatch.find({ tournament: tournament._id, stage: 'Semi Final' }).sort({ matchDate: 1, startTime: 1 });
+    if (semiFinals.length !== 2 || semiFinals.some((match) => match.matchStatus !== 'Completed') || await TournamentMatch.exists({ tournament: tournament._id, stage: 'Final' })) return;
+    const date = nextDay(semiFinals);
+    const finalMatches = [
+        TournamentMatch.create({ tournament: tournament._id, stage: 'Final', teamA: semiFinals[0].winner, teamB: semiFinals[1].winner, playground: tournament.playground, matchDate: date, startTime: '17:00', endTime: '20:00', matchStatus: 'Scheduled' }),
+    ];
+    if (tournament.sportType === 'Football') {
+        const loser = (match) => String(match.winner) === String(match.teamA) ? match.teamB : match.teamA;
+        finalMatches.unshift(TournamentMatch.create({ tournament: tournament._id, stage: 'Third Place', teamA: loser(semiFinals[0]), teamB: loser(semiFinals[1]), playground: tournament.playground, matchDate: date, startTime: '13:00', endTime: '16:00', matchStatus: 'Scheduled' }));
+    }
+    await Promise.all(finalMatches);
+};
+
 const updateMatchResult = async (matchId, payload, actor) => {
     const match = await TournamentMatch.findById(matchId);
 
@@ -738,7 +797,17 @@ const updateMatchResult = async (matchId, payload, actor) => {
 
         await teamA.save();
         await teamB.save();
+
+        const remainingGroupMatches = await TournamentMatch.countDocuments({
+            tournament: match.tournament,
+            stage: "Group",
+            matchStatus: { $ne: "Completed" },
+        });
+        if (remainingGroupMatches === 0) await generateKnockoutStage(match.tournament.toString());
     }
+
+    await advanceKnockoutBracket(match);
+    if (match.stage === "Final") await Tournament.updateOne({ _id: match.tournament }, { $set: { status: "Completed" } });
 
     return match;
 };
@@ -871,65 +940,55 @@ const generateKnockoutStage = async (tournamentId) => {
         throw new Error("Knockout stage can only be generated after group stage.");
     }
 
-    const groups = await TournamentGroup.find({
-        tournament: tournamentId,
-    });
-
-    const groupWinners = [];
-
+    const groups = await TournamentGroup.find({ tournament: tournamentId }).sort({ name: 1 });
+    const qualifiers = [];
     for (const group of groups) {
-        const teams = await TournamentTeam.find({
-            tournament: tournamentId,
-            group: group._id,
-        }).sort({ points: -1, goalDifference: -1, goalsFor: -1 });
-
-        if (teams.length < 2) {
-            throw new Error(`Not enough teams in ${group.name} for knockout stage.`);
-        }
-
-        groupWinners.push({ team: teams[0], group });
-        groupWinners.push({ team: teams[1], group });
+        const teams = await TournamentTeam.find({ tournament: tournamentId, group: group._id, isDeleted: false })
+            .sort({ points: -1, goalDifference: -1, goalsFor: -1, won: -1 });
+        if (teams.length < 2) throw new Error(`Not enough teams in ${group.name} for knockout stage.`);
+        qualifiers.push({ winner: teams[0], runnerUp: teams[1], group });
     }
 
-    const playoffMatch = await TournamentMatch.create({
-        tournament: tournamentId,
-        stage: "Semi Final",
-        teamA: groupWinners[0].team._id,
-        teamB: groupWinners[1].team._id,
-        playground: groupWinners[0].group.playground,
-        matchDate: new Date(tournament.endDate),
-        startTime: "14:00",
-        endTime: "16:00",
-        matchStatus: "Scheduled",
+    const lastGroupMatch = await TournamentMatch.findOne({ tournament: tournamentId, stage: "Group" }).sort({ matchDate: -1, startTime: -1 });
+    const nextDate = new Date(lastGroupMatch?.matchDate || tournament.startDate);
+    nextDate.setDate(nextDate.getDate() + 1);
+    const endDate = new Date(tournament.endDate);
+    endDate.setHours(23, 59, 59, 999);
+    if (nextDate > endDate) throw new Error("Tournament dates need at least one day after group play for the knockout stage.");
+
+    const createMatch = (stage, teamA, teamB, date, startTime, endTime) => TournamentMatch.create({
+        tournament: tournamentId, stage, teamA: teamA._id, teamB: teamB._id,
+        playground: tournament.playground, matchDate: date, startTime, endTime, matchStatus: "Scheduled",
     });
 
-    const semiFinal2 = await TournamentMatch.create({
-        tournament: tournamentId,
-        stage: "Semi Final",
-        teamA: groupWinners[2].team._id,
-        teamB: groupWinners[3].team._id,
-        playground: groupWinners[2].group.playground,
-        matchDate: new Date(tournament.endDate),
-        startTime: "16:00",
-        endTime: "18:00",
-        matchStatus: "Scheduled",
-    });
-
-    const final = await TournamentMatch.create({
-        tournament: tournamentId,
-        stage: "Final",
-        teamA: groupWinners[0].team._id,
-        teamB: groupWinners[2].team._id,
-        playground: groupWinners[0].group.playground,
-        matchDate: new Date(tournament.endDate),
-        startTime: "18:00",
-        endTime: "20:00",
-        matchStatus: "Scheduled",
-    });
+    let matches;
+    if (qualifiers.length === 4) {
+        const qfPairs = [
+            [qualifiers[0].winner, qualifiers[1].runnerUp],
+            [qualifiers[1].winner, qualifiers[0].runnerUp],
+            [qualifiers[2].winner, qualifiers[3].runnerUp],
+            [qualifiers[3].winner, qualifiers[2].runnerUp],
+        ];
+        const secondQuarterFinalDay = new Date(nextDate);
+        secondQuarterFinalDay.setDate(secondQuarterFinalDay.getDate() + 1);
+        if (secondQuarterFinalDay > endDate) throw new Error("Tournament dates need two days for four quarter-finals. Extend the tournament period.");
+        matches = await Promise.all([
+            createMatch("Quarter Final", ...qfPairs[0], nextDate, "09:00", "12:00"),
+            createMatch("Quarter Final", ...qfPairs[1], nextDate, "13:00", "16:00"),
+            createMatch("Quarter Final", ...qfPairs[2], nextDate, "17:00", "20:00"),
+            createMatch("Quarter Final", ...qfPairs[3], secondQuarterFinalDay, "09:00", "12:00"),
+        ]);
+    } else if (qualifiers.length === 2) {
+        matches = await Promise.all([
+            createMatch("Semi Final", qualifiers[0].winner, qualifiers[1].runnerUp, nextDate, "13:00", "16:00"),
+            createMatch("Semi Final", qualifiers[1].winner, qualifiers[0].runnerUp, nextDate, "17:00", "20:00"),
+        ]);
+    } else {
+        throw new Error("This knockout generator currently supports two or four groups.");
+    }
 
     await Tournament.findByIdAndUpdate(tournamentId, { status: "Knockout Stage" });
-
-    return [playoffMatch, semiFinal2, final];
+    return matches;
 };
 
 // ===================================================

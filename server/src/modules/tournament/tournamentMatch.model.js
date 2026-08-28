@@ -25,7 +25,7 @@ const tournamentMatchSchema = new mongoose.Schema(
 
         stage: {
             type: String,
-            enum: ["Group", "Semi Final", "Final", "Third Place"],
+            enum: ["Group", "Quarter Final", "Semi Final", "Final", "Third Place"],
             required: true,
         },
 

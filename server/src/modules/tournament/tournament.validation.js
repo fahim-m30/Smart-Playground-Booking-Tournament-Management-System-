@@ -79,7 +79,7 @@ const scheduleMatchValidation = Joi.object({
 
     endTime: Joi.string().trim(),
 
-    stage: Joi.string().valid("Group", "Semi Final", "Final", "Third Place"),
+    stage: Joi.string().valid("Group", "Quarter Final", "Semi Final", "Final", "Third Place"),
 
     matchStatus: Joi.string().valid("Scheduled", "Live", "Completed", "Cancelled"),
 });

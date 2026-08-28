@@ -15,9 +15,9 @@ const registrationDeadline = (tournament) => {
     return new Date(Date.UTC(year, month - 1, day - 2, 0, 0) - (6 * 60 * 60 * 1000));
 };
 const sportProfile = (sport) => ({
-    Football: { icon: "Football", format: "FIFA World Cup format — group stage, knockout rounds and final" },
-    Cricket: { icon: "Cricket", format: "ICC Cricket World Cup format — group stage, knockout rounds and final" },
-    Badminton: { icon: "Badminton", format: "BWF World Championships format — group stage, knockout rounds and final" },
+    Football: { icon: "Football", format: "FIFA World Cup format — 4-team groups, quarter-finals, semi-finals, third place and final" },
+    Cricket: { icon: "Cricket", format: "ICC World Cup format — 4-team groups, quarter-finals, semi-finals and final" },
+    Badminton: { icon: "Badminton", format: "BWF team format — 4-team groups, cross-group quarter-finals, semi-finals and final" },
 }[sport] || { icon: "Tournament", format: "Professional group-stage competition" });
 const roundRobinMatchdays = (teams) => {
     const rotation = [...teams];
@@ -29,26 +29,28 @@ const roundRobinMatchdays = (teams) => {
         return pairs;
     });
 };
-const knockoutDemo = (groups, endDate) => {
+const knockoutDemo = (groups, lastGroupMatchDate, sport) => {
     const names = groups.map((group) => group.name.replace("Group ", ""));
-    const at = (daysBefore, time) => {
-        const date = new Date(endDate);
-        date.setUTCDate(date.getUTCDate() - daysBefore);
+    const at = (daysAfter, time) => {
+        const date = new Date(lastGroupMatchDate);
+        date.setUTCDate(date.getUTCDate() + daysAfter);
         return { date, time };
     };
     if (names.length === 2) return [
         { stage: "Semi-final 1", teamA: `Winner Group ${names[0]}`, teamB: `Runner-up Group ${names[1]}`, ...at(1, "13:00") },
         { stage: "Semi-final 2", teamA: `Winner Group ${names[1]}`, teamB: `Runner-up Group ${names[0]}`, ...at(1, "17:00") },
-        { stage: "Final", teamA: "Winner Semi-final 1", teamB: "Winner Semi-final 2", ...at(0, "17:00") },
+        ...(sport === "Football" ? [{ stage: "Third-place match", teamA: "Loser Semi-final 1", teamB: "Loser Semi-final 2", ...at(2, "13:00") }] : []),
+        { stage: "Final", teamA: "Winner Semi-final 1", teamB: "Winner Semi-final 2", ...at(2, "17:00") },
     ];
     if (names.length === 4) return [
-        { stage: "Quarter-final 1", teamA: `Winner Group ${names[0]}`, teamB: `Runner-up Group ${names[1]}`, ...at(2, "09:00") },
-        { stage: "Quarter-final 2", teamA: `Winner Group ${names[1]}`, teamB: `Runner-up Group ${names[0]}`, ...at(2, "13:00") },
-        { stage: "Quarter-final 3", teamA: `Winner Group ${names[2]}`, teamB: `Runner-up Group ${names[3]}`, ...at(2, "17:00") },
-        { stage: "Quarter-final 4", teamA: `Winner Group ${names[3]}`, teamB: `Runner-up Group ${names[2]}`, ...at(1, "09:00") },
-        { stage: "Semi-final 1", teamA: "Winner Quarter-final 1", teamB: "Winner Quarter-final 3", ...at(1, "13:00") },
-        { stage: "Semi-final 2", teamA: "Winner Quarter-final 2", teamB: "Winner Quarter-final 4", ...at(1, "17:00") },
-        { stage: "Final", teamA: "Winner Semi-final 1", teamB: "Winner Semi-final 2", ...at(0, "17:00") },
+        { stage: "Quarter-final 1", teamA: `Winner Group ${names[0]}`, teamB: `Runner-up Group ${names[1]}`, ...at(1, "09:00") },
+        { stage: "Quarter-final 2", teamA: `Winner Group ${names[1]}`, teamB: `Runner-up Group ${names[0]}`, ...at(1, "13:00") },
+        { stage: "Quarter-final 3", teamA: `Winner Group ${names[2]}`, teamB: `Runner-up Group ${names[3]}`, ...at(1, "17:00") },
+        { stage: "Quarter-final 4", teamA: `Winner Group ${names[3]}`, teamB: `Runner-up Group ${names[2]}`, ...at(2, "09:00") },
+        { stage: "Semi-final 1", teamA: "Winner Quarter-final 1", teamB: "Winner Quarter-final 3", ...at(3, "13:00") },
+        { stage: "Semi-final 2", teamA: "Winner Quarter-final 2", teamB: "Winner Quarter-final 4", ...at(3, "17:00") },
+        ...(sport === "Football" ? [{ stage: "Third-place match", teamA: "Loser Semi-final 1", teamB: "Loser Semi-final 2", ...at(4, "13:00") }] : []),
+        { stage: "Final", teamA: "Winner Semi-final 1", teamB: "Winner Semi-final 2", ...at(4, "17:00") },
     ];
     return [
         { stage: "Knockout round", teamA: "Qualified team 1", teamB: "Qualified team 2", ...at(2, "13:00") },
@@ -111,6 +113,9 @@ $("#create-toggle").onclick = () => {
     $("#create-panel").classList.toggle("show");
 };
 const creatorForm = $("#create-form");
+// The published fixture engine has verified brackets for two or four groups.
+// Do not offer group counts that would create an undefined knockout route.
+creatorForm?.querySelectorAll('select[name="groupCount"] option[value="6"], select[name="groupCount"] option[value="8"]').forEach((option) => option.remove());
 const normalizeName = (value) => String(value || "").trim().replace(/\s+/g, " ").toLowerCase();
 const setCreateFeedback = (message = "", type = "error") => {
     const box = $("#create-feedback");
@@ -139,6 +144,15 @@ const updateCreatorPreview = () => {
         ? "Teams must divide evenly into groups. Adjust total teams or group count before continuing."
         : "Each group uses FIFA-style matchdays, so every team plays once in each round.";
     guidance.classList.toggle("warning", Boolean(teamCount && groupCount && teamCount % groupCount !== 0));
+    if (teamCount && groupCount && teamCount % groupCount === 0 && [2, 4].includes(groupCount)) {
+        const teamsPerGroup = teamCount / groupCount;
+        const groupFixtures = groupCount * ((teamsPerGroup * (teamsPerGroup - 1)) / 2);
+        const groupDays = Math.ceil(groupFixtures / 3);
+        const knockoutDays = groupCount === 4 ? 4 : 2;
+        const minimumDays = groupDays + knockoutDays;
+        guidance.textContent = `${groupFixtures} group fixtures across ${groupDays} match day(s), then ${groupCount === 4 ? "quarter-finals, semi-finals and final" : "semi-finals and final"}. With one venue and three daily slots, allow at least ${minimumDays} calendar day(s).`;
+        guidance.classList.remove("warning");
+    }
 };
 creatorForm.addEventListener("input", updateCreatorPreview);
 creatorForm.addEventListener("change", updateCreatorPreview);
@@ -327,10 +341,14 @@ window.detail = async (id) => {
                 });
             }));
         }
-        const knockoutFixtures = knockoutDemo(groups, tournament.endDate);
-        const preview = previewFixtures.length
+        const knockoutFixtures = knockoutDemo(groups, previewFixtures.at(-1)?.matchDate || new Date(tournament.startDate), sport);
+        let preview = previewFixtures.length
             ? `<p class="fixture-preview-note">${esc(sportProfile(sport).format)}. Every team plays once per matchday; open team slots are provisional. This demo includes the complete knockout route through the final.</p><div class="fixtures-list">${previewFixtures.map((match, index) => `<article class="fixture-row preview"><div class="fixture-time">Match ${index + 1}<br>${dateLabel(match.matchDate)} · ${esc(match.startTime)}–${esc(match.endTime)}<br>${esc(match.group)} · Matchday ${match.matchday}</div><div class="fixture-teams">${esc(match.teamA)} <span>vs</span> ${esc(match.teamB)}</div><div class="fixture-score">Group stage</div></article>`).join("")}<h3 class="knockout-title">Knockout path</h3>${knockoutFixtures.map((match) => `<article class="fixture-row knockout-preview"><div class="fixture-time">${dateLabel(match.date)} · ${esc(match.time)}<br>${esc(match.stage)}</div><div class="fixture-teams">${esc(match.teamA)} <span>vs</span> ${esc(match.teamB)}</div><div class="fixture-score">Knockout</div></article>`).join("")}</div>`
             : '<div class="fixture-empty">The draw preview will appear when the tournament groups are ready.</div>';
+        const fixtureEnd = knockoutFixtures.at(-1)?.date;
+        if (previewFixtures.length && fixtureEnd && fixtureEnd > new Date(tournament.endDate)) {
+            preview = `<p class="fixture-capacity-warning">This full draw needs dates through ${dateLabel(fixtureEnd)}. Extend the tournament period before publishing the final fixture.</p>${preview}`;
+        }
         const table = standings.map((standing) => `<h3 class="standings-group-title">${esc(standing.group)}</h3><div class="standings-wrap"><table class="standings-table"><thead><tr><th>#</th><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>${sport === "Football" ? "GD" : "Diff"}</th><th>Pts</th></tr></thead><tbody>${standing.teams.map((team, index) => `<tr><td><span class="standing-rank">${index + 1}</span></td><td>${esc(team.teamName)}</td><td>${team.played}</td><td>${team.won}</td><td>${team.drawn}</td><td>${team.lost}</td><td>${team.goalDifference}</td><td><strong>${team.points}</strong></td></tr>`).join("")}</tbody></table></div>`).join("") || '<div class="fixture-empty">The points table will appear once groups are assigned.</div>';
         const fixtures = matches.map((match) => `<article class="fixture-row ${match.matchStatus === "Live" ? "live" : ""}"><div class="fixture-time">${dateLabel(match.matchDate)}<br>${esc(match.startTime)}–${esc(match.endTime)} · ${esc(groupName(match.group))}${match.matchday ? `<br>Matchday ${match.matchday}` : `<br>${esc(match.stage)}`}</div><div class="fixture-teams">${esc(match.teamA?.teamName || "TBD")} <span>vs</span> ${esc(match.teamB?.teamName || "TBD")}</div><div class="fixture-score">${match.matchStatus === "Live" ? '<span class="live-tag">LIVE</span>' : match.matchStatus === "Completed" ? `${match.teamAScore} – ${match.teamBScore}` : esc(match.matchStatus)}</div></article>`).join("") || '<div class="fixture-empty">Fixtures are released automatically one day before the tournament begins.</div>';
         const modal = document.createElement("div"); modal.className = "modal show";
