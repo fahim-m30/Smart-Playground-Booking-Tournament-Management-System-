@@ -18,6 +18,15 @@ const { createNotification } = require("../notification/notification.service");
 const { emitDashboardUpdate } = require("../../config/socket");
 const { calendarDate, dayRange, tournamentRegistrationClosesAt } = require("../../utils/scheduleTime");
 
+const tournamentNameKey = (value) => String(value || "").trim().replace(/\s+/g, " ").toLocaleLowerCase();
+const dateRangeFor = (value) => {
+    const date = new Date(value);
+    return {
+        start: new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())),
+        end: new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + 1)),
+    };
+};
+
 // ===================================================
 // Create Tournament
 // ===================================================
@@ -40,6 +49,21 @@ const createTournament = async (payload, createdBy) => {
         throw new Error("Playground admins can create tournaments only for their own playground.");
     }
 
+    const nameKey = tournamentNameKey(payload.name);
+    const eventDay = dateRangeFor(payload.startDate);
+    const duplicate = await Tournament.findOne({
+        playground: playground._id,
+        startDate: { $gte: eventDay.start, $lt: eventDay.end },
+        isDeleted: false,
+        $or: [
+            { nameKey },
+            { name: { $regex: `^${String(payload.name).trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, $options: "i" } },
+        ],
+    }).select("name startDate");
+    if (duplicate) {
+        throw new Error(`Duplicate tournament detected: \"${duplicate.name}\" already uses this playground on the selected start date. Keep the existing event, or change the tournament name, venue, or start date.`);
+    }
+
     const totalTeams = payload.totalTeams;
     const groupCount = payload.groupCount || 2;
 
@@ -54,17 +78,26 @@ const createTournament = async (payload, createdBy) => {
 
     const requiresApproval = creator.role === "super-admin" && playground.playgroundAdmin.toString() !== String(createdBy);
 
-    const tournament = await Tournament.create({
-        ...payload,
-        playground: playground._id,
-        playgrounds: [playground._id],
-        createdBy,
-        groupCount,
-        teamsPerGroup,
-        status: requiresApproval ? "Pending Approval" : "Upcoming",
-        venueApprovalStatus: requiresApproval ? "Pending" : "Not Required",
-        venueApprovalRequestedAt: requiresApproval ? new Date() : null,
-    });
+    let tournament;
+    try {
+        tournament = await Tournament.create({
+            ...payload,
+            nameKey,
+            playground: playground._id,
+            playgrounds: [playground._id],
+            createdBy,
+            groupCount,
+            teamsPerGroup,
+            status: requiresApproval ? "Pending Approval" : "Upcoming",
+            venueApprovalStatus: requiresApproval ? "Pending" : "Not Required",
+            venueApprovalRequestedAt: requiresApproval ? new Date() : null,
+        });
+    } catch (error) {
+        if (error?.code === 11000) {
+            throw new Error("Duplicate tournament detected. An event with this name, playground and start date already exists. Change one of those details and try again.");
+        }
+        throw error;
+    }
 
     const groups = requiresApproval ? [] : await createTournamentGroups(tournament);
     if (!requiresApproval) await Playground.findByIdAndUpdate(playground._id, { $inc: { tournamentCount: 1 } });
@@ -990,8 +1023,8 @@ const updateTournamentTeamCounts = async (tournamentId, payload, adminId) => {
     }
 
     if (groupCount !== undefined) {
-        if (groupCount < 2 || groupCount > 6) {
-            throw new Error("Group count must be between 2 and 6.");
+        if (groupCount < 2 || groupCount > 8) {
+            throw new Error("Group count must be between 2 and 8.");
         }
 
         if (totalTeams && totalTeams % groupCount !== 0) {

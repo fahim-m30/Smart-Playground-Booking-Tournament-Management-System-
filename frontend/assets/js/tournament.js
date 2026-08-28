@@ -15,9 +15,9 @@ const registrationDeadline = (tournament) => {
     return new Date(Date.UTC(year, month - 1, day - 2, 0, 0) - (6 * 60 * 60 * 1000));
 };
 const sportProfile = (sport) => ({
-    Football: { icon: "Football", format: "FIFA-style group stage and knockout draw" },
-    Cricket: { icon: "Cricket", format: "World Cup-style group stage and knockout draw" },
-    Badminton: { icon: "Badminton", format: "World Championship-style group draw" },
+    Football: { icon: "Football", format: "FIFA World Cup format — group stage, knockout rounds and final" },
+    Cricket: { icon: "Cricket", format: "ICC Cricket World Cup format — group stage, knockout rounds and final" },
+    Badminton: { icon: "Badminton", format: "BWF World Championships format — group stage, knockout rounds and final" },
 }[sport] || { icon: "Tournament", format: "Professional group-stage competition" });
 const roundRobinMatchdays = (teams) => {
     const rotation = [...teams];
@@ -28,6 +28,34 @@ const roundRobinMatchdays = (teams) => {
         rotation.splice(1, 0, rotation.pop());
         return pairs;
     });
+};
+const knockoutDemo = (groups, endDate) => {
+    const names = groups.map((group) => group.name.replace("Group ", ""));
+    const at = (daysBefore, time) => {
+        const date = new Date(endDate);
+        date.setUTCDate(date.getUTCDate() - daysBefore);
+        return { date, time };
+    };
+    if (names.length === 2) return [
+        { stage: "Semi-final 1", teamA: `Winner Group ${names[0]}`, teamB: `Runner-up Group ${names[1]}`, ...at(1, "13:00") },
+        { stage: "Semi-final 2", teamA: `Winner Group ${names[1]}`, teamB: `Runner-up Group ${names[0]}`, ...at(1, "17:00") },
+        { stage: "Final", teamA: "Winner Semi-final 1", teamB: "Winner Semi-final 2", ...at(0, "17:00") },
+    ];
+    if (names.length === 4) return [
+        { stage: "Quarter-final 1", teamA: `Winner Group ${names[0]}`, teamB: `Runner-up Group ${names[1]}`, ...at(2, "09:00") },
+        { stage: "Quarter-final 2", teamA: `Winner Group ${names[1]}`, teamB: `Runner-up Group ${names[0]}`, ...at(2, "13:00") },
+        { stage: "Quarter-final 3", teamA: `Winner Group ${names[2]}`, teamB: `Runner-up Group ${names[3]}`, ...at(2, "17:00") },
+        { stage: "Quarter-final 4", teamA: `Winner Group ${names[3]}`, teamB: `Runner-up Group ${names[2]}`, ...at(1, "09:00") },
+        { stage: "Semi-final 1", teamA: "Winner Quarter-final 1", teamB: "Winner Quarter-final 3", ...at(1, "13:00") },
+        { stage: "Semi-final 2", teamA: "Winner Quarter-final 2", teamB: "Winner Quarter-final 4", ...at(1, "17:00") },
+        { stage: "Final", teamA: "Winner Semi-final 1", teamB: "Winner Semi-final 2", ...at(0, "17:00") },
+    ];
+    return [
+        { stage: "Knockout round", teamA: "Qualified team 1", teamB: "Qualified team 2", ...at(2, "13:00") },
+        { stage: "Semi-final 1", teamA: "Winner Knockout round 1", teamB: "Winner Knockout round 2", ...at(1, "13:00") },
+        { stage: "Semi-final 2", teamA: "Winner Knockout round 3", teamB: "Winner Knockout round 4", ...at(1, "17:00") },
+        { stage: "Final", teamA: "Winner Semi-final 1", teamB: "Winner Semi-final 2", ...at(0, "17:00") },
+    ];
 };
 let tournaments = [], selected = null, tournamentSearch = new URLSearchParams(location.search).get("search") || "";
 const requestedFixtureId = new URLSearchParams(location.search).get("fixture");
@@ -72,13 +100,68 @@ $("#join-form").onsubmit = async (event) => {
     try { const team = await req(`/tournaments/${selected._id}/register`, { method: "POST", body: data }); const provider = { bkash: "bKash", nagad: "Nagad", rocket: "Rocket", card: "Card" }[$("#join-method").value]; const checkout = await req("/payments/demo/checkout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tournamentTeam: team._id, paymentMethod: provider }) }); sessionStorage.setItem("turfFixtureTournament", selected._id); location.href = `demo-payment.html?payment=${checkout.payment._id}`; } catch (error) { say(error.message, true); }
 };
 
-async function venues() { const grounds = await req(user.role === "playground-admin" ? "/playgrounds/my-playgrounds" : "/playgrounds"); $("#venue").innerHTML = '<option value="">Select the tournament playground</option>' + grounds.map((ground) => `<option value="${ground._id}">${esc(ground.name)} · ${esc(ground.area || ground.address)}</option>`).join(""); }
+async function venues() {
+    const grounds = await req(user.role === "playground-admin" ? "/playgrounds/my-playgrounds" : "/playgrounds");
+    $("#venue").innerHTML = '<option value="">Choose an approved playground</option>' + grounds.map((ground) => `<option value="${ground._id}">${esc(ground.name)} · ${esc(ground.area || ground.address)}</option>`).join("");
+    updateCreatorPreview();
+}
 const canCreateTournament = ["super-admin", "playground-admin"].includes(user.role);
 $("#create-toggle").onclick = () => {
     if (!canCreateTournament) return say("Only playground administrators and super administrators can create tournaments.", true);
     $("#create-panel").classList.toggle("show");
 };
-$("#create-form").onsubmit = async (event) => { const form = event.currentTarget; event.preventDefault(); const raw = Object.fromEntries(new FormData(form)); const payload = { ...raw, playground: $("#venue").value, totalTeams: Number(raw.totalTeams), groupCount: Number(raw.groupCount), playingMembers: Number(raw.playingMembers), extraMembers: Number(raw.extraMembers), registrationFee: Number(raw.registrationFee) }; if (payload.totalTeams % payload.groupCount !== 0) return say("Total teams must be divisible by the number of groups.", true); try { const result = await req("/tournaments", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }); say(result.venueApprovalStatus === "Pending" ? "Venue approval request sent to the playground admin." : "Tournament created successfully."); form.reset(); $("#create-panel").classList.remove("show"); list(); } catch (error) { say(error.message, true); } };
+const creatorForm = $("#create-form");
+const normalizeName = (value) => String(value || "").trim().replace(/\s+/g, " ").toLowerCase();
+const setCreateFeedback = (message = "", type = "error") => {
+    const box = $("#create-feedback");
+    box.hidden = !message;
+    box.className = `create-feedback full${type === "ok" ? " ok" : ""}`;
+    if (!message) { box.textContent = ""; return; }
+    const duplicate = /duplicate tournament/i.test(message);
+    box.innerHTML = duplicate
+        ? `<strong>Duplicate event prevented</strong>${esc(message)}<br><small>Next step: keep the existing tournament, or change its name, venue, or start date.</small>`
+        : `<strong>Review this setup</strong>${esc(message)}`;
+};
+const updateCreatorPreview = () => {
+    const data = Object.fromEntries(new FormData(creatorForm));
+    const teamCount = Number(data.totalTeams || 0), groupCount = Number(data.groupCount || 0);
+    const sport = data.sportType || "";
+    $("#preview-title").textContent = data.name?.trim() || "Your tournament";
+    $("#preview-sport").textContent = sport ? sportProfile(sport).format : "Choose a sport";
+    $("#preview-format").textContent = sport === "Football" ? "FIFA World Cup: groups → knockout → final" : sport === "Cricket" ? "ICC Cricket World Cup: groups → knockout → final" : sport === "Badminton" ? "BWF World Championships: groups → knockout → final" : "Choose a sport to see the format";
+    $("#preview-capacity").textContent = teamCount && groupCount ? `${teamCount} teams · ${groupCount} groups · ${teamCount % groupCount === 0 ? teamCount / groupCount : "—"} per group` : "Set teams and groups";
+    if (data.startDate) {
+        const deadline = registrationDeadline({ startDate: `${data.startDate}T00:00:00.000Z` });
+        $("#preview-deadline").textContent = `Closes ${dateLabel(deadline)} at 12:00 AM`;
+    } else $("#preview-deadline").textContent = "Set a start date";
+    const guidance = $("#format-guidance");
+    guidance.textContent = teamCount && groupCount && teamCount % groupCount !== 0
+        ? "Teams must divide evenly into groups. Adjust total teams or group count before continuing."
+        : "Each group uses FIFA-style matchdays, so every team plays once in each round.";
+    guidance.classList.toggle("warning", Boolean(teamCount && groupCount && teamCount % groupCount !== 0));
+};
+creatorForm.addEventListener("input", updateCreatorPreview);
+creatorForm.addEventListener("change", updateCreatorPreview);
+$("#create-form").onsubmit = async (event) => {
+    const form = event.currentTarget;
+    event.preventDefault();
+    const raw = Object.fromEntries(new FormData(form));
+    const payload = { ...raw, playground: $("#venue").value, totalTeams: Number(raw.totalTeams), groupCount: Number(raw.groupCount), playingMembers: Number(raw.playingMembers), extraMembers: Number(raw.extraMembers), registrationFee: Number(raw.registrationFee) };
+    setCreateFeedback();
+    if (payload.totalTeams % payload.groupCount !== 0) return setCreateFeedback("Total teams must be divisible by the selected number of groups.");
+    if (payload.endDate < payload.startDate) return setCreateFeedback("End date cannot be before the tournament start date.");
+    const duplicate = tournaments.find((item) => normalizeName(item.name) === normalizeName(payload.name) && String(item.playground?._id || item.playground) === String(payload.playground) && String(item.startDate).slice(0, 10) === payload.startDate && item.status !== "Cancelled");
+    if (duplicate) return setCreateFeedback(`Duplicate tournament detected: ${duplicate.name} is already scheduled here on ${dateLabel(duplicate.startDate)}.`);
+    try {
+        const result = await req("/tournaments", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+        const message = result.tournament?.venueApprovalStatus === "Pending" ? "Venue approval request sent to the playground admin." : "Tournament created successfully. The demo fixture is ready for organisers.";
+        setCreateFeedback(message, "ok");
+        say(message);
+        form.reset();
+        updateCreatorPreview();
+        list();
+    } catch (error) { setCreateFeedback(error.message); say(error.message, true); }
+};
 if (canCreateTournament) { $("#create-toggle").hidden = false; venues().catch((error) => say(error.message, true)); }
 $("#logout").onclick = () => { localStorage.clear(); location = "login.html"; };
 function decorateTournamentManagement() {
@@ -244,8 +327,9 @@ window.detail = async (id) => {
                 });
             }));
         }
+        const knockoutFixtures = knockoutDemo(groups, tournament.endDate);
         const preview = previewFixtures.length
-            ? `<p class="fixture-preview-note">FIFA-style demo draw — every team plays once per matchday. Registered team names are shown now; open slots are provisional. The final ${esc(sportProfile(sport).format)} fixture is published one day before kick-off.</p><div class="fixtures-list">${previewFixtures.map((match, index) => `<article class="fixture-row preview"><div class="fixture-time">Match ${index + 1}<br>${dateLabel(match.matchDate)} · ${esc(match.startTime)}–${esc(match.endTime)}<br>${esc(match.group)} · Matchday ${match.matchday}</div><div class="fixture-teams">${esc(match.teamA)} <span>vs</span> ${esc(match.teamB)}</div><div class="fixture-score">Demo draw</div></article>`).join("")}</div>`
+            ? `<p class="fixture-preview-note">${esc(sportProfile(sport).format)}. Every team plays once per matchday; open team slots are provisional. This demo includes the complete knockout route through the final.</p><div class="fixtures-list">${previewFixtures.map((match, index) => `<article class="fixture-row preview"><div class="fixture-time">Match ${index + 1}<br>${dateLabel(match.matchDate)} · ${esc(match.startTime)}–${esc(match.endTime)}<br>${esc(match.group)} · Matchday ${match.matchday}</div><div class="fixture-teams">${esc(match.teamA)} <span>vs</span> ${esc(match.teamB)}</div><div class="fixture-score">Group stage</div></article>`).join("")}<h3 class="knockout-title">Knockout path</h3>${knockoutFixtures.map((match) => `<article class="fixture-row knockout-preview"><div class="fixture-time">${dateLabel(match.date)} · ${esc(match.time)}<br>${esc(match.stage)}</div><div class="fixture-teams">${esc(match.teamA)} <span>vs</span> ${esc(match.teamB)}</div><div class="fixture-score">Knockout</div></article>`).join("")}</div>`
             : '<div class="fixture-empty">The draw preview will appear when the tournament groups are ready.</div>';
         const table = standings.map((standing) => `<h3 class="standings-group-title">${esc(standing.group)}</h3><div class="standings-wrap"><table class="standings-table"><thead><tr><th>#</th><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>${sport === "Football" ? "GD" : "Diff"}</th><th>Pts</th></tr></thead><tbody>${standing.teams.map((team, index) => `<tr><td><span class="standing-rank">${index + 1}</span></td><td>${esc(team.teamName)}</td><td>${team.played}</td><td>${team.won}</td><td>${team.drawn}</td><td>${team.lost}</td><td>${team.goalDifference}</td><td><strong>${team.points}</strong></td></tr>`).join("")}</tbody></table></div>`).join("") || '<div class="fixture-empty">The points table will appear once groups are assigned.</div>';
         const fixtures = matches.map((match) => `<article class="fixture-row ${match.matchStatus === "Live" ? "live" : ""}"><div class="fixture-time">${dateLabel(match.matchDate)}<br>${esc(match.startTime)}–${esc(match.endTime)} · ${esc(groupName(match.group))}${match.matchday ? `<br>Matchday ${match.matchday}` : `<br>${esc(match.stage)}`}</div><div class="fixture-teams">${esc(match.teamA?.teamName || "TBD")} <span>vs</span> ${esc(match.teamB?.teamName || "TBD")}</div><div class="fixture-score">${match.matchStatus === "Live" ? '<span class="live-tag">LIVE</span>' : match.matchStatus === "Completed" ? `${match.teamAScore} – ${match.teamBScore}` : esc(match.matchStatus)}</div></article>`).join("") || '<div class="fixture-empty">Fixtures are released automatically one day before the tournament begins.</div>';

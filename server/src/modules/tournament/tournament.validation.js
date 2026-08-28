@@ -10,9 +10,9 @@
 const Joi = require("joi");
 
 const createTournamentValidation = Joi.object({
-    name: Joi.string().required(),
+    name: Joi.string().trim().min(3).max(120).required(),
 
-    description: Joi.string().required(),
+    description: Joi.string().trim().min(10).max(2000).required(),
 
     sportType: Joi.string().valid("Football", "Cricket", "Badminton").required(),
 
@@ -87,7 +87,7 @@ const scheduleMatchValidation = Joi.object({
 const updateTournamentTeamCountsValidation = Joi.object({
     totalTeams: Joi.number().min(4).max(24),
 
-    groupCount: Joi.number().min(2).max(6),
+    groupCount: Joi.number().min(2).max(8),
 
     teamsPerGroup: Joi.number().min(2).max(8),
 });

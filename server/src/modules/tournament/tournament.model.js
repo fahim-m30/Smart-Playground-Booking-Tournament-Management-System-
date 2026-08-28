@@ -17,6 +17,13 @@ const tournamentSchema = new mongoose.Schema(
             trim: true,
         },
 
+        // Canonical form used to prevent the same event being created twice
+        // with only letter-case or extra-space differences.
+        nameKey: {
+            type: String,
+            trim: true,
+        },
+
         description: {
             type: String,
             required: true,
@@ -78,7 +85,7 @@ const tournamentSchema = new mongoose.Schema(
             type: Number,
             default: 3,
             min: 2,
-            max: 6,
+            max: 8,
         },
 
         teamsPerGroup: {
@@ -155,6 +162,11 @@ const tournamentSchema = new mongoose.Schema(
         timestamps: true,
         versionKey: false,
     }
+);
+
+tournamentSchema.index(
+    { playground: 1, startDate: 1, nameKey: 1 },
+    { unique: true, partialFilterExpression: { isDeleted: false, nameKey: { $type: "string" } } }
 );
 
 const Tournament = mongoose.model("Tournament", tournamentSchema);
