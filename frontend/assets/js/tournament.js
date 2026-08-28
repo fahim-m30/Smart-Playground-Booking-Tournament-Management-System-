@@ -17,7 +17,7 @@ const registrationDeadline = (tournament) => {
 const sportProfile = (sport) => ({
     Football: { icon: "Football", format: "FIFA World Cup format — 4-team groups, quarter-finals, semi-finals, third place and final" },
     Cricket: { icon: "Cricket", format: "ICC World Cup format — 4-team groups, quarter-finals, semi-finals and final" },
-    Badminton: { icon: "Badminton", format: "BWF team format — 4-team groups, cross-group quarter-finals, semi-finals and final" },
+    Badminton: { icon: "Badminton", format: "BWF World Cup format — singles or doubles, groups, knockout and final" },
 }[sport] || { icon: "Tournament", format: "Professional group-stage competition" });
 const roundRobinMatchdays = (teams) => {
     const rotation = [...teams];
@@ -117,6 +117,25 @@ const creatorForm = $("#create-form");
 // Do not offer group counts that would create an undefined knockout route.
 creatorForm?.querySelectorAll('select[name="groupCount"] option[value="6"], select[name="groupCount"] option[value="8"]').forEach((option) => option.remove());
 const normalizeName = (value) => String(value || "").trim().replace(/\s+/g, " ").toLowerCase();
+const applySportRules = () => {
+    const sport = creatorForm?.querySelector('[name="sportType"]')?.value;
+    const playing = creatorForm?.querySelector('[name="playingMembers"]');
+    const extras = creatorForm?.querySelector('[name="extraMembers"]');
+    if (!playing || !extras) return;
+    if (sport === "Badminton") {
+        playing.max = "2";
+        if (Number(playing.value) > 2) playing.value = "2";
+        extras.max = "0";
+        extras.value = "0";
+        extras.readOnly = true;
+        extras.title = "Badminton teams cannot have extra players.";
+    } else {
+        playing.removeAttribute("max");
+        extras.removeAttribute("max");
+        extras.readOnly = false;
+        extras.removeAttribute("title");
+    }
+};
 const setCreateFeedback = (message = "", type = "error") => {
     const box = $("#create-feedback");
     box.hidden = !message;
@@ -133,7 +152,7 @@ const updateCreatorPreview = () => {
     const sport = data.sportType || "";
     $("#preview-title").textContent = data.name?.trim() || "Your tournament";
     $("#preview-sport").textContent = sport ? sportProfile(sport).format : "Choose a sport";
-    $("#preview-format").textContent = sport === "Football" ? "FIFA World Cup: groups → knockout → final" : sport === "Cricket" ? "ICC Cricket World Cup: groups → knockout → final" : sport === "Badminton" ? "BWF World Championships: groups → knockout → final" : "Choose a sport to see the format";
+    $("#preview-format").textContent = sport === "Football" ? "FIFA World Cup: groups → knockout → final" : sport === "Cricket" ? "ICC Cricket World Cup: groups → knockout → final" : sport === "Badminton" ? "BWF World Cup: singles/doubles groups → knockout → final" : "Choose a sport to see the format";
     $("#preview-capacity").textContent = teamCount && groupCount ? `${teamCount} teams · ${groupCount} groups · ${teamCount % groupCount === 0 ? teamCount / groupCount : "—"} per group` : "Set teams and groups";
     if (data.startDate) {
         const deadline = registrationDeadline({ startDate: `${data.startDate}T00:00:00.000Z` });
@@ -142,7 +161,7 @@ const updateCreatorPreview = () => {
     const guidance = $("#format-guidance");
     guidance.textContent = teamCount && groupCount && teamCount % groupCount !== 0
         ? "Teams must divide evenly into groups. Adjust total teams or group count before continuing."
-        : "Each group uses FIFA-style matchdays, so every team plays once in each round.";
+        : sport === "Football" ? "FIFA-style matchdays: every team plays once in each round." : sport === "Cricket" ? "ICC-style group stage followed by knockout rounds." : sport === "Badminton" ? "BWF-style singles/doubles group stage followed by knockout rounds. Teams have 1 or 2 players only." : "Choose a sport to see its fixture rules.";
     guidance.classList.toggle("warning", Boolean(teamCount && groupCount && teamCount % groupCount !== 0));
     if (teamCount && groupCount && teamCount % groupCount === 0 && [2, 4].includes(groupCount)) {
         const teamsPerGroup = teamCount / groupCount;
@@ -155,13 +174,14 @@ const updateCreatorPreview = () => {
     }
 };
 creatorForm.addEventListener("input", updateCreatorPreview);
-creatorForm.addEventListener("change", updateCreatorPreview);
+creatorForm.addEventListener("change", () => { applySportRules(); updateCreatorPreview(); });
 $("#create-form").onsubmit = async (event) => {
     const form = event.currentTarget;
     event.preventDefault();
     const raw = Object.fromEntries(new FormData(form));
     const payload = { ...raw, playground: $("#venue").value, totalTeams: Number(raw.totalTeams), groupCount: Number(raw.groupCount), playingMembers: Number(raw.playingMembers), extraMembers: Number(raw.extraMembers), registrationFee: Number(raw.registrationFee) };
     setCreateFeedback();
+    if (payload.sportType === "Badminton" && (payload.playingMembers > 2 || payload.extraMembers > 0)) return setCreateFeedback("Badminton teams allow only 1 player (singles) or 2 players (doubles), with no extra players.");
     if (payload.totalTeams % payload.groupCount !== 0) return setCreateFeedback("Total teams must be divisible by the selected number of groups.");
     if (payload.endDate < payload.startDate) return setCreateFeedback("End date cannot be before the tournament start date.");
     const duplicate = tournaments.find((item) => normalizeName(item.name) === normalizeName(payload.name) && String(item.playground?._id || item.playground) === String(payload.playground) && String(item.startDate).slice(0, 10) === payload.startDate && item.status !== "Cancelled");

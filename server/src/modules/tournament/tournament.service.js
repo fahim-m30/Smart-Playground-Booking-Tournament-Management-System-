@@ -33,6 +33,9 @@ const dateRangeFor = (value) => {
 // ===================================================
 
 const createTournament = async (payload, createdBy) => {
+    if (payload.sportType === "Badminton" && (payload.playingMembers > 2 || payload.extraMembers > 0)) {
+        throw new Error("Badminton teams can have only 1 player (singles) or 2 players (doubles), with no extra players.");
+    }
     const playground = await Playground.findOne({
         _id: payload.playground,
         isDeleted: false,
@@ -101,6 +104,9 @@ const createTournament = async (payload, createdBy) => {
     try {
         tournament = await Tournament.create({
             ...payload,
+            // Badminton is always an individual or doubles competition; the
+            // other sports keep the normal team format.
+            matchFormat: payload.sportType === "Badminton" ? (payload.playingMembers === 1 ? "Singles" : "Doubles") : "Team",
             nameKey,
             playground: playground._id,
             playgrounds: [playground._id],
@@ -233,21 +239,11 @@ const respondToVenueApproval = async (tournamentId, adminId, decision) => {
 // Get All Tournaments
 // ===================================================
 
-// Tournament stages are driven by actual fixtures, never only by the date.
-// This also repairs older records that were marked "Group Stage" before any
-// match was generated.
+// Keep the card status aligned with the Bangladesh tournament calendar.  A
+// tournament must not remain "Upcoming" once its first calendar day starts,
+// even if a missed scheduler run meant its fixtures were not generated.
 const refreshTournamentStatuses = async () => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const prematureGroupStages = await Tournament.find({
-        isDeleted: false,
-        status: "Group Stage",
-    }).select("_id");
-    for (const tournament of prematureGroupStages) {
-        const hasFixture = await TournamentMatch.exists({ tournament: tournament._id });
-        if (!hasFixture) await Tournament.updateOne({ _id: tournament._id }, { $set: { status: "Upcoming" } });
-    }
+    const today = dayRange(calendarDate()).start;
 
     // Older scheduler runs may have cancelled an event before its actual
     // registration deadline. Re-open only those records; a tournament that
@@ -268,6 +264,13 @@ const refreshTournamentStatuses = async () => {
         status: { $in: ["Upcoming", "Group Stage", "Knockout Stage"] },
         endDate: { $lt: today },
     }, { $set: { status: "Completed" } });
+
+    await Tournament.updateMany({
+        isDeleted: false,
+        status: "Upcoming",
+        startDate: { $lte: today },
+        endDate: { $gte: today },
+    }, { $set: { status: "Group Stage" } });
 };
 
 const tournamentVenueFilter = (playgroundIds) => ({
@@ -561,6 +564,32 @@ const buildRoundRobinMatchdays = (teams) => {
     return matchdays;
 };
 
+// Only paid registrations are eligible for the official draw.  If a
+// four-group tournament receives fewer than eight paid teams, reduce it to
+// two balanced groups so the normal semi-final/final route remains valid.
+const prepareFixtureGroups = async (tournament, teams) => {
+    const effectiveGroupCount = tournament.groupCount === 4 && teams.length < 8 ? 2 : tournament.groupCount;
+    const allGroups = await TournamentGroup.find({ tournament: tournament._id }).sort({ name: 1 });
+    const groups = allGroups.slice(0, effectiveGroupCount);
+    if (groups.length !== effectiveGroupCount) throw new Error("Tournament groups are not available yet.");
+
+    await Promise.all(teams.map(async (team, index) => {
+        const group = groups[index % groups.length];
+        team.group = group._id;
+        await TournamentTeam.updateOne({ _id: team._id }, { $set: { group: group._id } });
+    }));
+
+    if (allGroups.length > effectiveGroupCount) {
+        await TournamentGroup.deleteMany({ _id: { $in: allGroups.slice(effectiveGroupCount).map((group) => group._id) } });
+    }
+    if (tournament.groupCount !== effectiveGroupCount || tournament.teamsPerGroup !== Math.ceil(teams.length / effectiveGroupCount)) {
+        tournament.groupCount = effectiveGroupCount;
+        tournament.teamsPerGroup = Math.ceil(teams.length / effectiveGroupCount);
+        await tournament.save();
+    }
+    return groups;
+};
+
 const generateGroupMatches = async (tournamentId) => {
     const tournament = await Tournament.findById(tournamentId);
 
@@ -587,19 +616,17 @@ const generateGroupMatches = async (tournamentId) => {
         throw new Error("Matches have already been generated for this tournament.");
     }
 
-    const groups = await TournamentGroup.find({
-        tournament: tournamentId,
-    }).populate("playground");
-
     const allTeams = await TournamentTeam.find({
         tournament: tournamentId,
         paymentStatus: "Paid",
         isDeleted: false,
     }).populate("group").sort({ createdAt: 1 });
 
-    if (allTeams.length !== tournament.totalTeams) {
-        throw new Error("Not all teams have been registered yet.");
+    if (allTeams.length < 4) {
+        throw new Error("At least four paid teams are required to publish tournament fixtures.");
     }
+
+    const groups = await prepareFixtureGroups(tournament, allTeams);
 
     const matches = [];
     // Three professional match windows per day: 09:00–12:00, 13:00–16:00,
@@ -614,7 +641,7 @@ const generateGroupMatches = async (tournamentId) => {
 
     const groupSchedules = groups.map((group) => ({
         group,
-        matchdays: buildRoundRobinMatchdays(allTeams.filter((team) => String(team.group._id) === String(group._id))),
+        matchdays: buildRoundRobinMatchdays(allTeams.filter((team) => String(team.group?._id || team.group) === String(group._id))),
     }));
     const totalMatchdays = Math.max(...groupSchedules.map((schedule) => schedule.matchdays.length));
 

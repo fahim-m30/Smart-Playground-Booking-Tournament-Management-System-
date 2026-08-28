@@ -24,9 +24,17 @@ const createTournamentValidation = Joi.object({
 
     teamsPerGroup: Joi.number().min(2).max(8).default(4),
 
-    playingMembers: Joi.number().min(1).required(),
+    playingMembers: Joi.number().integer().min(1).when("sportType", {
+        is: "Badminton",
+        then: Joi.number().integer().min(1).max(2).required(),
+        otherwise: Joi.number().integer().required(),
+    }),
 
-    extraMembers: Joi.number().min(0).required(),
+    extraMembers: Joi.number().integer().min(0).when("sportType", {
+        is: "Badminton",
+        then: Joi.valid(0).required(),
+        otherwise: Joi.number().integer().required(),
+    }),
 
     registrationFee: Joi.number().min(0).required(),
 

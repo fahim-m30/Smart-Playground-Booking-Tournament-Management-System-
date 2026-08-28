@@ -99,6 +99,9 @@ const processTournamentStartNotifications = async () => {
         await sendTournamentNotification(tournament._id.toString(), "start");
 
         tournament.startNotificationSent = true;
+        // The event is now in progress.  This avoids a stale "Upcoming"
+        // label when the scheduler is the only code touching the record.
+        if (tournament.status === "Upcoming") tournament.status = "Group Stage";
         await tournament.save();
     }
 };
@@ -174,9 +177,8 @@ const processExpiredSchedule = async () => {
     }, { $set: { matchStatus: "Completed" } });
 };
 
-// Registration closes two calendar days before kick-off. At that point an underfilled
-// tournament cannot produce a fair fixture, so cancel it once and notify every
-// registered captain. Paid registrations are marked for a full refund.
+// Registration closes two calendar days before kick-off. An event may proceed
+// below its advertised capacity, but it needs four paid teams for a fair draw.
 const processUnderfilledTournaments = async () => {
     const today = rangeForCalendarDay();
     const cutoff = rangeForCalendarDay(1);
@@ -190,7 +192,7 @@ const processUnderfilledTournaments = async () => {
     });
     for (const tournament of tournaments) {
         const teams = await TournamentTeam.find({ tournament: tournament._id, paymentStatus: "Paid", isDeleted: false }).select("registeredBy teamName contactNumber");
-        if (teams.length >= tournament.totalTeams) continue;
+        if (teams.length >= 4) continue;
         tournament.status = "Cancelled";
         tournament.cancellationProcessed = true;
         tournament.cancelledAt = new Date();
@@ -203,8 +205,20 @@ const processUnderfilledTournaments = async () => {
         await Promise.all(payments.map((payment) => Payment.updateOne({ _id: payment._id }, {
             $set: { refundAmount: payment.amount, refundStatus: "Pending", refundReason: "Tournament cancelled because required teams were not registered." },
         })));
+        const playground = await Playground.findById(tournament.playground).select("playgroundAdmin");
+        if (playground?.playgroundAdmin) {
+            await createNotification({
+                recipient: playground.playgroundAdmin,
+                type: "TournamentCancelled",
+                title: "Tournament cancelled",
+                message: `${tournament.name} was cancelled because only ${teams.length} paid team(s) registered; at least 4 are required. Registered teams will be refunded.`,
+                link: "tournament.html",
+            });
+        }
         await Promise.all(teams.filter((team) => team.registeredBy).map(async (team) => {
             const payment = payments.find((item) => String(item.tournamentTeam) === String(team._id));
+            const sms = `${tournament.name} was cancelled because fewer than 4 paid teams registered.${payment ? ` Your refund of BDT ${payment.amount} is being processed.` : ""}`;
+            if (team.contactNumber) await sendSMS(team.contactNumber, sms);
             await createNotification({
                 recipient: team.registeredBy,
                 type: "TournamentCancelled",
@@ -273,7 +287,7 @@ const processFixturePublication = async () => {
             paymentStatus: "Paid",
             isDeleted: false,
         });
-        if (registered !== tournament.totalTeams) continue;
+        if (registered < 4) continue;
         try {
             const existingFixtures = await TournamentMatch.exists({ tournament: tournament._id });
             if (!existingFixtures) await generateGroupMatches(tournament._id.toString());
