@@ -16,18 +16,7 @@ const User = require("../user/user.model");
 const Slot = require("../slot/slot.model");
 const { createNotification } = require("../notification/notification.service");
 const { emitDashboardUpdate } = require("../../config/socket");
-const { calendarDate, dayRange } = require("../../utils/scheduleTime");
-
-// Teams may register up to the day before kick-off.  The official draw is
-// released on that same day, once the final paid roster is known.
-const registrationClosesAt = (startDate) => {
-    const start = new Date(startDate);
-    return dayRange({
-        year: start.getUTCFullYear(),
-        month: start.getUTCMonth() + 1,
-        day: start.getUTCDate() - 1,
-    }).start;
-};
+const { calendarDate, dayRange, tournamentRegistrationClosesAt } = require("../../utils/scheduleTime");
 
 // ===================================================
 // Create Tournament
@@ -187,17 +176,19 @@ const refreshTournamentStatuses = async () => {
         if (!hasFixture) await Tournament.updateOne({ _id: tournament._id }, { $set: { status: "Upcoming" } });
     }
 
-    // Earlier versions cancelled underfilled events two days before kick-off.
-    // Re-open only those scheduler-cancelled records while there is still at
-    // least one full calendar day to register; manually/venue-cancelled events
-    // do not have cancellationProcessed and remain untouched.
-    const tomorrow = dayRange(calendarDate(new Date(), 1));
-    await Tournament.updateMany({
+    // Older scheduler runs may have cancelled an event before its actual
+    // registration deadline. Re-open only those records; a tournament that
+    // was cancelled after the two-day cut-off must remain cancelled.
+    const schedulerCancelled = await Tournament.find({
         isDeleted: false,
         status: "Cancelled",
         cancellationProcessed: true,
-        startDate: { $gte: tomorrow.start },
-    }, { $set: { status: "Upcoming", cancellationProcessed: false } });
+    }).select("_id startDate");
+    for (const tournament of schedulerCancelled) {
+        if (new Date() < tournamentRegistrationClosesAt(tournament.startDate)) {
+            await Tournament.updateOne({ _id: tournament._id }, { $set: { status: "Upcoming", cancellationProcessed: false } });
+        }
+    }
 
     await Tournament.updateMany({
         isDeleted: false,
@@ -245,8 +236,8 @@ const getMyRegistrations = async (customerId) => TournamentTeam.find({
 const cancelRegistration = async (teamId, customerId) => {
     const team = await TournamentTeam.findOne({ _id: teamId, registeredBy: customerId, isDeleted: false }).populate("tournament", "status startDate name");
     if (!team) throw new Error("Tournament registration not found.");
-    const cancellationDeadline = new Date(new Date(team.tournament.startDate).getTime() - 2 * 24 * 60 * 60 * 1000);
-    if (team.tournament.status !== "Upcoming" || new Date() > cancellationDeadline) {
+    const cancellationDeadline = tournamentRegistrationClosesAt(team.tournament.startDate);
+    if (team.tournament.status !== "Upcoming" || new Date() >= cancellationDeadline) {
         throw new Error("Tournament registrations can only be cancelled at least 2 days before the tournament starts.");
     }
     team.isDeleted = true;
@@ -308,9 +299,9 @@ const addTeam = async (tournamentId, payload, actor) => {
         if (!ownVenue) throw new Error("Only the tournament venue admin can add teams.");
     }
 
-    const registrationDeadline = registrationClosesAt(tournament.startDate);
+    const registrationDeadline = tournamentRegistrationClosesAt(tournament.startDate);
     if (tournament.status !== "Upcoming" || new Date() >= registrationDeadline) {
-        throw new Error("Teams can only be added until the day before the tournament starts.");
+        throw new Error("Team registration closes two calendar days before the tournament starts.");
     }
 
     const group = await TournamentGroup.findOne({
@@ -341,7 +332,7 @@ const addTeam = async (tournamentId, payload, actor) => {
         throw new Error("All team slots are filled for this tournament.");
     }
 
-    const { captain, players } = await validateRoster(tournament, tournamentId, payload);
+    const { captain, players, playingCount, extraCount } = await validateRoster(tournament, tournamentId, payload);
 
     const totalPlayers = playingCount + extraCount;
     if (totalPlayers < 1) {
@@ -381,9 +372,9 @@ const registerTeam = async (tournamentId, payload, customerId) => {
         throw new Error("Tournament registration is closed.");
     }
 
-    const registrationDeadline = registrationClosesAt(tournament.startDate);
+    const registrationDeadline = tournamentRegistrationClosesAt(tournament.startDate);
     if (new Date() >= registrationDeadline) {
-        throw new Error("Tournament registration closes the day before the tournament starts.");
+        throw new Error("Tournament registration is closed. Teams must register at least two calendar days before the tournament starts.");
     }
 
     const totalRegistered = await TournamentTeam.countDocuments({
@@ -428,7 +419,7 @@ const registerTeam = async (tournamentId, payload, customerId) => {
 // ===================================================
 
 const getTournamentTeams = async (tournamentId, groupId) => {
-    const filter = { tournament: tournamentId };
+    const filter = { tournament: tournamentId, isDeleted: false };
 
     if (groupId) {
         filter.group = groupId;
@@ -456,6 +447,13 @@ const generateGroupMatches = async (tournamentId) => {
         throw new Error("Matches can only be generated for upcoming tournaments.");
     }
 
+    // The complete draw is intentionally embargoed until the calendar day
+    // before kick-off, after the registration window has closed.
+    const fixtureReleaseDay = dayRange(calendarDate(new Date(), 1));
+    if (new Date(tournament.startDate).getTime() !== fixtureReleaseDay.start.getTime()) {
+        throw new Error("Final fixtures are released automatically one calendar day before the tournament starts.");
+    }
+
     const existingMatches = await TournamentMatch.countDocuments({
         tournament: tournamentId,
     });
@@ -470,6 +468,8 @@ const generateGroupMatches = async (tournamentId) => {
 
     const allTeams = await TournamentTeam.find({
         tournament: tournamentId,
+        paymentStatus: "Paid",
+        isDeleted: false,
     }).populate("group");
 
     if (allTeams.length !== tournament.totalTeams) {

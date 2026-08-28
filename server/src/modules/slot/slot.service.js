@@ -10,6 +10,7 @@
 const Slot = require("./slot.model");
 const Playground = require("../playground/playground.model");
 const Booking = require("../booking/booking.model");
+const { bookingStartsAt, calendarDate, dayRange } = require("../../utils/scheduleTime");
 
 const timeToMinutes = (time) => {
     if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(String(time))) return NaN;
@@ -231,16 +232,15 @@ const updateSlot = async (slotId, payload, adminId) => {
 // Customer facing availability.  It returns every configured slot for the
 // requested calendar day and marks it booked if any active booking overlaps.
 const getAvailability = async (playgroundId, dateValue) => {
-    const date = new Date(`${dateValue}T00:00:00`);
+    const date = new Date(`${dateValue}T00:00:00.000Z`);
     if (Number.isNaN(date.getTime())) throw new Error("A valid booking date is required.");
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    if (date < today) throw new Error("Past dates cannot be checked for availability.");
+    const today = dayRange(calendarDate());
+    if (date < today.start) throw new Error("Past dates cannot be checked for availability.");
 
     const playground = await Playground.findOne({ _id: playgroundId, isDeleted: false, isApproved: true, status: "Active" });
     if (!playground) throw new Error("Playground not found or unavailable.");
 
-    const slots = await Slot.find({ playground: playgroundId, dayOfWeek: date.getDay(), isActive: true, isDeleted: false }).sort({ startTime: 1 });
+    const slots = await Slot.find({ playground: playgroundId, dayOfWeek: date.getUTCDay(), isActive: true, isDeleted: false }).sort({ startTime: 1 });
     const dayEnd = new Date(date);
     dayEnd.setDate(dayEnd.getDate() + 1);
     const bookings = await Booking.find({
@@ -251,16 +251,14 @@ const getAvailability = async (playgroundId, dateValue) => {
     }).select("startTime endTime bookingStatus");
 
     const now = new Date();
-    const isToday = date.getTime() === today.getTime();
+    const isToday = date.getTime() === today.start.getTime();
 
     return {
         playground: { id: playground._id, name: playground.name, sportType: playground.sportType },
         date: dateValue,
         slots: slots.map((slot) => {
             const booked = bookings.some((booking) => timeToMinutes(booking.startTime) < timeToMinutes(slot.endTime) && timeToMinutes(booking.endTime) > timeToMinutes(slot.startTime));
-            const [hour, minute] = String(slot.startTime).split(":").map(Number);
-            const startsAt = new Date(date);
-            startsAt.setHours(hour, minute, 0, 0);
+            const startsAt = bookingStartsAt(date, slot.startTime);
             const expired = isToday && startsAt <= now;
             return {
                 id: slot._id,

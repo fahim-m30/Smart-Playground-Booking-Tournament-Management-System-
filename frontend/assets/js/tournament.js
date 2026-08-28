@@ -7,7 +7,20 @@ if (!token) location = "login.html";
 const req = async (path, options = {}) => { const response = await fetch(API + path, { ...options, headers: { Authorization: `Bearer ${token}`, ...(options.headers || {}) } }); const body = await response.json(); if (!response.ok) throw new Error(body.message || "Request failed"); return body.data; };
 const say = (message, bad = false) => { const notice = $("#notice"); notice.textContent = message; notice.className = `notice${bad ? " error" : ""}`; notice.style.display = "block"; };
 const dateLabel = (value) => new Date(value).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+const tournamentDateParts = (value) => String(value || "").slice(0, 10).split("-").map(Number);
+// Bangladesh is UTC+06 without daylight-saving changes.  Tournament dates are
+// Bangladesh calendar dates, so this exactly mirrors the backend deadline.
+const registrationDeadline = (tournament) => {
+    const [year, month, day] = tournamentDateParts(tournament.startDate);
+    return new Date(Date.UTC(year, month - 1, day - 2, 0, 0) - (6 * 60 * 60 * 1000));
+};
+const sportProfile = (sport) => ({
+    Football: { icon: "Football", format: "FIFA-style group stage and knockout draw" },
+    Cricket: { icon: "Cricket", format: "World Cup-style group stage and knockout draw" },
+    Badminton: { icon: "Badminton", format: "World Championship-style group draw" },
+}[sport] || { icon: "Tournament", format: "Professional group-stage competition" });
 let tournaments = [], selected = null, tournamentSearch = new URLSearchParams(location.search).get("search") || "";
+const requestedFixtureId = new URLSearchParams(location.search).get("fixture");
 const tournamentListPath = () => user.role === "playground-admin" ? "/tournaments/my-playgrounds/tournaments" : "/tournaments";
 
 async function list() {
@@ -26,7 +39,7 @@ function renderRoster() {
     const extras = Math.max(0, Number(selected.extraMembers));
     $("#roster-fields").innerHTML = `<h3>Playing players</h3><p class="meta">Add every player’s name, phone number and recent photo.</p><div class="grid">${Array.from({ length: playing }, (_, index) => rosterField(index, false)).join("")}</div>${extras ? `<h3>Extra players</h3><p class="meta">Extra-player details are optional, but all three fields are required once you add one.</p><div class="grid">${Array.from({ length: extras }, (_, index) => rosterField(index, true)).join("")}</div>` : ""}`;
 }
-window.join = async (id) => { try { selected = await req(`/tournaments/${id}`); $("#join-title").textContent = `Join ${selected.name}`; $("#join-info").textContent = `৳${selected.registrationFee} · ${selected.playingMembers} playing member(s), up to ${selected.extraMembers} extra player(s). Your group and opponents will be assigned automatically.`; renderRoster(); $("#join-modal").classList.add("show"); } catch (error) { say(error.message, true); } };
+window.join = async (id) => { try { selected = await req(`/tournaments/${id}`); $("#join-title").textContent = `Join ${selected.name}`; $("#join-info").textContent = `৳${selected.registrationFee} · ${selected.playingMembers} playing member(s), up to ${selected.extraMembers} extra player(s). ${sportProfile(selected.sportType).format}. Registration closes at the start of ${dateLabel(registrationDeadline(selected))}.`; renderRoster(); $("#join-modal").classList.add("show"); } catch (error) { say(error.message, true); } };
 
 $("#close-modal").onclick = () => $("#join-modal").classList.remove("show");
 $("#join-form").onsubmit = async (event) => {
@@ -46,7 +59,7 @@ $("#join-form").onsubmit = async (event) => {
     data.append("teamName", $("#team-name").value.trim());
     data.append("captain", JSON.stringify({ name: $("#captain-name").value.trim(), phone: $("#captain-phone").value.trim() }));
     data.append("players", JSON.stringify(players)); data.append("captainPhoto", captainPhoto); photos.forEach((photo) => data.append("playerPhotos", photo));
-    try { const team = await req(`/tournaments/${selected._id}/register`, { method: "POST", body: data }); const provider = { bkash: "bKash", nagad: "Nagad", rocket: "Rocket", card: "Card" }[$("#join-method").value]; const checkout = await req("/payments/demo/checkout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tournamentTeam: team._id, paymentMethod: provider }) }); location.href = `demo-payment.html?payment=${checkout.payment._id}`; } catch (error) { say(error.message, true); }
+    try { const team = await req(`/tournaments/${selected._id}/register`, { method: "POST", body: data }); const provider = { bkash: "bKash", nagad: "Nagad", rocket: "Rocket", card: "Card" }[$("#join-method").value]; const checkout = await req("/payments/demo/checkout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tournamentTeam: team._id, paymentMethod: provider }) }); sessionStorage.setItem("turfFixtureTournament", selected._id); location.href = `demo-payment.html?payment=${checkout.payment._id}`; } catch (error) { say(error.message, true); }
 };
 
 async function venues() { const grounds = await req(user.role === "playground-admin" ? "/playgrounds/my-playgrounds" : "/playgrounds"); $("#venue").innerHTML = '<option value="">Select the tournament playground</option>' + grounds.map((ground) => `<option value="${ground._id}">${esc(ground.name)} · ${esc(ground.area || ground.address)}</option>`).join(""); }
@@ -98,10 +111,7 @@ async function manageMatches(tournamentId) {
 }
 
 const registrationOpen = (tournament) => {
-    const deadline = new Date(tournament.startDate);
-    deadline.setHours(0, 0, 0, 0);
-    deadline.setDate(deadline.getDate() - 1);
-    return tournament.status === "Upcoming" && Date.now() < deadline.getTime();
+    return tournament.status === "Upcoming" && Date.now() < registrationDeadline(tournament).getTime();
 };
 
 const tournamentStatusLabel = (tournament) => tournament.status;
@@ -125,8 +135,9 @@ list = async function () {
     $("#content").innerHTML = visibleTournaments.length ? visibleTournaments.map((tournament) => {
         const canRegister = user.role === "customer" && registrationOpen(tournament);
         const action = canRegister ? `<button onclick="join('${tournament._id}')">Join tournament</button>` : `<button class="alt" onclick="detail('${tournament._id}')">View competition</button>`;
-        const registrationNote = user.role === "customer" && tournament.status === "Upcoming" && !canRegister ? '<br><small>Registration is closed for this tournament.</small>' : "";
-        return `<article class="card"><span class="badge">${esc(tournamentStatusLabel(tournament))}</span><h3>${esc(tournament.name)}</h3><p>${esc(tournament.sportType)} · ${dateLabel(tournament.startDate)} – ${dateLabel(tournament.endDate)}<br>${esc(tournament.playground?.name || tournament.playgrounds?.[0]?.name || "Venue TBA")}${registrationNote}</p><div class="card-foot"><strong>৳${Number(tournament.registrationFee || 0).toLocaleString()}</strong>${action}</div></article>`;
+        const profile = sportProfile(tournament.sportType);
+        const registrationNote = user.role === "customer" && tournament.status === "Upcoming" ? (canRegister ? `<br><small>Register by ${dateLabel(registrationDeadline(tournament))}.</small>` : '<br><small>Registration is closed for this tournament.</small>') : "";
+        return `<article class="card"><span class="badge">${esc(tournamentStatusLabel(tournament))}</span><h3>${esc(tournament.name)}</h3><p><b>${esc(profile.icon)}</b> · ${esc(tournament.sportType)}<br>${dateLabel(tournament.startDate)} – ${dateLabel(tournament.endDate)}<br>${esc(tournament.playground?.name || tournament.playgrounds?.[0]?.name || "Venue TBA")}${registrationNote}</p><div class="card-foot"><strong>৳${Number(tournament.registrationFee || 0).toLocaleString()}</strong>${action}</div></article>`;
     }).join("") : `<div class="empty">${term ? "No tournament matches your search." : "No tournament is available right now."}</div>`;
 };
 
@@ -140,7 +151,14 @@ $("#tournament-search").addEventListener("input", (event) => {
     list().then(decorateTournamentManagement).catch((error) => say(error.message, true));
 });
 
-list().then(decorateTournamentManagement).catch((error) => say(error.message, true));
+list().then(() => {
+    decorateTournamentManagement();
+    const fixtureId = requestedFixtureId || sessionStorage.getItem("turfFixtureTournament");
+    if (fixtureId) {
+        sessionStorage.removeItem("turfFixtureTournament");
+        detail(fixtureId);
+    }
+}).catch((error) => say(error.message, true));
 
 async function loadMyTournamentRegistrations() {
     if (user.role !== "customer") return;
@@ -151,15 +169,13 @@ async function loadMyTournamentRegistrations() {
         section.className = "panel";
         section.id = "my-tournament-registrations";
         const cancellationAllowed = (team) => {
-            const cutoff = new Date(team.tournament?.startDate);
-            cutoff.setHours(0, 0, 0, 0);
-            cutoff.setDate(cutoff.getDate() - 2);
-            return team.tournament?.status === "Upcoming" && Date.now() < cutoff.getTime();
+            return team.tournament?.status === "Upcoming" && Date.now() < registrationDeadline(team.tournament).getTime();
         };
         const payments = await req("/payments/my-payments");
         const pendingByTeam = new Map(payments.filter((payment) => payment.paymentStatus === "Pending" && payment.tournamentTeam).map((payment) => [String(payment.tournamentTeam?._id || payment.tournamentTeam), payment]));
-        section.innerHTML = `<h2>My tournament registrations</h2><p class="meta">Pending registrations are not confirmed until payment is completed.</p><div class="grid">${teams.map((team) => { const pendingPayment = pendingByTeam.get(String(team._id)); return `<article class="card"><span class="badge">${esc(team.paymentStatus)}</span><h3>${esc(team.teamName)}</h3><p>${esc(team.tournament?.name || "Tournament")}<br>${dateLabel(team.tournament?.startDate)} – ${dateLabel(team.tournament?.endDate)}</p><div class="card-foot">${pendingPayment ? `<a class="button" href="demo-payment.html?payment=${encodeURIComponent(pendingPayment._id)}">Complete payment</a>` : ""}${cancellationAllowed(team) ? `<button class="alt" type="button" data-team-id="${team._id}">Cancel registration</button>` : "<small>Registration cancellation is closed.</small>"}</div></article>`; }).join("")}</div>`;
+        section.innerHTML = `<h2>My tournament registrations</h2><p class="meta">After registering, open your demo fixture to see your team name in the provisional draw. The final schedule is released the day before the tournament.</p><div class="grid">${teams.map((team) => { const pendingPayment = pendingByTeam.get(String(team._id)); return `<article class="card"><span class="badge">${esc(team.paymentStatus)}</span><h3>${esc(team.teamName)}</h3><p>${esc(team.tournament?.name || "Tournament")}<br>${dateLabel(team.tournament?.startDate)} – ${dateLabel(team.tournament?.endDate)}</p><div class="card-foot"><button class="alt" type="button" data-fixture-tournament="${team.tournament?._id}">View demo fixture</button>${pendingPayment ? `<a class="button" href="demo-payment.html?payment=${encodeURIComponent(pendingPayment._id)}">Complete payment</a>` : ""}${cancellationAllowed(team) ? `<button class="alt" type="button" data-team-id="${team._id}">Cancel registration</button>` : "<small>Registration cancellation is closed.</small>"}</div></article>`; }).join("")}</div>`;
         $("#content").before(section);
+        section.querySelectorAll("[data-fixture-tournament]").forEach((button) => button.addEventListener("click", () => detail(button.dataset.fixtureTournament)));
         section.querySelectorAll("[data-team-id]").forEach((button) => button.addEventListener("click", async () => {
             if (!confirm("Cancel this tournament registration? Cancellation is allowed only at least 2 days before it starts. Any paid refund is handled by the tournament organizer.")) return;
             button.disabled = true;
@@ -194,16 +210,17 @@ window.detail = async (id) => {
         const groupName = (group) => group?.name || "Group stage";
         const draw = groups.map((group) => `<article class="group-card"><h3>${esc(group.name)}</h3><ol>${teams.filter((team) => String(team.group?._id || team.group) === String(group._id)).map((team) => `<li>${esc(team.teamName)}</li>`).join("") || "<li>Teams are being assigned</li>"}</ol></article>`).join("");
         const previewFixtures = groups.flatMap((group) => {
-            const slots = Array.from({ length: Number(tournament?.teamsPerGroup || 0) }, (_, index) => index + 1);
+            const groupTeams = teams.filter((team) => String(team.group?._id || team.group) === String(group._id));
+            const slots = Array.from({ length: Number(tournament?.teamsPerGroup || 0) }, (_, index) => groupTeams[index]?.teamName || `Open team slot ${index + 1}`);
             return slots.flatMap((teamA, index) => slots.slice(index + 1).map((teamB) => ({ group: group.name, teamA, teamB })));
         });
         const preview = previewFixtures.length
-            ? `<p class="fixture-preview-note">Demo fixture — team numbers are provisional. Official club names, match dates and kick-off times are published one day before kick-off.</p><div class="fixtures-list">${previewFixtures.map((match, index) => `<article class="fixture-row preview"><div class="fixture-time">Match ${index + 1}<br>${esc(match.group)}</div><div class="fixture-teams">Team ${match.teamA} <span>vs</span> Team ${match.teamB}</div><div class="fixture-score">Preview</div></article>`).join("")}</div>`
+            ? `<p class="fixture-preview-note">Demo fixture — registered team names are shown now; open team slots and match times are provisional. The final ${esc(sportProfile(sport).format)} fixture is published one day before kick-off.</p><div class="fixtures-list">${previewFixtures.map((match, index) => `<article class="fixture-row preview"><div class="fixture-time">Match ${index + 1}<br>${esc(match.group)}</div><div class="fixture-teams">${esc(match.teamA)} <span>vs</span> ${esc(match.teamB)}</div><div class="fixture-score">Demo draw</div></article>`).join("")}</div>`
             : '<div class="fixture-empty">The draw preview will appear when the tournament groups are ready.</div>';
         const table = standings.map((standing) => `<h3 class="standings-group-title">${esc(standing.group)}</h3><div class="standings-wrap"><table class="standings-table"><thead><tr><th>#</th><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>${sport === "Football" ? "GD" : "Diff"}</th><th>Pts</th></tr></thead><tbody>${standing.teams.map((team, index) => `<tr><td><span class="standing-rank">${index + 1}</span></td><td>${esc(team.teamName)}</td><td>${team.played}</td><td>${team.won}</td><td>${team.drawn}</td><td>${team.lost}</td><td>${team.goalDifference}</td><td><strong>${team.points}</strong></td></tr>`).join("")}</tbody></table></div>`).join("") || '<div class="fixture-empty">The points table will appear once groups are assigned.</div>';
         const fixtures = matches.map((match) => `<article class="fixture-row ${match.matchStatus === "Live" ? "live" : ""}"><div class="fixture-time">${dateLabel(match.matchDate)}<br>${esc(match.startTime)}–${esc(match.endTime)} · ${esc(groupName(match.group))}</div><div class="fixture-teams">${esc(match.teamA?.teamName || "TBD")} <span>vs</span> ${esc(match.teamB?.teamName || "TBD")}</div><div class="fixture-score">${match.matchStatus === "Live" ? '<span class="live-tag">LIVE</span>' : match.matchStatus === "Completed" ? `${match.teamAScore} – ${match.teamBScore}` : esc(match.matchStatus)}</div></article>`).join("") || '<div class="fixture-empty">Fixtures are released automatically one day before the tournament begins.</div>';
         const modal = document.createElement("div"); modal.className = "modal show";
-        modal.innerHTML = `<div class="modal-box tournament-centre"><header class="centre-head"><button class="close" type="button">Close</button><span class="eyebrow">${esc(sport.toUpperCase())} COMPETITION</span><h2>${esc(tournament?.name || "Tournament centre")}</h2><p>${dateLabel(tournament?.startDate)} – ${dateLabel(tournament?.endDate)} · ${esc(tournament?.playground?.name || tournament?.playgrounds?.[0]?.name || "Venue TBA")}</p>${matches.length ? '<button class="fixture-pdf" type="button">Save fixture as PDF</button>' : ""}</header><div class="centre-body"><div class="centre-tabs"><button class="active" data-centre-tab="draw">Group draw</button><button data-centre-tab="preview">Demo fixture</button><button data-centre-tab="table">Points table</button><button data-centre-tab="fixtures">Official fixtures</button></div><section class="centre-panel" data-centre-panel="draw"><div class="group-draw">${draw || '<div class="fixture-empty">Groups will be available after registration closes.</div>'}</div></section><section class="centre-panel" data-centre-panel="preview" hidden>${preview}</section><section class="centre-panel" data-centre-panel="table" hidden>${table}</section><section class="centre-panel" data-centre-panel="fixtures" hidden><div class="fixtures-list">${fixtures}</div></section></div></div>`;
+        modal.innerHTML = `<div class="modal-box tournament-centre"><header class="centre-head"><button class="close" type="button">Close</button><span class="eyebrow">${esc(sport.toUpperCase())} COMPETITION</span><h2>${esc(tournament?.name || "Tournament centre")}</h2><p>${dateLabel(tournament?.startDate)} – ${dateLabel(tournament?.endDate)} · ${esc(tournament?.playground?.name || tournament?.playgrounds?.[0]?.name || "Venue TBA")}<br><strong>${esc(sportProfile(sport).format)}</strong></p>${matches.length ? '<button class="fixture-pdf" type="button">Save fixture as PDF</button>' : ""}</header><div class="centre-body"><div class="centre-tabs"><button class="active" data-centre-tab="draw">Group draw</button><button data-centre-tab="preview">Demo fixture</button><button data-centre-tab="table">Points table</button><button data-centre-tab="fixtures">Official fixtures</button></div><section class="centre-panel" data-centre-panel="draw"><div class="group-draw">${draw || '<div class="fixture-empty">Groups will be available after registration closes.</div>'}</div></section><section class="centre-panel" data-centre-panel="preview" hidden>${preview}</section><section class="centre-panel" data-centre-panel="table" hidden>${table}</section><section class="centre-panel" data-centre-panel="fixtures" hidden><div class="fixtures-list">${fixtures}</div></section></div></div>`;
         document.body.append(modal); modal.querySelector(".close").onclick = () => modal.remove();
         modal.querySelector(".fixture-pdf")?.addEventListener("click", () => downloadFixturePdf(tournament, matches));
         modal.querySelectorAll("[data-centre-tab]").forEach((button) => button.onclick = () => { modal.querySelectorAll("[data-centre-tab]").forEach((tab) => tab.classList.toggle("active", tab === button)); modal.querySelectorAll("[data-centre-panel]").forEach((panel) => { panel.hidden = panel.dataset.centrePanel !== button.dataset.centreTab; }); });

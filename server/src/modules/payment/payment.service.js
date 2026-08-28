@@ -14,6 +14,7 @@ const Tournament = require("../tournament/tournament.model");
 const TournamentMatch = require("../tournament/tournamentMatch.model");
 const User = require("../user/user.model");
 const Playground = require("../playground/playground.model");
+const { tournamentRegistrationClosesAt } = require("../../utils/scheduleTime");
 
 const { generateQR, verifyQR: baseVerifyQR } = require("../../utils/generateQR");
 const { sendBookingConfirmation, sendTournamentNotification } = require("../../utils/notificationService");
@@ -32,6 +33,17 @@ const confirmPayment = async (paymentId, paymentMethod, transactionId = null) =>
 
     if (payment.paymentStatus === "Paid") {
         return payment;
+    }
+
+    // A checkout can remain open after the registration deadline. Re-check
+    // here so a late confirmation cannot put a paid team into a cancelled or
+    // finalised tournament.
+    if (payment.tournamentTeam) {
+        const team = await TournamentTeam.findById(payment.tournamentTeam).select("tournament isDeleted");
+        const tournament = team && !team.isDeleted ? await Tournament.findById(team.tournament).select("status startDate") : null;
+        if (!tournament || tournament.status !== "Upcoming" || new Date() >= tournamentRegistrationClosesAt(tournament.startDate)) {
+            throw new Error("This tournament registration can no longer be paid because registration has closed.");
+        }
     }
 
     payment.paymentStatus = "Paid";
@@ -199,6 +211,10 @@ const preparePayment = async (payload, customerId) => {
 
         if (!tournament) {
             throw new Error("Tournament not found.");
+        }
+
+        if (tournament.status !== "Upcoming" || new Date() >= tournamentRegistrationClosesAt(tournament.startDate)) {
+            throw new Error("Tournament registration payment is no longer accepted because registration has closed.");
         }
 
         amount = tournament.registrationFee;

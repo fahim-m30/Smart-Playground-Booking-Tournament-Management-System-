@@ -56,7 +56,7 @@ const createBooking = async (payload, customerId) => {
     // Validate Against Defined Slots
     // ===================================================
 
-    const bookingDay = new Date(payload.bookingDate).getDay();
+    const bookingDay = new Date(payload.bookingDate).getUTCDay();
     const requestStartMinutes = timeToMinutes(payload.startTime);
     const requestEndMinutes = timeToMinutes(payload.endTime);
     if (!Number.isFinite(requestStartMinutes) || !Number.isFinite(requestEndMinutes) || requestEndMinutes <= requestStartMinutes) {

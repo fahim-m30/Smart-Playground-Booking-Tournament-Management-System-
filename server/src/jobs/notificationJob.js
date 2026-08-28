@@ -13,7 +13,7 @@ const TournamentTeam = require("../modules/tournament/tournamentTeam.model");
 const TournamentMatch = require("../modules/tournament/tournamentMatch.model");
 const Payment = require("../modules/payment/payment.model");
 const { createNotification } = require("../modules/notification/notification.service");
-const { sendBookingReminder, sendTournamentNotification } = require("../utils/notificationService");
+const { sendBookingReminder, sendSMS, sendTournamentNotification } = require("../utils/notificationService");
 const { generateGroupMatches } = require("../modules/tournament/tournament.service");
 const { bookingStartsAt, calendarDate, dayRange } = require("../utils/scheduleTime");
 
@@ -171,7 +171,7 @@ const processExpiredSchedule = async () => {
     }, { $set: { matchStatus: "Completed" } });
 };
 
-// Registration closes the day before kick-off. At that point an underfilled
+// Registration closes two calendar days before kick-off. At that point an underfilled
 // tournament cannot produce a fair fixture, so cancel it once and notify every
 // registered captain. Paid registrations are marked for a full refund.
 const processUnderfilledTournaments = async () => {
@@ -186,7 +186,7 @@ const processUnderfilledTournaments = async () => {
         isDeleted: false,
     });
     for (const tournament of tournaments) {
-        const teams = await TournamentTeam.find({ tournament: tournament._id, isDeleted: false }).select("registeredBy teamName");
+        const teams = await TournamentTeam.find({ tournament: tournament._id, paymentStatus: "Paid", isDeleted: false }).select("registeredBy teamName contactNumber");
         if (teams.length >= tournament.totalTeams) continue;
         tournament.status = "Cancelled";
         tournament.cancellationProcessed = true;
@@ -205,7 +205,7 @@ const processUnderfilledTournaments = async () => {
                 recipient: team.registeredBy,
                 type: "TournamentCancelled",
                 title: "Tournament cancelled",
-                message: `${tournament.name} was cancelled because only ${teams.length} of ${tournament.totalTeams} required teams registered.${payment ? ` A refund of ৳${payment.amount} is being processed.` : ""}`,
+                message: `${tournament.name} was cancelled because only ${teams.length} of ${tournament.totalTeams} required paid teams completed registration.${payment ? ` A refund of ৳${payment.amount} is being processed.` : ""}`,
                 link: "tournament.html",
             });
         }));
@@ -240,13 +240,19 @@ const processFixturePublication = async () => {
                 registeredBy: { $ne: null },
                 isDeleted: false,
             }).select("registeredBy teamName");
-            await Promise.all(teams.map((team) => createNotification({
-                recipient: team.registeredBy,
-                type: "TournamentPublished",
-                title: "Your tournament fixtures are ready",
-                message: `${tournament.name} starts tomorrow. Your team ${team.teamName} can now view its complete fixture list.`,
-                link: "tournament.html",
-            })));
+            await Promise.all(teams.map(async (team) => {
+                const message = `${tournament.name} starts tomorrow. The final fixture has been published—check when ${team.teamName} plays and bring your QR ticket to the venue.`;
+                await Promise.all([
+                    team.contactNumber ? sendSMS(team.contactNumber, message) : Promise.resolve(),
+                    createNotification({
+                        recipient: team.registeredBy,
+                        type: "TournamentPublished",
+                        title: "Final fixture published: tournament starts tomorrow",
+                        message,
+                        link: "tournament.html",
+                    }),
+                ]);
+            }));
             tournament.fixturesPublishedAt = new Date();
             await tournament.save();
         } catch (error) { throw error; }

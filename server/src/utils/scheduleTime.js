@@ -57,11 +57,25 @@ const zonedDateTime = ({ year, month, day }, time) => {
 
 const bookingStartsAt = (bookingDate, startTime) => zonedDateTime(dateOnlyParts(bookingDate), startTime);
 
+// Tournament dates represent Bangladesh calendar days.  A 30 August event,
+// for example, accepts registrations through 27 August and closes at the
+// first minute of 28 August.
+const tournamentRegistrationClosesAt = (startDate) => {
+    const start = dateOnlyParts(startDate);
+    const closingDay = new Date(Date.UTC(start.year, start.month - 1, start.day - 2));
+    return zonedDateTime({
+        year: closingDay.getUTCFullYear(),
+        month: closingDay.getUTCMonth() + 1,
+        day: closingDay.getUTCDate(),
+    }, "00:00");
+};
+
 module.exports = {
     APP_TIME_ZONE,
     bookingStartsAt,
     calendarDate,
     dateOnlyParts,
     dayRange,
+    tournamentRegistrationClosesAt,
     zonedDateTime,
 };
