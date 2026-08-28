@@ -46,6 +46,9 @@ const createTournament = async (payload, createdBy) => {
     if (!playground) {
         throw new Error("Choose one active, approved playground for this tournament.");
     }
+    if (playground.sportType !== payload.sportType) {
+        throw new Error(`${playground.name} is a ${playground.sportType} playground. Create a ${playground.sportType} tournament for this venue.`);
+    }
 
     const creator = await User.findById(createdBy).select("role");
     if (!creator) throw new Error("Tournament creator not found.");

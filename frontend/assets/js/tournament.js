@@ -104,7 +104,7 @@ $("#join-form").onsubmit = async (event) => {
 
 async function venues() {
     const grounds = await req(user.role === "playground-admin" ? "/playgrounds/my-playgrounds" : "/playgrounds");
-    $("#venue").innerHTML = '<option value="">Choose an approved playground</option>' + grounds.map((ground) => `<option value="${ground._id}">${esc(ground.name)} · ${esc(ground.area || ground.address)}</option>`).join("");
+    $("#venue").innerHTML = '<option value="">Choose an approved playground</option>' + grounds.map((ground) => `<option value="${ground._id}" data-sport-type="${esc(ground.sportType)}">${esc(ground.name)} · ${esc(ground.sportType)} · ${esc(ground.area || ground.address)}</option>`).join("");
     updateCreatorPreview();
 }
 const canCreateTournament = ["super-admin", "playground-admin"].includes(user.role);
@@ -117,6 +117,19 @@ const creatorForm = $("#create-form");
 // Do not offer group counts that would create an undefined knockout route.
 creatorForm?.querySelectorAll('select[name="groupCount"] option[value="6"], select[name="groupCount"] option[value="8"]').forEach((option) => option.remove());
 const normalizeName = (value) => String(value || "").trim().replace(/\s+/g, " ").toLowerCase();
+const syncVenueSport = () => {
+    const venueSport = $("#venue")?.selectedOptions?.[0]?.dataset.sportType;
+    const sportSelect = creatorForm?.querySelector('[name="sportType"]');
+    if (!sportSelect) return;
+    if (!venueSport) {
+        Array.from(sportSelect.options).forEach((option) => { option.disabled = false; });
+        return;
+    }
+    sportSelect.value = venueSport;
+    Array.from(sportSelect.options).forEach((option) => {
+        option.disabled = Boolean(option.value && option.value !== venueSport);
+    });
+};
 const applySportRules = () => {
     const sport = creatorForm?.querySelector('[name="sportType"]')?.value;
     const playing = creatorForm?.querySelector('[name="playingMembers"]');
@@ -174,13 +187,15 @@ const updateCreatorPreview = () => {
     }
 };
 creatorForm.addEventListener("input", updateCreatorPreview);
-creatorForm.addEventListener("change", () => { applySportRules(); updateCreatorPreview(); });
+creatorForm.addEventListener("change", () => { syncVenueSport(); applySportRules(); updateCreatorPreview(); });
 $("#create-form").onsubmit = async (event) => {
     const form = event.currentTarget;
     event.preventDefault();
     const raw = Object.fromEntries(new FormData(form));
     const payload = { ...raw, playground: $("#venue").value, totalTeams: Number(raw.totalTeams), groupCount: Number(raw.groupCount), playingMembers: Number(raw.playingMembers), extraMembers: Number(raw.extraMembers), registrationFee: Number(raw.registrationFee) };
     setCreateFeedback();
+    const venueSport = $("#venue").selectedOptions?.[0]?.dataset.sportType;
+    if (venueSport && payload.sportType !== venueSport) return setCreateFeedback(`This playground supports ${venueSport} only. Create a ${venueSport} tournament for it.`);
     if (payload.sportType === "Badminton" && (payload.playingMembers > 2 || payload.extraMembers > 0)) return setCreateFeedback("Badminton teams allow only 1 player (singles) or 2 players (doubles), with no extra players.");
     if (payload.totalTeams % payload.groupCount !== 0) return setCreateFeedback("Total teams must be divisible by the selected number of groups.");
     if (payload.endDate < payload.startDate) return setCreateFeedback("End date cannot be before the tournament start date.");
