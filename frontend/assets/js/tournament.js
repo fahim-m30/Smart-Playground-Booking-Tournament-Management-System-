@@ -315,9 +315,20 @@ async function loadMyTournamentRegistrations() {
         };
         const payments = await req("/payments/my-payments");
         const pendingByTeam = new Map(payments.filter((payment) => payment.paymentStatus === "Pending" && payment.tournamentTeam).map((payment) => [String(payment.tournamentTeam?._id || payment.tournamentTeam), payment]));
-        section.innerHTML = `<h2>My tournament registrations</h2><p class="meta">After registering, open your demo fixture to see your team name in the provisional draw. The final schedule is released the day before the tournament.</p><div class="grid">${teams.map((team) => { const pendingPayment = pendingByTeam.get(String(team._id)); return `<article class="card"><span class="badge">${esc(team.paymentStatus)}</span><h3>${esc(team.teamName)}</h3><p>${esc(team.tournament?.name || "Tournament")}<br>${dateLabel(team.tournament?.startDate)} – ${dateLabel(team.tournament?.endDate)}</p><div class="card-foot"><button class="alt" type="button" data-fixture-tournament="${team.tournament?._id}">View demo fixture</button>${pendingPayment ? `<a class="button" href="demo-payment.html?payment=${encodeURIComponent(pendingPayment._id)}">Complete payment</a>` : ""}${cancellationAllowed(team) ? `<button class="alt" type="button" data-team-id="${team._id}">Cancel registration</button>` : "<small>Registration cancellation is closed.</small>"}</div></article>`; }).join("")}</div>`;
+        section.innerHTML = `<h2>My tournament registrations</h2><p class="meta">Complete payment to confirm your team. After registering, open your demo fixture to see your team name in the provisional draw. The final schedule is released the day before the tournament.</p><div class="grid">${teams.map((team) => { const pendingPayment = pendingByTeam.get(String(team._id)); const paymentAction = team.paymentStatus === "Pending" ? (pendingPayment ? `<a class="button" href="demo-payment.html?payment=${encodeURIComponent(pendingPayment._id)}">Complete payment</a>` : `<button type="button" data-complete-team="${team._id}">Complete registration</button>`) : ""; return `<article class="card"><span class="badge">${esc(team.paymentStatus)}</span><h3>${esc(team.teamName)}</h3><p>${esc(team.tournament?.name || "Tournament")}<br>${dateLabel(team.tournament?.startDate)} – ${dateLabel(team.tournament?.endDate)}</p><div class="card-foot"><button class="alt" type="button" data-fixture-tournament="${team.tournament?._id}">View demo fixture</button>${paymentAction}${cancellationAllowed(team) ? `<button class="alt" type="button" data-team-id="${team._id}">Cancel registration</button>` : "<small>Registration cancellation is closed.</small>"}</div></article>`; }).join("")}</div>`;
         $("#content").before(section);
         section.querySelectorAll("[data-fixture-tournament]").forEach((button) => button.addEventListener("click", () => detail(button.dataset.fixtureTournament)));
+        section.querySelectorAll("[data-complete-team]").forEach((button) => button.addEventListener("click", async () => {
+            const method = prompt("Choose payment method: bKash, Nagad, Rocket or Card", "bKash");
+            if (method === null) return;
+            const paymentMethod = { bkash: "bKash", nagad: "Nagad", rocket: "Rocket", card: "Card" }[String(method).trim().toLowerCase()];
+            if (!paymentMethod) return say("Choose bKash, Nagad, Rocket or Card.", true);
+            button.disabled = true;
+            try {
+                const checkout = await req("/payments/demo/checkout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tournamentTeam: button.dataset.completeTeam, paymentMethod }) });
+                location.href = `demo-payment.html?payment=${checkout.payment._id}`;
+            } catch (error) { say(error.message, true); button.disabled = false; }
+        }));
         section.querySelectorAll("[data-team-id]").forEach((button) => button.addEventListener("click", async () => {
             if (!confirm("Cancel this tournament registration? Cancellation is allowed only at least 2 days before it starts. Any paid refund is handled by the tournament organizer.")) return;
             button.disabled = true;

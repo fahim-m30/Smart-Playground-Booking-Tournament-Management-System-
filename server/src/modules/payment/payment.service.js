@@ -200,11 +200,12 @@ const preparePayment = async (payload, customerId) => {
 
         const existingPayment = await Payment.findOne({
             tournamentTeam: tournamentTeam._id,
+            paymentStatus: "Pending",
             isDeleted: false,
         });
 
         if (existingPayment) {
-            throw new Error("Payment already exists for this tournament team.");
+            throw new Error("A pending payment already exists for this tournament team. Resume that checkout to complete registration.");
         }
 
         tournament = await Tournament.findById(tournamentTeam.tournament);
