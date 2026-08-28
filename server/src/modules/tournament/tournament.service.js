@@ -257,6 +257,22 @@ const tournamentVenueFilter = (playgroundIds) => ({
     ],
 });
 
+// Older data may contain events created before duplicate protection existed.
+// Keep one canonical card per venue/name/start-day, favouring an active event
+// over a cancelled one, so operators and customers never see the same event
+// twice while the legacy record remains safely preserved in the database.
+const withoutLegacyDuplicates = (tournaments) => {
+    const canonical = new Map();
+    for (const tournament of tournaments) {
+        const venue = String(tournament.playground?._id || tournament.playground || tournament.playgrounds?.[0]?._id || "");
+        const startDay = new Date(tournament.startDate).toISOString().slice(0, 10);
+        const key = `${venue}|${startDay}|${tournamentNameKey(tournament.name)}`;
+        const saved = canonical.get(key);
+        if (!saved || (saved.status === "Cancelled" && tournament.status !== "Cancelled")) canonical.set(key, tournament);
+    }
+    return [...canonical.values()];
+};
+
 const getAllTournaments = async (actor = {}) => {
     await refreshTournamentStatuses();
     const filters = {
@@ -276,7 +292,7 @@ const getAllTournaments = async (actor = {}) => {
         .populate("playgrounds", "name address sportType")
         .sort({ createdAt: -1 });
 
-    return tournaments;
+    return withoutLegacyDuplicates(tournaments);
 };
 
 // Customer registrations are kept separate from the public tournament list so
@@ -949,7 +965,7 @@ const getMyPlaygroundTournaments = async (adminId) => {
         .populate("playgrounds", "name address sportType")
         .sort({ createdAt: -1 });
 
-    return tournaments;
+    return withoutLegacyDuplicates(tournaments);
 };
 
 // ===================================================
