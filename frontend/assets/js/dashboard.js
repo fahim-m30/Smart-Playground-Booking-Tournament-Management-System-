@@ -32,23 +32,38 @@ function renderAvatar() {
     }
 }
 
+const navIcon = (name) => ({
+    overview: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13h6V4H4v9Zm0 7h6v-4H4v4Zm10 0h6v-9h-6v9Zm0-16v4h6V4h-6Z"/></svg>',
+    playgrounds: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V8l8-5 8 5v11h-5v-5H9v5H4Zm3-8h2V9H7v2Zm0 3h2v-2H7v2Zm8-3h2V9h-2v2Zm0 3h2v-2h-2v2Z"/></svg>',
+    booking: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 2v3m10-3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Zm4 8h3m-3 3h6"/></svg>',
+    bookings: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Zm3 5h8M8 13h8m-8 4h5"/></svg>',
+    messages: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 0 1-8 8 8.8 8.8 0 0 1-3.7-.8L4 20l1.4-3.6A8 8 0 1 1 20 11ZM8 11h.01M12 11h.01M16 11h.01"/></svg>',
+    tournament: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3h8v4a4 4 0 0 1-8 0V3Zm0 2H4v2a4 4 0 0 0 4 4m8-6h4v2a4 4 0 0 1-4 4m-4 0v5m-3 5h6m-8 0h10"/></svg>',
+    account: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21a8 8 0 0 0-16 0m12-14a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z"/></svg>',
+    reports: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h8l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Zm7 0v5h5M9 13h6m-6 4h6"/></svg>',
+    venue: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V6l8-3 8 3v14M4 20h16M8 9h2m4 0h2m-8 4h2m4 0h2m-8 4h2m4 0h2"/></svg>',
+    slots: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Zm3 5h8m-8 4h4m4 0h.01M8 17h4"/></svg>',
+    income: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18m4-14.5c-.7-.8-1.9-1.3-3.5-1.3-2.3 0-3.8 1.1-3.8 2.8 0 1.7 1.4 2.4 3.8 3 2.4.6 3.8 1.4 3.8 3.2 0 1.8-1.5 3-4 3-1.8 0-3.2-.6-4.1-1.7"/></svg>',
+    users: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 20v-1.5a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4V20m11-9a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm3 3.8a4 4 0 0 1 4 3.7V20"/></svg>'
+}[name] || '');
+
 function nav(role) {
     const items = [
-        { label: "Overview", icon: "O", href: "dashboard.html" },
-        { label: "Messages", icon: "C", href: "chat.html" },
-        { label: "Tournaments", icon: "T", href: "tournament.html" },
-        { label: "Account centre", icon: "P", href: "management.html?tab=Profile" },
+        { label: "Overview", icon: "overview", href: "dashboard.html" },
+        { label: "Messages", icon: "messages", href: "chat.html" },
+        { label: "Tournaments", icon: "tournament", href: "tournament.html" },
+        { label: "Account centre", icon: "account", href: "management.html?tab=Profile" },
     ];
-    if (role === "customer") items.splice(1, 0, { label: "Find playgrounds", icon: "F", href: "playgrounds.html" }, { label: "Book a slot", icon: "B", href: "booking.html" }, { label: "My bookings", icon: "M", href: "management.html?tab=Bookings" });
+    if (role === "customer") items.splice(1, 0, { label: "Find playgrounds", icon: "playgrounds", href: "playgrounds.html" }, { label: "Book a slot", icon: "booking", href: "booking.html" }, { label: "My bookings", icon: "bookings", href: "management.html?tab=Bookings" });
     if (role === "playground-admin") items.push(
-        { label: "Venue management", icon: "G", href: "management.html?tab=Playgrounds" },
-        { label: "Slots", icon: "S", href: "management.html?tab=Slots" },
-        { label: "Bookings", icon: "B", href: "management.html?tab=Bookings" },
-        { label: "Income", icon: "I", href: "management.html?tab=Income" }
+        { label: "Venue management", icon: "venue", href: "management.html?tab=Playgrounds" },
+        { label: "Slots", icon: "slots", href: "management.html?tab=Slots" },
+        { label: "Bookings", icon: "bookings", href: "management.html?tab=Bookings" },
+        { label: "Income", icon: "income", href: "management.html?tab=Income" }
     );
-    items.push({ label: "Reports", icon: "R", href: "management.html?tab=Reports" });
-    if (role === "super-admin") items.push({ label: "User control", icon: "U", href: "management.html?tab=Users" }, { label: "Playground control", icon: "G", href: "management.html?tab=Playgrounds" });
-    $("#side-nav").innerHTML = items.map((item) => `<a class="${item.href === "dashboard.html" ? "active" : ""}" href="${item.href}">${item.icon} &nbsp;${item.label}</a>`).join("");
+    items.push({ label: "Reports", icon: "reports", href: "management.html?tab=Reports" });
+    if (role === "super-admin") items.push({ label: "User control", icon: "users", href: "management.html?tab=Users" }, { label: "Playground control", icon: "venue", href: "management.html?tab=Playgrounds" });
+    $("#side-nav").innerHTML = items.map((item) => `<a class="${item.href === "dashboard.html" ? "active" : ""}" href="${item.href}"><span class="nav-icon">${navIcon(item.icon)}</span><span>${item.label}</span></a>`).join("");
 }
 
 function bookingEndTime(booking) {

@@ -116,3 +116,178 @@ table { max-width: 100%; }
     .button, button { min-height: 43px; }
     .card-foot > * { width: 100%; }
 }
+
+/* ========================================================================
+   TURF visual system — shared finishing layer
+   This file loads after each page's feature stylesheet, so these rules keep
+   the full product visually consistent without changing page behaviour.
+   ======================================================================== */
+:root {
+    --ui-ink: #173426;
+    --ui-muted: #65766b;
+    --ui-green: #167a42;
+    --ui-green-strong: #0d6334;
+    --ui-green-soft: #e9f7ed;
+    --ui-green-wash: #f4fbf6;
+    --ui-surface: #ffffff;
+    --ui-offwhite: #f7faf7;
+    --ui-line: #dbe9df;
+    --ui-shadow: 0 14px 38px rgba(24, 74, 43, .08);
+}
+
+html { background: var(--ui-offwhite); }
+body {
+    color: var(--ui-ink) !important;
+    background: radial-gradient(circle at 0 0, #e7f7eb 0, transparent 28rem), var(--ui-offwhite) !important;
+    font-family: Inter, Poppins, Arial, sans-serif !important;
+    line-height: 1.5;
+}
+
+a { color: var(--ui-green); }
+a:hover { color: var(--ui-green-strong); }
+button, .button, input[type="submit"], input[type="button"] {
+    border-radius: 10px !important;
+    background: linear-gradient(135deg, var(--ui-green), #249856) !important;
+    box-shadow: 0 7px 16px rgba(22, 122, 66, .16);
+    transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
+}
+button:hover, .button:hover, input[type="submit"]:hover, input[type="button"]:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 11px 22px rgba(22, 122, 66, .2);
+}
+button.alt, .button.alt, .logout-button, .close, .cancel, .back {
+    background: var(--ui-surface) !important;
+    color: var(--ui-green-strong) !important;
+    border: 1px solid #cde4d3 !important;
+    box-shadow: none !important;
+}
+button.alt:hover, .button.alt:hover, .logout-button:hover, .close:hover, .cancel:hover, .back:hover {
+    background: var(--ui-green-soft) !important;
+}
+/* Controls that select, reveal or navigate stay visually secondary. */
+.tabs button, .slot-choice, .conversation, .notification-button,
+.notification-menu header button, .notification-item, .password-toggle,
+#clear-search {
+    background: var(--ui-surface) !important;
+    color: var(--ui-ink) !important;
+    border-color: var(--ui-line) !important;
+    box-shadow: none !important;
+}
+.tabs button:hover, .slot-choice:hover, .conversation:hover,
+.notification-button:hover, .notification-item:hover {
+    background: var(--ui-green-soft) !important;
+}
+.tabs button.active, .conversation.active, .slot-choice.selected {
+    background: var(--ui-green-soft) !important;
+    color: var(--ui-green-strong) !important;
+}
+.slot-choice.booked {
+    background: #e8f5eb !important;
+    color: #397049 !important;
+    border-color: #b9dec3 !important;
+}
+.password-toggle, #clear-search, .notification-menu header button {
+    color: var(--ui-green-strong) !important;
+}
+button:disabled, .button:disabled, input[type="submit"]:disabled,
+input[type="button"]:disabled { cursor: not-allowed; opacity: .62; transform: none !important; }
+input, select, textarea {
+    border-color: #cfe0d3 !important;
+    background: #fff !important;
+    color: var(--ui-ink) !important;
+    border-radius: 10px !important;
+    transition: border-color .18s ease, box-shadow .18s ease;
+}
+input:focus, select:focus, textarea:focus {
+    outline: 0;
+    border-color: #4ba76c !important;
+    box-shadow: 0 0 0 4px rgba(61, 160, 92, .13) !important;
+}
+::placeholder { color: #94a59a !important; opacity: 1; }
+
+.card, .panel, .admin-card, .dashboard-card-link, .auth-card, .receipt,
+.admin-header, .loading-card, .empty-state, .setup-ground, .ticker,
+.notification-menu, .modal-box, .checkout-card, .ground-details {
+    border-color: var(--ui-line) !important;
+    box-shadow: var(--ui-shadow) !important;
+}
+.card, .panel, .admin-card, .dashboard-card-link, .auth-card, .receipt,
+.admin-header, .loading-card, .empty-state, .setup-ground, .modal-box,
+.checkout-card, .ground-details { background: var(--ui-surface) !important; }
+.card, .panel, .admin-card, .dashboard-card-link, .auth-card, .receipt,
+.admin-header, .modal-box { border-radius: 18px !important; }
+.card:hover, .dashboard-card-link:hover, .admin-card:hover {
+    border-color: #b9dec3 !important;
+    box-shadow: 0 18px 40px rgba(24, 91, 48, .12) !important;
+}
+
+.navbar, .sidebar, .topbar, .admin-nav, .portal-head {
+    border-color: var(--ui-line) !important;
+}
+.navbar { background: rgba(255,255,255,.94) !important; }
+.side-nav { gap: 7px; }
+.side-nav a {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    min-height: 46px;
+    padding: 10px 12px !important;
+    border: 1px solid transparent;
+    border-radius: 12px !important;
+    color: #4b6152;
+    transition: background .18s ease, border-color .18s ease, color .18s ease, transform .18s ease;
+}
+.nav-icon {
+    display: grid;
+    place-items: center;
+    width: 25px;
+    height: 25px;
+    flex: 0 0 25px;
+    color: #5b7763;
+}
+.nav-icon svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.side-nav a.active, .side-nav a:hover, .admin-nav a.active, .admin-nav a:hover,
+.tabs button.active, .tab.active { background: var(--ui-green-soft) !important; color: var(--ui-green-strong) !important; }
+.side-nav a.active { border-color: #c8e6cf; }
+.side-nav a.active .nav-icon, .side-nav a:hover .nav-icon { color: var(--ui-green-strong); }
+.tabs button.active { border-color: #bfe0c8 !important; }
+.badge, .status, .page-badge, .admin-badge {
+    background: var(--ui-green-soft) !important;
+    color: var(--ui-green-strong) !important;
+    border: 1px solid #d2e9d8;
+}
+.status.pending { background: #fff8e7 !important; color: #8a650b !important; border-color: #f0deb2 !important; }
+.status.cancelled { background: #fff3f1 !important; color: #9b4539 !important; border-color: #f0ccc5 !important; }
+.notice { border-color: #c7e5ce !important; background: var(--ui-green-wash) !important; color: var(--ui-green-strong) !important; }
+.notice.error { background: #fff7f5 !important; border-color: #f0cbc3 !important; color: #953c2d !important; }
+
+.table-wrap, .table-responsive, .standings-wrap, .schedule-table-wrap,
+.booking-table-wrap, .report-table-wrap {
+    border: 1px solid var(--ui-line);
+    border-radius: 14px;
+    background: var(--ui-surface);
+}
+th { background: #eff8f1 !important; color: var(--ui-green-strong) !important; }
+td, th { border-color: #e3eee5 !important; }
+tr:hover td { background: #f8fcf8; }
+
+.hero, .page-hero, .admin-header, .dashboard-hero, .creator-heading {
+    border-color: #d5eadb !important;
+}
+.page-hero, .dashboard-hero { background: linear-gradient(135deg, #eaf8ee, #fff) !important; }
+.footer { background: #f0f8f2 !important; border-top: 1px solid var(--ui-line); }
+
+@media (max-width: 640px) {
+    button, .button, input[type="submit"], input[type="button"] { border-radius: 9px !important; }
+    .card, .panel, .admin-card, .dashboard-card-link, .auth-card, .receipt,
+    .admin-header, .modal-box { border-radius: 15px !important; }
+    .side-nav a { justify-content: flex-start; text-align: left !important; }
+}
