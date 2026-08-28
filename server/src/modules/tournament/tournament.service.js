@@ -160,6 +160,7 @@ const assignAutomaticGroup = async (tournamentId, teamsPerGroup) => {
 };
 
 const normalizedPhone = (value) => String(value || "").replace(/\D/g, "");
+const normalizedTeamName = (value) => String(value || "").trim().replace(/\s+/g, " ").toLocaleLowerCase();
 
 // Fixture information is operational data. Venue/platform operators may view
 // their event's demo and final draw; a customer must have registered a team.
@@ -201,6 +202,9 @@ const validateRoster = async (tournament, tournamentId, payload) => {
     }
 
     const existingTeams = await TournamentTeam.find({ tournament: tournamentId, isDeleted: false }).select("captain contactNumber players teamName");
+    if (existingTeams.some((team) => normalizedTeamName(team.teamName) === normalizedTeamName(payload.teamName))) {
+        throw new Error("This team is already registered for this tournament. The same team may register again in a different tournament.");
+    }
     const duplicate = existingTeams.find((team) => {
         const existingPhones = [
             normalizedPhone(team.captain?.phone || team.contactNumber),
@@ -208,7 +212,7 @@ const validateRoster = async (tournament, tournamentId, payload) => {
         ];
         return rosterPhones.some((phone) => existingPhones.includes(phone));
     });
-    if (duplicate) throw new Error(`A player in this roster is already registered for ${duplicate.teamName}. A player may play for only one team in this tournament.`);
+    if (duplicate) throw new Error(`A player in this roster is already registered for ${duplicate.teamName} in this tournament. The same player may join a different tournament.`);
     return { captain, players, playingCount, extraCount };
 };
 
@@ -483,6 +487,15 @@ const registerTeam = async (tournamentId, payload, customerId) => {
     const registrationDeadline = tournamentRegistrationClosesAt(tournament.startDate);
     if (new Date() >= registrationDeadline) {
         throw new Error("Tournament registration is closed. Teams must register at least two calendar days before the tournament starts.");
+    }
+
+    const existingCustomerTeam = await TournamentTeam.exists({
+        tournament: tournamentId,
+        registeredBy: customerId,
+        isDeleted: false,
+    });
+    if (existingCustomerTeam) {
+        throw new Error("You have already registered one team for this tournament. You may register a team in another tournament.");
     }
 
     const totalRegistered = await TournamentTeam.countDocuments({
