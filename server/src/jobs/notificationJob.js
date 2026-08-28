@@ -249,7 +249,7 @@ const processFixturePublication = async () => {
                         type: "TournamentPublished",
                         title: "Final fixture published: tournament starts tomorrow",
                         message,
-                        link: "tournament.html",
+                        link: `tournament.html?fixture=${tournament._id}`,
                     }),
                 ]);
             }));

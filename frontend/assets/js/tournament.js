@@ -209,13 +209,27 @@ window.detail = async (id) => {
         const sport = tournament?.sportType || "Tournament";
         const groupName = (group) => group?.name || "Group stage";
         const draw = groups.map((group) => `<article class="group-card"><h3>${esc(group.name)}</h3><ol>${teams.filter((team) => String(team.group?._id || team.group) === String(group._id)).map((team) => `<li>${esc(team.teamName)}</li>`).join("") || "<li>Teams are being assigned</li>"}</ol></article>`).join("");
+        let demoFixtureIndex = 0;
         const previewFixtures = groups.flatMap((group) => {
             const groupTeams = teams.filter((team) => String(team.group?._id || team.group) === String(group._id));
             const slots = Array.from({ length: Number(tournament?.teamsPerGroup || 0) }, (_, index) => groupTeams[index]?.teamName || `Open team slot ${index + 1}`);
-            return slots.flatMap((teamA, index) => slots.slice(index + 1).map((teamB) => ({ group: group.name, teamA, teamB })));
+            return slots.flatMap((teamA, index) => slots.slice(index + 1).map((teamB) => {
+                const matchDate = new Date(tournament.startDate);
+                matchDate.setUTCDate(matchDate.getUTCDate() + Math.floor(demoFixtureIndex / 3));
+                const startHour = [9, 13, 17][demoFixtureIndex % 3];
+                demoFixtureIndex += 1;
+                return {
+                    group: group.name,
+                    teamA,
+                    teamB,
+                    matchDate,
+                    startTime: `${String(startHour).padStart(2, "0")}:00`,
+                    endTime: `${String(startHour + 3).padStart(2, "0")}:00`,
+                };
+            }));
         });
         const preview = previewFixtures.length
-            ? `<p class="fixture-preview-note">Demo fixture — registered team names are shown now; open team slots and match times are provisional. The final ${esc(sportProfile(sport).format)} fixture is published one day before kick-off.</p><div class="fixtures-list">${previewFixtures.map((match, index) => `<article class="fixture-row preview"><div class="fixture-time">Match ${index + 1}<br>${esc(match.group)}</div><div class="fixture-teams">${esc(match.teamA)} <span>vs</span> ${esc(match.teamB)}</div><div class="fixture-score">Demo draw</div></article>`).join("")}</div>`
+            ? `<p class="fixture-preview-note">Demo fixture — registered team names are shown now; open team slots are provisional. Dates and time windows show the planned tournament schedule. The final ${esc(sportProfile(sport).format)} fixture is published one day before kick-off.</p><div class="fixtures-list">${previewFixtures.map((match, index) => `<article class="fixture-row preview"><div class="fixture-time">Match ${index + 1}<br>${dateLabel(match.matchDate)} · ${esc(match.startTime)}–${esc(match.endTime)}<br>${esc(match.group)}</div><div class="fixture-teams">${esc(match.teamA)} <span>vs</span> ${esc(match.teamB)}</div><div class="fixture-score">Demo draw</div></article>`).join("")}</div>`
             : '<div class="fixture-empty">The draw preview will appear when the tournament groups are ready.</div>';
         const table = standings.map((standing) => `<h3 class="standings-group-title">${esc(standing.group)}</h3><div class="standings-wrap"><table class="standings-table"><thead><tr><th>#</th><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>${sport === "Football" ? "GD" : "Diff"}</th><th>Pts</th></tr></thead><tbody>${standing.teams.map((team, index) => `<tr><td><span class="standing-rank">${index + 1}</span></td><td>${esc(team.teamName)}</td><td>${team.played}</td><td>${team.won}</td><td>${team.drawn}</td><td>${team.lost}</td><td>${team.goalDifference}</td><td><strong>${team.points}</strong></td></tr>`).join("")}</tbody></table></div>`).join("") || '<div class="fixture-empty">The points table will appear once groups are assigned.</div>';
         const fixtures = matches.map((match) => `<article class="fixture-row ${match.matchStatus === "Live" ? "live" : ""}"><div class="fixture-time">${dateLabel(match.matchDate)}<br>${esc(match.startTime)}–${esc(match.endTime)} · ${esc(groupName(match.group))}</div><div class="fixture-teams">${esc(match.teamA?.teamName || "TBD")} <span>vs</span> ${esc(match.teamB?.teamName || "TBD")}</div><div class="fixture-score">${match.matchStatus === "Live" ? '<span class="live-tag">LIVE</span>' : match.matchStatus === "Completed" ? `${match.teamAScore} – ${match.teamBScore}` : esc(match.matchStatus)}</div></article>`).join("") || '<div class="fixture-empty">Fixtures are released automatically one day before the tournament begins.</div>';

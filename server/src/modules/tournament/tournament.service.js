@@ -100,6 +100,26 @@ const assignAutomaticGroup = async (tournamentId, teamsPerGroup) => {
 
 const normalizedPhone = (value) => String(value || "").replace(/\D/g, "");
 
+// Fixture information is operational data. Venue/platform operators may view
+// their event's demo and final draw; a customer must have registered a team.
+const assertFixtureViewer = async (tournamentId, actor = {}) => {
+    const tournament = await Tournament.findOne({ _id: tournamentId, isDeleted: false }).select("playground fixturesPublishedAt");
+    if (!tournament) throw new Error("Tournament not found.");
+
+    if (actor.role === "super-admin") return { tournament, team: null };
+    if (actor.role === "playground-admin") {
+        const ownsVenue = await Playground.exists({ _id: tournament.playground, playgroundAdmin: actor.userId, isDeleted: false });
+        if (!ownsVenue) throw new Error("Only the tournament venue admin can view these fixtures.");
+        return { tournament, team: null };
+    }
+    if (actor.role === "customer") {
+        const team = await TournamentTeam.findOne({ tournament: tournamentId, registeredBy: actor.userId, isDeleted: false }).select("_id paymentStatus");
+        if (!team) throw new Error("Register a team to view this tournament's fixture centre.");
+        return { tournament, team };
+    }
+    throw new Error("You are not authorized to view tournament fixtures.");
+};
+
 const validateRoster = async (tournament, tournamentId, payload) => {
     const captain = payload.captain || {};
     const players = Array.isArray(payload.players) ? payload.players : [];
@@ -270,7 +290,8 @@ const getSingleTournament = async (id) => {
 // Get Tournament Groups
 // ===================================================
 
-const getTournamentGroups = async (tournamentId) => {
+const getTournamentGroups = async (tournamentId, actor) => {
+    await assertFixtureViewer(tournamentId, actor);
     const groups = await TournamentGroup.find({
         tournament: tournamentId,
     })
@@ -418,7 +439,8 @@ const registerTeam = async (tournamentId, payload, customerId) => {
 // Get Tournament Teams
 // ===================================================
 
-const getTournamentTeams = async (tournamentId, groupId) => {
+const getTournamentTeams = async (tournamentId, groupId, actor) => {
+    await assertFixtureViewer(tournamentId, actor);
     const filter = { tournament: tournamentId, isDeleted: false };
 
     if (groupId) {
@@ -532,7 +554,11 @@ const generateGroupMatches = async (tournamentId) => {
 // Get Tournament Matches
 // ===================================================
 
-const getTournamentMatches = async (tournamentId, stage) => {
+const getTournamentMatches = async (tournamentId, stage, actor) => {
+    const { tournament, team } = await assertFixtureViewer(tournamentId, actor);
+    // A registered customer receives the official named fixture only once the
+    // system has published it. Until then the UI shows the private demo draw.
+    if (actor?.role === "customer" && (!tournament.fixturesPublishedAt || team.paymentStatus !== "Paid")) return [];
     const filter = { tournament: tournamentId };
 
     if (stage) {
@@ -817,7 +843,8 @@ const generateKnockoutStage = async (tournamentId) => {
 // Get Tournament Standings
 // ===================================================
 
-const getTournamentStandings = async (tournamentId) => {
+const getTournamentStandings = async (tournamentId, actor) => {
+    await assertFixtureViewer(tournamentId, actor);
     const groups = await TournamentGroup.find({
         tournament: tournamentId,
     });

@@ -108,7 +108,7 @@ const getSingleTournamentController = async (req, res) => {
 
 const getTournamentGroupsController = async (req, res) => {
     try {
-        const groups = await getTournamentGroups(req.params.id);
+        const groups = await getTournamentGroups(req.params.id, req.user);
 
         res.status(200).json({
             success: true,
@@ -187,7 +187,7 @@ const registerTeamController = async (req, res) => {
 
 const getTournamentTeamsController = async (req, res) => {
     try {
-        const teams = await getTournamentTeams(req.params.id, req.query.group);
+        const teams = await getTournamentTeams(req.params.id, req.query.group, req.user);
 
         res.status(200).json({
             success: true,
@@ -229,7 +229,7 @@ const generateGroupMatchesController = async (req, res) => {
 
 const getTournamentMatchesController = async (req, res) => {
     try {
-        const matches = await getTournamentMatches(req.params.id, req.query.stage);
+        const matches = await getTournamentMatches(req.params.id, req.query.stage, req.user);
 
         res.status(200).json({
             success: true,
@@ -313,7 +313,7 @@ const generateKnockoutStageController = async (req, res) => {
 
 const getTournamentStandingsController = async (req, res) => {
     try {
-        const standings = await getTournamentStandings(req.params.id);
+        const standings = await getTournamentStandings(req.params.id, req.user);
 
         res.status(200).json({
             success: true,
