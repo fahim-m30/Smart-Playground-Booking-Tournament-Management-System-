@@ -54,7 +54,7 @@ function nav(role) {
         { label: "Tournaments", icon: "tournament", href: "tournament.html" },
         { label: "Account centre", icon: "account", href: "management.html?tab=Profile" },
     ];
-    if (role === "customer") items.splice(1, 0, { label: "Find playgrounds", icon: "playgrounds", href: "playgrounds.html" }, { label: "Book a slot", icon: "booking", href: "booking.html" }, { label: "My bookings", icon: "bookings", href: "management.html?tab=Bookings" });
+    if (role === "customer") items.splice(1, 0, { label: "Find playgrounds", icon: "playgrounds", href: "playgrounds.html" }, { label: "Book a slot", icon: "booking", href: "booking.html" }, { label: "My bookings", icon: "bookings", href: "my-bookings.html" });
     if (role === "playground-admin") items.push(
         { label: "Venue management", icon: "venue", href: "management.html?tab=Playgrounds" },
         { label: "Slots", icon: "slots", href: "management.html?tab=Slots" },

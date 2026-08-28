@@ -11,16 +11,21 @@
     async function bookings() {
         content.innerHTML = '<div class="empty">Loading your bookings...</div>';
         try {
-            const [list, payments] = await Promise.all([request("/bookings/my-bookings"), request("/payments/my-payments")]);
+            const [list, teams, payments] = await Promise.all([request("/bookings/my-bookings"), request("/tournaments/my-registrations"), request("/payments/my-payments")]);
             const pendingByBooking = new Map(payments.filter((payment) => payment.paymentStatus === "Pending" && payment.booking).map((payment) => [String(payment.booking?._id || payment.booking), payment]));
-            content.innerHTML = list.length ? list.map((booking) => {
+            const activeSlots = list.filter((booking) => !["Cancelled", "Completed"].includes(booking.bookingStatus) && new Date(`${String(booking.bookingDate).slice(0, 10)}T${booking.endTime}:00+06:00`) > new Date());
+            const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Dhaka", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+            const activeTeams = teams.filter((team) => team.paymentStatus === "Paid" && !["Cancelled", "Completed"].includes(team.tournament?.status) && String(team.tournament?.endDate || "").slice(0, 10) >= today);
+            content.innerHTML = activeSlots.length ? activeSlots.map((booking) => {
                 const pendingPayment = pendingByBooking.get(String(booking._id));
                 const adminId = booking.playground?.playgroundAdmin?._id || booking.playground?.playgroundAdmin;
                 const pay = pendingPayment ? `<a class="button" href="demo-payment.html?payment=${encodeURIComponent(pendingPayment._id)}">Complete payment</a>` : "";
                 const chat = adminId ? `<a class="button alt" href="chat.html?contact=${encodeURIComponent(adminId)}">Chat with playground admin</a>` : "";
                 const cancel = !["Cancelled", "Completed"].includes(booking.bookingStatus) ? `<button class="alt cancel" data-id="${booking._id}">Cancel booking</button>` : "";
                 return `<article class="card"><span class="badge">${escapeHtml(booking.bookingStatus)} · ${escapeHtml(booking.paymentStatus)}</span><h3>${escapeHtml(booking.playground?.name || "Playground")}</h3><p>${date(booking.bookingDate)} · ${escapeHtml(booking.startTime)} – ${escapeHtml(booking.endTime)}<br>${escapeHtml(booking.playground?.address || "Location details unavailable")}<br>Total: ৳${Number(booking.totalAmount || 0).toLocaleString()}</p><div class="card-foot">${pay}${chat}${cancel}</div></article>`;
-            }).join("") : '<div class="empty">You have no bookings yet. <a href="booking.html">Book a slot</a></div>';
+            }).join("") : "";
+            if (activeTeams.length) content.insertAdjacentHTML("beforeend", activeTeams.map((team) => `<article class="card"><span class="badge">TOURNAMENT · PAID</span><h3>${escapeHtml(team.teamName)}</h3><p>${escapeHtml(team.tournament?.name || "Tournament")}<br>${date(team.tournament?.startDate)} – ${date(team.tournament?.endDate)}<br>Registration: ৳${Number(team.tournament?.registrationFee || 0).toLocaleString()}</p><div class="card-foot"><a class="button alt" href="tournament.html?fixture=${encodeURIComponent(team.tournament?._id)}">View fixture</a></div></article>`).join(""));
+            if (!activeSlots.length && !activeTeams.length) content.innerHTML = '<div class="empty">You have no active slot bookings or tournament registrations. <a href="booking.html">Book a slot</a> or <a href="tournament.html">join a tournament</a>.</div>';
             content.querySelectorAll(".cancel").forEach((button) => button.addEventListener("click", async () => { if (!confirm("Cancel this booking? You can cancel only at least 2 hours before the slot.")) return; button.disabled = true; try { await request(`/bookings/${button.dataset.id}/cancel`, { method: "PATCH" }); bookings(); } catch (error) { alert(error.message); button.disabled = false; } }));
         } catch (error) { content.innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`; }
     }
