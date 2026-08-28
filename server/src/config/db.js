@@ -9,6 +9,28 @@
 
 const mongoose = require("mongoose");
 
+// Older deployments created unique indexes for optional payment references.
+// A tournament payment has no booking, so multiple `booking: null` records
+// then caused MongoDB's E11000 duplicate-key error.  Keep these as ordinary
+// lookup indexes instead; payment status is enforced by the payment service.
+const repairPaymentReferenceIndexes = async () => {
+    const collection = mongoose.connection.db.collection("payments");
+    let indexes = [];
+    try {
+        indexes = await collection.indexes();
+    } catch (error) {
+        if (error?.code !== 26) throw error; // NamespaceNotFound: no payments yet.
+    }
+
+    for (const field of ["booking", "tournamentTeam"]) {
+        const legacyIndex = indexes.find((index) => index.key?.[field] === 1 && index.unique);
+        if (legacyIndex) await collection.dropIndex(legacyIndex.name);
+        if (!indexes.some((index) => index.key?.[field] === 1 && !index.unique)) {
+            await collection.createIndex({ [field]: 1 }, { name: `${field}_1` });
+        }
+    }
+};
+
 const connectDB = async () => {
     const mongoURI =
         process.env.DATABASE_URL ||
@@ -24,6 +46,7 @@ const connectDB = async () => {
 
     try {
         await mongoose.connect(mongoURI);
+        await repairPaymentReferenceIndexes();
 
         console.log("=======================================");
         console.log("✅ Database Connected Successfully");
