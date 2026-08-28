@@ -17,7 +17,7 @@ const Playground = require("../playground/playground.model");
 const { tournamentRegistrationClosesAt } = require("../../utils/scheduleTime");
 
 const { generateQR, verifyQR: baseVerifyQR } = require("../../utils/generateQR");
-const { sendBookingConfirmation, sendTournamentNotification } = require("../../utils/notificationService");
+const { sendBookingConfirmation, sendTournamentNotification, sendSMS } = require("../../utils/notificationService");
 const { createNotification } = require("../notification/notification.service");
 const { emitToUser, emitDashboardUpdate } = require("../../config/socket");
 
@@ -136,13 +136,17 @@ const confirmPayment = async (paymentId, paymentMethod, transactionId = null) =>
             qrCode: qrCodePath,
             qrExpiresAt: qrExpiresAt,
         });
-        await createNotification({
-            recipient: updatedTeam.registeredBy,
-            type: "TournamentRegistrationConfirmed",
-            title: "Tournament registration confirmed",
-            message: `${updatedTeam.teamName} is registered for ${tournament.name}. Your payment is complete—check My Bookings for your ticket and fixture updates.`,
-            link: "my-bookings.html",
-        });
+        const registrationMessage = `${updatedTeam.teamName} is registered for ${tournament.name}. Payment is complete—open the demo fixture to see your provisional match draw.`;
+        await Promise.all([
+            updatedTeam.contactNumber ? sendSMS(updatedTeam.contactNumber, registrationMessage) : Promise.resolve(),
+            createNotification({
+                recipient: updatedTeam.registeredBy,
+                type: "TournamentRegistrationConfirmed",
+                title: "Tournament registration confirmed",
+                message: registrationMessage,
+                link: `tournament.html?fixture=${updatedTeam.tournament}`,
+            }),
+        ]);
         emitToUser(updatedTeam.registeredBy.toString(), "tournament:updated", { tournamentId: updatedTeam.tournament, teamId: updatedTeam._id });
     }
 

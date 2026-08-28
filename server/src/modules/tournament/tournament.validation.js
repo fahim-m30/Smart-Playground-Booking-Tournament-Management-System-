@@ -69,6 +69,10 @@ const updateMatchValidation = Joi.object({
 
     teamBScore: Joi.number().min(0).allow(null),
 
+    teamAWickets: Joi.number().integer().min(0).max(10).allow(null),
+
+    teamBWickets: Joi.number().integer().min(0).max(10).allow(null),
+
     winner: Joi.string().allow(null),
 
     matchStatus: Joi.string().valid("Scheduled", "Live", "Completed", "Cancelled"),

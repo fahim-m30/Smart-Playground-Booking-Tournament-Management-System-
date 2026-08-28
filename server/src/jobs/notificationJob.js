@@ -168,13 +168,9 @@ const processExpiredSchedule = async () => {
         startTime: { $lte: currentTime },
         endTime: { $gt: currentTime },
     }, { $set: { matchStatus: "Live" } });
-    await TournamentMatch.updateMany({
-        matchStatus: "Live",
-        $or: [
-            { matchDate: { $lt: today.start } },
-            { matchDate: { $gte: today.start, $lt: today.end }, endTime: { $lte: currentTime } },
-        ],
-    }, { $set: { matchStatus: "Completed" } });
+    // A match remains Live after its scheduled end time until the venue admin
+    // records the final result. This prevents an unverified result from being
+    // treated as completed and keeps the next fixture from replacing it.
 };
 
 // Registration closes two calendar days before kick-off. An event may proceed
@@ -296,9 +292,9 @@ const processFixturePublication = async () => {
                 paymentStatus: "Paid",
                 registeredBy: { $ne: null },
                 isDeleted: false,
-            }).select("registeredBy teamName");
+            }).select("registeredBy teamName contactNumber");
             await Promise.all(teams.map(async (team) => {
-                const message = `${tournament.name} starts tomorrow. The final fixture has been published—check when ${team.teamName} plays and bring your QR ticket to the venue.`;
+                const message = `${tournament.name} starts tomorrow. The final fixture is ready—check when ${team.teamName} plays, then attend your match with your QR ticket.`;
                 await Promise.all([
                     team.contactNumber ? sendSMS(team.contactNumber, message) : Promise.resolve(),
                     createNotification({

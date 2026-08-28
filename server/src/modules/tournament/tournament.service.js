@@ -802,6 +802,8 @@ const updateMatchResult = async (matchId, payload, actor) => {
 
     match.teamAScore = payload.teamAScore;
     match.teamBScore = payload.teamBScore;
+    if (payload.teamAWickets !== undefined) match.teamAWickets = payload.teamAWickets;
+    if (payload.teamBWickets !== undefined) match.teamBWickets = payload.teamBWickets;
     match.winner = winnerId;
     match.matchStatus = payload.matchStatus || "Completed";
 

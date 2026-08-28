@@ -82,6 +82,11 @@ const tournamentMatchSchema = new mongoose.Schema(
             default: null,
         },
 
+        // Cricket scorecards additionally record wickets. Football goals and
+        // badminton points use the two score fields above.
+        teamAWickets: { type: Number, default: null, min: 0, max: 10 },
+        teamBWickets: { type: Number, default: null, min: 0, max: 10 },
+
         winner: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "TournamentTeam",
