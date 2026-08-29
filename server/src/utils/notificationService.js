@@ -95,7 +95,7 @@ const sendBookingReminder = async (bookingId) => {
 // Tournament Notification (Start / Reminder)
 // ===================================================
 
-const sendTournamentNotification = async (tournamentId, type) => {
+const sendTournamentNotification = async (tournamentId, type, openingMatch = null) => {
     const tournament = await Tournament.findById(tournamentId);
     if (!tournament) return;
 
@@ -117,8 +117,9 @@ const sendTournamentNotification = async (tournamentId, type) => {
             `Reminder: Tournament "${tournamentName}" starts in 2 days (${startDate}). ` +
             `Final fixtures will be published here one day before kick-off.`;
     } else if (type === "start") {
+        const openingTime = openingMatch ? ` at ${openingMatch.startTime}` : "";
         message =
-            `Dear participant, tournament "${tournamentName}" has started today (${startDate}). ` +
+            `Dear participant, tournament "${tournamentName}" has started${openingTime} today (${startDate}). ` +
             `Check your fixtures and bring your QR ticket to the venue. Best of luck!`;
     } else {
         return;

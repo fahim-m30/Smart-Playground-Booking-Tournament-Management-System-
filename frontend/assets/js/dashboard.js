@@ -17,6 +17,7 @@ const refreshRealtime = () => {
 if (typeof io !== "undefined" && token) {
     const socket = io("https://smart-playground-booking-tournament.onrender.com", { auth: { token } });
     socket.on("notification:new", () => { loadNotifications(); refreshRealtime(); });
+    socket.on("notification:deleted", loadNotifications);
     socket.on("booking:updated", refreshRealtime);
     socket.on("tournament:updated", refreshRealtime);
     socket.on("dashboard:update", refreshRealtime);
@@ -241,9 +242,22 @@ async function loadNotifications() {
         list.innerHTML = notifications.length ? notifications.map((notification) => {
             const created = new Date(notification.createdAt);
             const when = Number.isNaN(created.getTime()) ? "Just now" : new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }).format(created);
-            return `<a class="notification-item${notification.readAt ? "" : " unread"}" href="${escapeHTML(notification.link || "#")}" data-notification-id="${notification._id}"><strong>${escapeHTML(notification.title)}</strong><span>${escapeHTML(notification.message)}</span><time>${escapeHTML(when)}</time></a>`;
+            return `<article class="notification-item${notification.readAt ? "" : " unread"}"><a class="notification-open" href="${escapeHTML(notification.link || "#")}" data-notification-id="${notification._id}"><strong>${escapeHTML(notification.title)}</strong><span>${escapeHTML(notification.message)}</span><time>${escapeHTML(when)}</time></a><button class="notification-delete" type="button" data-delete-notification-id="${notification._id}" aria-label="Delete notification" title="Delete notification">×</button></article>`;
         }).join("") : '<p class="notification-empty">You are all caught up.</p>';
         list.querySelectorAll("[data-notification-id]").forEach((item) => item.addEventListener("click", () => authFetch(`/notifications/${item.dataset.notificationId}/read`, { method: "PATCH" })));
+        list.querySelectorAll("[data-delete-notification-id]").forEach((button) => button.addEventListener("click", async () => {
+            button.disabled = true;
+            try {
+                const response = await authFetch(`/notifications/${button.dataset.deleteNotificationId}`, { method: "DELETE" });
+                if (!response.ok) {
+                    const body = await response.json().catch(() => ({}));
+                    throw new Error(body.message || "Could not delete notification.");
+                }
+                await loadNotifications();
+            } catch (_) {
+                button.disabled = false;
+            }
+        }));
     } catch (_) { list.innerHTML = '<p class="notification-empty">Notifications could not be loaded.</p>'; }
 }
 $("#notification-button").addEventListener("click", () => {

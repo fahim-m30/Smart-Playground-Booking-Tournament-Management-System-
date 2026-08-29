@@ -20,6 +20,10 @@ const { generateGroupMatches } = require("../modules/tournament/tournament.servi
 const { bookingStartsAt, calendarDate, dayRange } = require("../utils/scheduleTime");
 const { emitDashboardUpdate } = require("../config/socket");
 
+// A run can take longer than one minute when an external SMS provider is
+// slow. Prevent an overlapping run from sending the same reminder twice.
+let notificationJobsRunning = false;
+
 // ===================================================
 // Helpers
 // ===================================================
@@ -86,17 +90,31 @@ const processTournamentReminders = async () => {
 // ===================================================
 
 const processTournamentStartNotifications = async () => {
+    const now = new Date();
     const today = rangeForCalendarDay();
 
     const tournaments = await Tournament.find({
-        startDate: { $gte: today.start, $lt: today.end },
+        // A fixture may be rescheduled within the tournament window, so use
+        // the first playable match—not midnight on the tournament date—as
+        // the actual start of the tournament.
+        startDate: { $lte: today.end },
+        endDate: { $gte: today.start },
         status: { $nin: ["Completed", "Cancelled"] },
         startNotificationSent: false,
         isDeleted: false,
     });
 
     for (const tournament of tournaments) {
-        await sendTournamentNotification(tournament._id.toString(), "start");
+        const firstMatch = await TournamentMatch.findOne({
+            tournament: tournament._id,
+            matchStatus: { $ne: "Cancelled" },
+        }).sort({ matchDate: 1, startTime: 1 });
+
+        // Fixtures are published before the tournament begins. If there is
+        // no playable opening match yet, keep the notification pending.
+        if (!firstMatch || bookingStartsAt(firstMatch.matchDate, firstMatch.startTime) > now) continue;
+
+        await sendTournamentNotification(tournament._id.toString(), "start", firstMatch);
 
         tournament.startNotificationSent = true;
         // The event is now in progress.  This avoids a stale "Upcoming"
@@ -294,13 +312,13 @@ const processFixturePublication = async () => {
                 isDeleted: false,
             }).select("registeredBy teamName contactNumber");
             await Promise.all(teams.map(async (team) => {
-                const message = `${tournament.name} starts tomorrow. The final fixture is ready—check when ${team.teamName} plays, then attend your match with your QR ticket.`;
+                const message = `The final fixture for ${tournament.name} is ready. Review ${team.teamName}'s match schedule, then join the tournament at the venue with your QR ticket.`;
                 await Promise.all([
                     team.contactNumber ? sendSMS(team.contactNumber, message) : Promise.resolve(),
                     createNotification({
                         recipient: team.registeredBy,
                         type: "TournamentPublished",
-                        title: "Final fixture published: tournament starts tomorrow",
+                        title: "Final fixture ready: join the tournament tomorrow",
                         message,
                         link: `tournament.html?fixture=${tournament._id}`,
                     }),
@@ -317,6 +335,8 @@ const processFixturePublication = async () => {
 // ===================================================
 
 const runNotificationJobs = async () => {
+    if (notificationJobsRunning) return;
+    notificationJobsRunning = true;
     try {
         await processBookingReminders();
         await processTournamentReminders();
@@ -328,6 +348,8 @@ const runNotificationJobs = async () => {
         await processExpiredSchedule();
     } catch (error) {
         console.error("❌ Notification Job Error:", error.message);
+    } finally {
+        notificationJobsRunning = false;
     }
 };
 

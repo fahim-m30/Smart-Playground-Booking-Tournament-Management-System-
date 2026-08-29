@@ -20,4 +20,13 @@ const markRead = async (id, userId) => {
 
 const markAllRead = (userId) => Notification.updateMany({ recipient: userId, readAt: null }, { readAt: new Date() });
 
-module.exports = { createNotification, getMyNotifications, markRead, markAllRead };
+const deleteNotification = async (id, userId) => {
+    // recipient is part of the query, so no user can delete another user's
+    // notification even if they know its database id.
+    const notification = await Notification.findOneAndDelete({ _id: id, recipient: userId });
+    if (!notification) throw new Error("Notification not found.");
+    emitToUser(String(userId), "notification:deleted", { notificationId: String(id) });
+    return notification;
+};
+
+module.exports = { createNotification, getMyNotifications, markRead, markAllRead, deleteNotification };

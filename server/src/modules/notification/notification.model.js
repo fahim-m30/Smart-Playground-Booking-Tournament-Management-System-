@@ -4,7 +4,23 @@ const notificationSchema = new mongoose.Schema({
     recipient: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
     type: {
         type: String,
-        enum: ["BookingConfirmed", "BookingReminder", "BookingCancelled", "TournamentPublished", "TournamentReminder", "MatchReminder", "MatchCancelled", "AccountSuspended", "VenueApproval", "ChatMessage"],
+        // Keep this list in sync with every createNotification call. An
+        // unknown type makes Mongoose reject the notification entirely.
+        enum: [
+            "BookingConfirmed",
+            "BookingReminder",
+            "BookingCancelled",
+            "TournamentRegistrationConfirmed",
+            "TournamentPublished",
+            "TournamentReminder",
+            "TournamentCancelled",
+            "MatchReminder",
+            "MatchCancelled",
+            "ReportUpdate",
+            "AccountSuspended",
+            "VenueApproval",
+            "ChatMessage",
+        ],
         required: true,
     },
     title: { type: String, required: true, trim: true },
