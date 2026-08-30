@@ -34,8 +34,11 @@ const generateQR = async (data) => {
         // files after a restart, which otherwise leaves customers with a
         // broken QR image even though their booking remains valid.
         return await QRCode.toDataURL(qrData, {
-            width: 400,
-            margin: 2,
+            // A larger source image remains crisp on receipts and phone
+            // screens even after the browser scales it down.
+            width: 600,
+            margin: 3,
+            errorCorrectionLevel: "M",
             color: {
                 dark: "#000000",
                 light: "#ffffff",

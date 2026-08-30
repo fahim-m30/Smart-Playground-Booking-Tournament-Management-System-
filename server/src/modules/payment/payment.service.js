@@ -68,13 +68,12 @@ const confirmPayment = async (paymentId, paymentMethod, transactionId = null) =>
 
         const qrExpiresAt = bookingEndsAt(updatedBooking.bookingDate, updatedBooking.endTime);
 
+        // Keep the signed QR payload deliberately small. Ticket details are
+        // loaded from the database during validation, so duplicating venue
+        // and schedule details here only makes the QR too dense for phones.
         const qrData = {
             type: "SlotBooking",
             id: updatedBooking._id.toString(),
-            playground: updatedBooking.playground.toString(),
-            date: updatedBooking.bookingDate.toISOString().split("T")[0],
-            startTime: updatedBooking.startTime,
-            endTime: updatedBooking.endTime,
             expiresAt: qrExpiresAt.toISOString(),
         };
 
@@ -110,9 +109,6 @@ const confirmPayment = async (paymentId, paymentMethod, transactionId = null) =>
         const qrData = {
             type: "TournamentTicket",
             id: updatedTeam._id.toString(),
-            tournament: updatedTeam.tournament.toString(),
-            teamName: updatedTeam.teamName,
-            tournamentName: tournament.name,
             expiresAt: qrExpiresAt.toISOString(),
         };
 
@@ -367,21 +363,19 @@ const cancelDemoCheckout = async (paymentId, customerId) => {
 // Get My Payments
 // ===================================================
 
-// Older tickets stored a path under /uploads/qrcodes. Those files disappear
-// on ephemeral hosting after a restart, so recreate their QR image while
-// returning the payment. New tickets already store a data URL directly.
+// Render a compact QR while returning every paid ticket. Earlier QR payloads
+// included display-only fields, which made the code too dense at receipt size
+// for some phone cameras. Validation still uses the signed ID and live data.
 const ensurePaymentTicketQR = async (payment) => {
     if (payment.paymentStatus !== "Paid") return payment;
 
     if (payment.booking) {
         const booking = payment.booking;
         const expiresAt = booking.qrExpiresAt || bookingEndsAt(booking.bookingDate, booking.endTime);
-        if (!String(booking.qrCode || "").startsWith("data:")) {
-            booking.qrCode = await generateQR({ type: "SlotBooking", id: booking._id.toString(), expiresAt: new Date(expiresAt).toISOString() });
-        }
+        booking.qrCode = await generateQR({ type: "SlotBooking", id: booking._id.toString(), expiresAt: new Date(expiresAt).toISOString() });
     } else if (payment.tournamentTeam) {
         const team = payment.tournamentTeam;
-        if (team.qrExpiresAt && !String(team.qrCode || "").startsWith("data:")) {
+        if (team.qrExpiresAt) {
             team.qrCode = await generateQR({ type: "TournamentTicket", id: team._id.toString(), expiresAt: new Date(team.qrExpiresAt).toISOString() });
         }
     }
