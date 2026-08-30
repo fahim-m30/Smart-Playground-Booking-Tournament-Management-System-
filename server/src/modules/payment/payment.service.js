@@ -516,6 +516,51 @@ const verifyQR = async (qrDataString, adminId) => {
         if (String(tournament.playground?.playgroundAdmin) !== String(adminId)) {
             return { valid: false, message: "Ticket not found at this playground.", data: { type: "TournamentTicket", ticketType: "Tournament" } };
         }
+        const [teamMatches, finalMatch] = await Promise.all([
+            TournamentMatch.find({
+                tournament: tournament._id,
+                $or: [{ teamA: team._id }, { teamB: team._id }],
+            })
+                .populate("teamA", "teamName")
+                .populate("teamB", "teamName")
+                .sort({ matchDate: 1, startTime: 1 }),
+            TournamentMatch.findOne({ tournament: tournament._id, stage: "Final" })
+                .populate("teamA", "teamName")
+                .populate("teamB", "teamName"),
+        ]);
+        const matchSummary = (match) => {
+            if (!match) return null;
+            const isTeamA = String(match.teamA?._id || match.teamA) === String(team._id);
+            const opponent = isTeamA ? match.teamB : match.teamA;
+            return {
+                stage: match.stage,
+                matchday: match.matchday || null,
+                status: match.matchStatus,
+                date: match.matchDate?.toISOString().split("T")[0] || null,
+                startTime: match.startTime,
+                endTime: match.endTime,
+                opponent: opponent?.teamName || "Opponent to be confirmed",
+            };
+        };
+        const liveMatch = teamMatches.find((match) => match.matchStatus === "Live");
+        const scheduledMatch = teamMatches.find((match) => match.matchStatus === "Scheduled");
+        const latestPlayedMatch = [...teamMatches].reverse().find((match) => match.matchStatus === "Completed");
+        const currentMatch = liveMatch || scheduledMatch || latestPlayedMatch;
+        const finalSummary = finalMatch ? {
+            exists: true,
+            status: finalMatch.matchStatus,
+            date: finalMatch.matchDate?.toISOString().split("T")[0] || null,
+            startTime: finalMatch.startTime,
+            endTime: finalMatch.endTime,
+            matchup: `${finalMatch.teamA?.teamName || "TBD"} vs ${finalMatch.teamB?.teamName || "TBD"}`,
+        } : {
+            exists: false,
+            status: tournament.status === "Completed" ? "Completed" : "Not scheduled yet",
+            date: null,
+            startTime: null,
+            endTime: null,
+            matchup: "Teams to be confirmed",
+        };
         const ticket = {
             type: "TournamentTicket",
             ticketType: "Tournament",
@@ -523,7 +568,14 @@ const verifyQR = async (qrDataString, adminId) => {
             teamName: team.teamName,
             captainName: team.captain?.name || null,
             contactNumber: team.contactNumber || null,
-            tournament: { id: tournament._id.toString(), name: tournament.name },
+            tournament: {
+                id: tournament._id.toString(),
+                name: tournament.name,
+                status: tournament.status,
+                currentRound: team.isKnockedOut ? "Eliminated" : (currentMatch?.stage || "Fixture pending"),
+                currentMatch: matchSummary(currentMatch),
+                final: finalSummary,
+            },
             playground: { id: tournament.playground._id.toString(), name: tournament.playground.name, address: tournament.playground.address },
         };
         if (team.paymentStatus !== "Paid" || ["Cancelled", "Completed"].includes(tournament.status)) {

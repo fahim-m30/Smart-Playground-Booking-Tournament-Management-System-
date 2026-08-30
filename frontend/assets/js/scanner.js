@@ -48,7 +48,16 @@
         const isSlot = data.type === "SlotBooking";
         const person = isSlot ? data.customerName : data.teamName;
         const schedule = isSlot ? `${data.date} - ${data.startTime}-${data.endTime}` : (data.tournament?.name || "Tournament");
-        return `<dl><div><dt>Ticket</dt><dd>${isSlot ? "Slot booking" : "Tournament"}</dd></div><div><dt>${isSlot ? "Customer" : "Team"}</dt><dd>${escapeHTML(person || "-")}</dd></div><div><dt>Venue</dt><dd>${escapeHTML(data.playground?.name || "-")}</dd></div><div><dt>Schedule</dt><dd>${escapeHTML(schedule)}</dd></div></dl>`;
+        const commonDetails = `<div><dt>Ticket</dt><dd>${isSlot ? "Slot booking" : "Tournament"}</dd></div><div><dt>${isSlot ? "Customer" : "Team"}</dt><dd>${escapeHTML(person || "-")}</dd></div><div><dt>Venue</dt><dd>${escapeHTML(data.playground?.name || "-")}</dd></div><div><dt>${isSlot ? "Schedule" : "Tournament"}</dt><dd>${escapeHTML(schedule)}</dd></div>`;
+        if (isSlot) return `<dl>${commonDetails}</dl>`;
+
+        const tournament = data.tournament || {};
+        const match = tournament.currentMatch;
+        const finalMatch = tournament.final;
+        const round = match?.matchday ? `${tournament.currentRound || "Fixture pending"} (Matchday ${match.matchday})` : (tournament.currentRound || "Fixture pending");
+        const currentMatch = match ? `${match.opponent} - ${match.date || "Date TBD"}, ${match.startTime || "Time TBD"} (${match.status})` : "No match fixture is confirmed yet";
+        const finalDetails = finalMatch?.exists ? `${finalMatch.matchup} - ${finalMatch.date || "Date TBD"}, ${finalMatch.startTime || "Time TBD"} (${finalMatch.status})` : (finalMatch?.status || "Final is not scheduled yet");
+        return `<dl>${commonDetails}<div><dt>Current round</dt><dd>${escapeHTML(round)}</dd></div><div><dt>Team match</dt><dd>${escapeHTML(currentMatch)}</dd></div><div><dt>Final match</dt><dd>${escapeHTML(finalDetails)}</dd></div><div><dt>Tournament status</dt><dd>${escapeHTML(tournament.status || "Unknown")}</dd></div></dl>`;
     };
     const validateTicket = async (qrData) => {
         if (!qrData || validating) return;
