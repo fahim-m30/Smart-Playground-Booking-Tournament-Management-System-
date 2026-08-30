@@ -18,6 +18,8 @@
     let nativeVideo = null;
     let nativeDetector = null;
     let nativeScanFrame = null;
+    let zxingReader = null;
+    let zxingControls = null;
     let scannerRunning = false;
     let scannerStarting = false;
     let validating = false;
@@ -84,8 +86,13 @@
         }
     };
     const stopScanner = async () => {
-        if (!scanner && !nativeStream) return;
-        if (nativeStream) {
+        if (!scanner && !nativeStream && !zxingControls) return;
+        if (zxingControls) {
+            try { zxingControls.stop(); } catch (_) { /* The camera may already be closed. */ }
+            zxingControls = null;
+            zxingReader = null;
+            nativeVideo = null;
+        } else if (nativeStream) {
             if (nativeScanFrame) cancelAnimationFrame(nativeScanFrame);
             nativeStream.getTracks().forEach((track) => track.stop());
             nativeStream = null;
@@ -128,6 +135,9 @@
         nativeVideo = null;
         nativeDetector = null;
         nativeScanFrame = null;
+        try { zxingControls?.stop(); } catch (_) { /* The camera may already be closed. */ }
+        zxingControls = null;
+        zxingReader = null;
         try { await scanner?.clear(); } catch (_) { /* A failed stream may not be clearable. */ }
         scanner = null;
     };
@@ -157,6 +167,16 @@
         };
         nativeScanFrame = requestAnimationFrame(detectFrame);
     };
+    const startZxingScanner = async (camera) => {
+        zxingReader = new window.ZXingBrowser.BrowserQRCodeReader();
+        reader.innerHTML = '<video class="native-scanner-video" autoplay muted playsinline></video><div class="native-scan-guide" aria-hidden="true"></div>';
+        nativeVideo = reader.querySelector("video");
+        const deviceId = typeof camera === "string" ? camera : undefined;
+        zxingControls = await zxingReader.decodeFromVideoDevice(deviceId, nativeVideo, (scanResult) => {
+            const qrData = scanResult?.getText?.();
+            if (qrData) validateTicket(qrData);
+        });
+    };
     const scanConfiguration = {
         fps: 15,
         aspectRatio: 16 / 9,
@@ -168,7 +188,7 @@
     };
     const startScanner = async () => {
         if (scannerRunning || scannerStarting) return;
-        if (!window.Html5Qrcode && typeof window.BarcodeDetector !== "function") {
+        if (!window.Html5Qrcode && typeof window.BarcodeDetector !== "function" && !window.ZXingBrowser?.BrowserQRCodeReader) {
             setResult("error", "Scanner could not load", "Check your internet connection, then reload this page.");
             return;
         }
@@ -182,6 +202,10 @@
         try {
             startButton.disabled = true;
             const startWithCamera = async (camera) => {
+                if (window.ZXingBrowser?.BrowserQRCodeReader) {
+                    await startZxingScanner(camera);
+                    return;
+                }
                 const detector = createNativeDetector();
                 if (detector) {
                     await startNativeScanner(camera, detector);
