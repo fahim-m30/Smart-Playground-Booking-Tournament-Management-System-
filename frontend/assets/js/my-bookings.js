@@ -26,6 +26,10 @@
             }).join("") : "";
             if (activeTeams.length) content.insertAdjacentHTML("beforeend", activeTeams.map((team) => `<article class="card"><span class="badge">TOURNAMENT · PAID</span><h3>${escapeHtml(team.teamName)}</h3><p>${escapeHtml(team.tournament?.name || "Tournament")}<br>${date(team.tournament?.startDate)} – ${date(team.tournament?.endDate)}<br>Registration: ৳${Number(team.tournament?.registrationFee || 0).toLocaleString()}</p><div class="card-foot"><a class="button alt" href="tournament.html?fixture=${encodeURIComponent(team.tournament?._id)}">View fixture</a></div></article>`).join(""));
             if (!activeSlots.length && !activeTeams.length) content.innerHTML = '<div class="empty">You have no active slot bookings or tournament registrations. <a href="booking.html">Book a slot</a> or <a href="tournament.html">join a tournament</a>.</div>';
+            content.querySelectorAll(".ticket img").forEach((image) => {
+                const prefix = "https://smart-playground-booking-tournament.onrender.comdata:";
+                if (image.src.startsWith(prefix)) image.src = image.src.slice(prefix.length - "data:".length);
+            });
             content.querySelectorAll(".cancel").forEach((button) => button.addEventListener("click", async () => { if (!confirm("Cancel this booking? You can cancel only at least 2 hours before the slot.")) return; button.disabled = true; try { await request(`/bookings/${button.dataset.id}/cancel`, { method: "PATCH" }); bookings(); } catch (error) { alert(error.message); button.disabled = false; } }));
         } catch (error) { content.innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`; }
     }

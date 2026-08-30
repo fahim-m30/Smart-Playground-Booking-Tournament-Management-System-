@@ -78,8 +78,7 @@ const confirmPayment = async (paymentId, paymentMethod, transactionId = null) =>
             expiresAt: qrExpiresAt.toISOString(),
         };
 
-        const qrFileName = `booking-${updatedBooking._id}-${Date.now()}.png`;
-        const qrCodePath = await generateQR(qrData, qrFileName);
+        const qrCodePath = await generateQR(qrData);
 
         await Booking.findByIdAndUpdate(updatedBooking._id, {
             qrCode: qrCodePath,
@@ -117,8 +116,7 @@ const confirmPayment = async (paymentId, paymentMethod, transactionId = null) =>
             expiresAt: qrExpiresAt.toISOString(),
         };
 
-        const qrFileName = `tournament-${updatedTeam._id}-${Date.now()}.png`;
-        const qrCodePath = await generateQR(qrData, qrFileName);
+        const qrCodePath = await generateQR(qrData);
 
         await TournamentTeam.findByIdAndUpdate(updatedTeam._id, {
             qrCode: qrCodePath,
@@ -369,6 +367,28 @@ const cancelDemoCheckout = async (paymentId, customerId) => {
 // Get My Payments
 // ===================================================
 
+// Older tickets stored a path under /uploads/qrcodes. Those files disappear
+// on ephemeral hosting after a restart, so recreate their QR image while
+// returning the payment. New tickets already store a data URL directly.
+const ensurePaymentTicketQR = async (payment) => {
+    if (payment.paymentStatus !== "Paid") return payment;
+
+    if (payment.booking) {
+        const booking = payment.booking;
+        const expiresAt = booking.qrExpiresAt || bookingEndsAt(booking.bookingDate, booking.endTime);
+        if (!String(booking.qrCode || "").startsWith("data:")) {
+            booking.qrCode = await generateQR({ type: "SlotBooking", id: booking._id.toString(), expiresAt: new Date(expiresAt).toISOString() });
+        }
+    } else if (payment.tournamentTeam) {
+        const team = payment.tournamentTeam;
+        if (team.qrExpiresAt && !String(team.qrCode || "").startsWith("data:")) {
+            team.qrCode = await generateQR({ type: "TournamentTicket", id: team._id.toString(), expiresAt: new Date(team.qrExpiresAt).toISOString() });
+        }
+    }
+
+    return payment;
+};
+
 const getMyPayments = async (customerId) => {
     const payments = await Payment.find({
         customer: customerId,
@@ -391,7 +411,7 @@ const getMyPayments = async (customerId) => {
         .populate("customer", "name email phone")
         .sort({ createdAt: -1 });
 
-    return payments;
+    return Promise.all(payments.map(ensurePaymentTicketQR));
 };
 
 // ===================================================
@@ -424,7 +444,7 @@ const getSinglePayment = async (paymentId, customerId) => {
         throw new Error("Payment not found.");
     }
 
-    return payment;
+    return ensurePaymentTicketQR(payment);
 };
 
 // ===================================================

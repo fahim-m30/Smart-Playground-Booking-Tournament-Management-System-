@@ -16,6 +16,11 @@ const item = (label, value) => `<div><span>${label}</span><strong>${escapeHTML(v
     data.push(item("Payment method", payment.paymentMethod), item("Paid at", new Date(payment.paidAt || payment.createdAt).toLocaleString("en-GB")));
     document.querySelector("#details").innerHTML = data.join(""); document.querySelector("#amount").textContent = `৳${payment.amount}`;
     document.querySelector("#reference").textContent = `Receipt no. ${payment.transactionId || payment._id}`;
-    const qrPath = booking?.qrCode || team?.qrCode; if (qrPath) { const qr = document.querySelector("#qr"); qr.src = `https://smart-playground-booking-tournament.onrender.com${qrPath}`; qr.hidden = false; }
+    const qrPath = booking?.qrCode || team?.qrCode;
+    if (qrPath) {
+      const qr = document.querySelector("#qr");
+      qr.src = String(qrPath).startsWith("data:") ? qrPath : `https://smart-playground-booking-tournament.onrender.com${qrPath}`;
+      qr.hidden = false;
+    }
   } catch (error) { document.querySelector("#title").textContent = error.message; }
 })();

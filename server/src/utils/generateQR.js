@@ -9,14 +9,6 @@
 
 const QRCode = require("qrcode");
 const crypto = require("crypto");
-const path = require("path");
-const fs = require("fs");
-
-const QR_DIR = path.join(__dirname, "../../uploads/qrcodes");
-
-if (!fs.existsSync(QR_DIR)) {
-    fs.mkdirSync(QR_DIR, { recursive: true });
-}
 
 const QR_VERSION = "TURF1";
 
@@ -34,12 +26,14 @@ const encodeQRPayload = (data) => {
     return `${QR_VERSION}.${payload}.${signature}`;
 };
 
-const generateQR = async (data, fileName) => {
+const generateQR = async (data) => {
     try {
         const qrData = encodeQRPayload(data);
-        const filePath = path.join(QR_DIR, fileName);
-
-        await QRCode.toFile(filePath, qrData, {
+        // Keep ticket images with the ticket record instead of the server's
+        // temporary filesystem. Hosts such as Render can remove uploaded
+        // files after a restart, which otherwise leaves customers with a
+        // broken QR image even though their booking remains valid.
+        return await QRCode.toDataURL(qrData, {
             width: 400,
             margin: 2,
             color: {
@@ -47,8 +41,6 @@ const generateQR = async (data, fileName) => {
                 light: "#ffffff",
             },
         });
-
-        return `/uploads/qrcodes/${fileName}`;
     } catch (error) {
         throw new Error("Failed to generate QR code: " + error.message);
     }
