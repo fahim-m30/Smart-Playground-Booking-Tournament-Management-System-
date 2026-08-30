@@ -19,6 +19,7 @@
     let validating = false;
     let lastValue = "";
     let lastScanAt = 0;
+    let lastDecodeHintAt = 0;
 
     const escapeHTML = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
     const setState = (kind, text) => { state.className = `state ${kind}`; state.textContent = text; };
@@ -51,6 +52,7 @@
         const now = Date.now();
         if (qrData === lastValue && now - lastScanAt < 1800) return;
         lastValue = qrData; lastScanAt = now; validating = true;
+        if (scannerRunning) status.textContent = "QR code found. Validating ticket...";
         setResult("loading", "Validating ticket", "Checking signature, payment, venue and eligibility…");
         try {
             const response = await fetch(`${API}/payments/validate-qr`, {
@@ -72,7 +74,10 @@
         } catch (error) {
             beep(false);
             setResult("error", "Ticket declined", error.message || "Ticket could not be validated.");
-        } finally { validating = false; }
+        } finally {
+            validating = false;
+            if (scannerRunning) status.textContent = "Camera active — ready for the next QR code.";
+        }
     };
     const stopScanner = async () => {
         if (!scanner) return;
@@ -107,6 +112,15 @@
         try { await scanner?.clear(); } catch (_) { /* A failed stream may not be clearable. */ }
         scanner = null;
     };
+    const scanConfiguration = {
+        fps: 15,
+        aspectRatio: 16 / 9,
+        disableFlip: false,
+        qrbox: (viewfinderWidth, viewfinderHeight) => {
+            const size = Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.82);
+            return { width: size, height: size };
+        },
+    };
     const startScanner = async () => {
         if (scannerRunning || scannerStarting) return;
         if (!window.Html5Qrcode) {
@@ -124,7 +138,12 @@
             startButton.disabled = true;
             const startWithCamera = async (camera) => {
                 scanner = new Html5Qrcode("qr-reader", getScannerOptions());
-                await scanner.start(camera, { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1 }, (decodedText) => validateTicket(decodedText), () => {});
+                await scanner.start(camera, scanConfiguration, (decodedText) => validateTicket(decodedText), () => {
+                    if (Date.now() - lastDecodeHintAt > 1800) {
+                        lastDecodeHintAt = Date.now();
+                        status.textContent = "Looking for a QR code — keep it centred and fill the frame.";
+                    }
+                });
             };
             const requestedCamera = cameraSelect.value || { facingMode: "environment" };
             status.textContent = "Requesting camera access…";
