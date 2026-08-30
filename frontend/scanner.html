@@ -1,41 +1,44 @@
 <!doctype html>
 <html lang="en">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>TURF | Ticket Scanner</title>
-    <link rel="icon" type="image/png" href="assets/images/favicon.png">
-    <link rel="stylesheet" href="assets/css/scanner.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>TURF | QR Ticket Scanner</title>
+  <link rel="icon" type="image/png" href="assets/images/favicon.png">
+  <link rel="stylesheet" href="assets/css/scanner.css">
 </head>
 <body>
-    <main class="scanner-page">
-        <header class="scanner-head">
-            <div><a href="dashboard.html">← Dashboard</a><p class="eyebrow">Playground operations</p><h1>QR ticket scanner</h1><p>Scan a paid booking or tournament ticket to validate it and complete check-in.</p></div>
-            <span class="secure-badge">Secure validation</span>
-        </header>
+  <main class="scanner-page">
+    <header class="scanner-head">
+      <div><a href="dashboard.html">← Dashboard</a><p class="eyebrow">Playground operations</p><h1>QR ticket scanner</h1><p>Validate paid slot and tournament tickets at your own venue.</p></div>
+      <span class="secure-badge">Admin-only validation</span>
+    </header>
 
-        <section class="scanner-layout">
-            <article class="scanner-card">
-                <div class="scanner-frame" id="scanner-frame">
-                    <video id="camera" autoplay muted playsinline></video>
-                    <div class="scanner-guide" aria-hidden="true"></div>
-                    <p id="camera-status">Starting camera…</p>
-                </div>
-                <div class="scanner-actions">
-                    <button id="start-camera" type="button">Start camera</button>
-                    <button id="stop-camera" class="secondary" type="button">Stop camera</button>
-                    <label class="secondary file-button">Scan QR image<input id="qr-image" type="file" accept="image/*" capture="environment"></label>
-                </div>
-                <p class="hint">Point the camera at the ticket QR. Slot tickets remain valid until their end time; tournament tickets remain valid until the team is eliminated or the tournament ends.</p>
-            </article>
+    <section class="scanner-layout">
+      <article class="scanner-card">
+        <header class="scanner-card-head"><div><h2>Camera scanner</h2><p id="camera-status">Choose a camera, then start scanning.</p></div><span id="scanner-state" class="state idle">Idle</span></header>
+        <div id="qr-reader" class="scanner-reader" aria-label="QR camera preview"></div>
+        <div class="camera-controls">
+          <label>Camera<select id="camera-select" aria-label="Choose camera"><option value="">Back camera (recommended)</option></select></label>
+          <button id="start-camera" type="button">Start scanner</button>
+          <button id="stop-camera" class="secondary" type="button" disabled>Stop</button>
+        </div>
+        <div class="alternate-scan">
+          <label class="file-button">Scan a saved QR image<input id="qr-image" type="file" accept="image/*" capture="environment"></label>
+          <span>Use this when camera access is unavailable.</span>
+        </div>
+        <p class="hint">Keep the QR inside the frame. The scanner remains ready for the next customer after each validation.</p>
+      </article>
 
-            <aside class="result-card" aria-live="polite">
-                <p class="eyebrow">Validation result</p>
-                <div id="result" class="result idle"><strong>Ready to scan</strong><p>No ticket has been scanned yet.</p></div>
-                <details class="manual-entry"><summary>Paste QR data manually</summary><form id="manual-form"><textarea id="qr-data" rows="4" placeholder="Paste the complete QR value"></textarea><button type="submit">Validate ticket</button></form></details>
-            </aside>
-        </section>
-    </main>
-    <script src="assets/js/scanner.js"></script>
+      <aside class="result-card" aria-live="polite">
+        <p class="eyebrow">Validation result</p>
+        <div id="result" class="result idle"><strong>Ready for a ticket</strong><p>Start the scanner or upload a QR image.</p></div>
+        <details class="manual-entry"><summary>Paste QR data manually</summary><form id="manual-form"><textarea id="qr-data" rows="4" placeholder="Paste the complete QR value"></textarea><button type="submit">Validate ticket</button></form></details>
+        <section class="scanner-policy"><strong>Validation policy</strong><p>Slots are valid until their end time. Tournament tickets remain valid until the team is eliminated or the tournament ends.</p></section>
+      </aside>
+    </section>
+  </main>
+  <script defer src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script defer src="assets/js/scanner.js?v=20260831scanner2"></script>
 </body>
 </html>

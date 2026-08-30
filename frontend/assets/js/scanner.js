@@ -2,97 +2,130 @@
     const API = "https://smart-playground-booking-tournament.onrender.com/api/v1";
     const token = localStorage.getItem("authToken");
     let user = null;
-    try { user = JSON.parse(localStorage.getItem("authUser") || "null"); } catch (_) { /* handled below */ }
+    try { user = JSON.parse(localStorage.getItem("authUser") || "null"); } catch (_) { /* redirect below */ }
     if (!token || user?.role !== "playground-admin") { location.replace("login.html"); return; }
 
-    const video = document.querySelector("#camera");
-    const status = document.querySelector("#camera-status");
-    const result = document.querySelector("#result");
-    const startButton = document.querySelector("#start-camera");
-    const stopButton = document.querySelector("#stop-camera");
-    let stream = null;
-    let detector = null;
-    let scanning = false;
+    const $ = (selector) => document.querySelector(selector);
+    const status = $("#camera-status");
+    const state = $("#scanner-state");
+    const result = $("#result");
+    const cameraSelect = $("#camera-select");
+    const startButton = $("#start-camera");
+    const stopButton = $("#stop-camera");
+    let scanner = null;
+    let scannerRunning = false;
     let validating = false;
+    let lastValue = "";
+    let lastScanAt = 0;
 
-    const escapeHTML = (value) => String(value ?? "").replace(/[&<>\"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
+    const escapeHTML = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
+    const setState = (kind, text) => { state.className = `state ${kind}`; state.textContent = text; };
     const setResult = (kind, title, message, details = "") => {
         result.className = `result ${kind}`;
         result.innerHTML = `<strong>${escapeHTML(title)}</strong><p>${escapeHTML(message)}</p>${details}`;
     };
-    const stopCamera = () => {
-        scanning = false;
-        stream?.getTracks().forEach((track) => track.stop());
-        stream = null;
-        video.srcObject = null;
-        status.textContent = "Camera is off.";
+    const beep = (success) => {
+        try {
+            const context = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = context.createOscillator();
+            const gain = context.createGain();
+            oscillator.frequency.value = success ? 880 : 220;
+            gain.gain.setValueAtTime(.05, context.currentTime);
+            gain.gain.exponentialRampToValueAtTime(.001, context.currentTime + .14);
+            oscillator.connect(gain); gain.connect(context.destination); oscillator.start(); oscillator.stop(context.currentTime + .14);
+        } catch (_) { /* Audio feedback is optional. */ }
     };
     const ticketDetails = (data) => {
-        const venue = data.playground?.name || "Venue";
-        const person = data.type === "SlotBooking" ? data.customerName : data.teamName;
-        const schedule = data.type === "SlotBooking" ? `${data.date} · ${data.startTime}–${data.endTime}` : (data.tournament?.name || "Tournament");
-        return `<dl><div><dt>Ticket</dt><dd>${escapeHTML(data.type === "SlotBooking" ? "Slot booking" : "Tournament")}</dd></div><div><dt>${data.type === "SlotBooking" ? "Customer" : "Team"}</dt><dd>${escapeHTML(person)}</dd></div><div><dt>Venue</dt><dd>${escapeHTML(venue)}</dd></div><div><dt>Schedule</dt><dd>${escapeHTML(schedule)}</dd></div></dl>`;
+        const isSlot = data.type === "SlotBooking";
+        const person = isSlot ? data.customerName : data.teamName;
+        const schedule = isSlot ? `${data.date} · ${data.startTime}–${data.endTime}` : (data.tournament?.name || "Tournament");
+        return `<dl><div><dt>Ticket</dt><dd>${isSlot ? "Slot booking" : "Tournament"}</dd></div><div><dt>${isSlot ? "Customer" : "Team"}</dt><dd>${escapeHTML(person || "—")}</dd></div><div><dt>Venue</dt><dd>${escapeHTML(data.playground?.name || "—")}</dd></div><div><dt>Schedule</dt><dd>${escapeHTML(schedule)}</dd></div></dl>`;
     };
-    const validate = async (qrData) => {
+    const validateTicket = async (qrData) => {
         if (!qrData || validating) return;
-        validating = true;
-        setResult("loading", "Validating ticket", "Checking signature, payment, venue and check-in status…");
+        const now = Date.now();
+        if (qrData === lastValue && now - lastScanAt < 1800) return;
+        lastValue = qrData; lastScanAt = now; validating = true;
+        setResult("loading", "Validating ticket", "Checking signature, payment, venue and eligibility…");
         try {
-            const response = await fetch(`${API}/payments/validate-qr`, { method: "POST", headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ qrData }) });
+            const response = await fetch(`${API}/payments/validate-qr`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+                body: JSON.stringify({ qrData }),
+            });
             const body = await response.json().catch(() => ({}));
+            if (response.status === 401 || response.status === 403) { location.replace("login.html"); return; }
             if (!response.ok || !body.success) throw new Error(body.message || "Ticket could not be validated.");
+            beep(true);
             setResult("success", "Ticket valid", body.message, ticketDetails(body.data));
-            stopCamera();
         } catch (error) {
-            setResult("error", "Check-in declined", error.message || "Ticket could not be validated.");
+            beep(false);
+            setResult("error", "Ticket declined", error.message || "Ticket could not be validated.");
         } finally { validating = false; }
     };
-    const scanFrame = async () => {
-        if (!scanning || !detector || validating) return;
+    const stopScanner = async () => {
+        if (!scanner) return;
         try {
-            const codes = await detector.detect(video);
-            if (codes[0]?.rawValue) { await validate(codes[0].rawValue); return; }
-        } catch (_) { /* A frame can be unavailable while the camera starts. */ }
-        if (scanning) requestAnimationFrame(scanFrame);
+            if (scannerRunning) await scanner.stop();
+            await scanner.clear();
+        } catch (_) { /* The camera may already be closed. */ }
+        scannerRunning = false;
+        startButton.disabled = false; stopButton.disabled = true;
+        status.textContent = "Scanner stopped.";
+        setState("idle", "Idle");
     };
-    const startCamera = async () => {
-        if (!("BarcodeDetector" in window)) {
-            status.textContent = "This browser cannot scan from camera. Use Chrome/Edge or scan a QR image.";
-            setResult("error", "Camera scanning unavailable", "Use a modern Chromium browser, or use the QR image/manual option.");
+    const populateCameras = async () => {
+        if (!navigator.mediaDevices?.enumerateDevices) return;
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const cameras = devices.filter((device) => device.kind === "videoinput");
+        if (!cameras.length) return;
+        cameraSelect.innerHTML = '<option value="">Back camera (recommended)</option>' + cameras.map((camera, index) => `<option value="${escapeHTML(camera.deviceId)}">${escapeHTML(camera.label || `Camera ${index + 1}`)}</option>`).join("");
+    };
+    const startScanner = async () => {
+        if (!window.Html5Qrcode) {
+            setResult("error", "Scanner could not load", "Check your internet connection, then reload this page.");
             return;
         }
+        await stopScanner();
         try {
-            detector = new BarcodeDetector({ formats: ["qr_code"] });
-            stopCamera();
-            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false });
-            video.srcObject = stream;
-            await video.play();
-            scanning = true;
-            status.textContent = "Camera ready — align the QR inside the frame.";
-            requestAnimationFrame(scanFrame);
+            scanner = new Html5Qrcode("qr-reader", { formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE] });
+            const camera = cameraSelect.value || { facingMode: "environment" };
+            startButton.disabled = true;
+            status.textContent = "Requesting camera access…";
+            await scanner.start(camera, { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1 }, (decodedText) => validateTicket(decodedText), () => {});
+            scannerRunning = true;
+            startButton.disabled = true; stopButton.disabled = false;
+            status.textContent = "Camera active — hold a QR code inside the frame.";
+            setState("active", "Scanning");
+            await populateCameras();
         } catch (error) {
-            status.textContent = "Camera permission was not granted.";
-            setResult("error", "Camera unavailable", error.message || "Allow camera access and try again.");
+            scannerRunning = false; startButton.disabled = false; stopButton.disabled = true;
+            status.textContent = "Camera could not start.";
+            setState("error", "Unavailable");
+            setResult("error", "Camera unavailable", "Allow camera access in the browser and ensure this page is opened over HTTPS.");
+        }
+    };
+    const scanImage = async (file) => {
+        if (!file) return;
+        if (!window.Html5Qrcode) { setResult("error", "Image scanner unavailable", "Reload the page while connected to the internet."); return; }
+        try {
+            await stopScanner();
+            scanner ||= new Html5Qrcode("qr-reader", { formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE] });
+            status.textContent = "Reading QR image…"; setState("active", "Reading image");
+            const decodedText = await scanner.scanFile(file, true);
+            await validateTicket(decodedText);
+            status.textContent = "Ready to scan another ticket."; setState("idle", "Ready");
+        } catch (error) {
+            setResult("error", "Image could not be scanned", "Use a clear, uncropped image of a QR code and try again.");
+            setState("error", "Scan failed");
         }
     };
 
-    startButton.addEventListener("click", startCamera);
-    stopButton.addEventListener("click", stopCamera);
-    document.querySelector("#manual-form").addEventListener("submit", (event) => { event.preventDefault(); validate(document.querySelector("#qr-data").value.trim()); });
-    document.querySelector("#qr-image").addEventListener("change", async (event) => {
-        const file = event.target.files?.[0];
-        if (!file) return;
-        if (!("BarcodeDetector" in window)) { setResult("error", "Image scanning unavailable", "Use Chrome or Edge to scan a QR image."); return; }
-        try {
-            detector ||= new BarcodeDetector({ formats: ["qr_code"] });
-            const bitmap = await createImageBitmap(file);
-            const codes = await detector.detect(bitmap);
-            bitmap.close?.();
-            if (!codes[0]?.rawValue) throw new Error("No readable QR code was found in this image.");
-            await validate(codes[0].rawValue);
-        } catch (error) { setResult("error", "Image could not be scanned", error.message); }
-        event.target.value = "";
-    });
-    window.addEventListener("pagehide", stopCamera);
-    startCamera();
+    startButton.addEventListener("click", startScanner);
+    stopButton.addEventListener("click", stopScanner);
+    cameraSelect.addEventListener("change", () => { if (scannerRunning) startScanner(); });
+    $("#qr-image").addEventListener("change", async (event) => { await scanImage(event.target.files?.[0]); event.target.value = ""; });
+    $("#manual-form").addEventListener("submit", (event) => { event.preventDefault(); validateTicket($("#qr-data").value.trim()); });
+    window.addEventListener("pagehide", () => { stopScanner(); });
+    populateCameras().catch(() => {});
 })();
