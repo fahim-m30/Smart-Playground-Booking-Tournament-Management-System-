@@ -98,8 +98,14 @@
         const text = `${error?.name || ""} ${error?.message || ""}`.toLowerCase();
         if (text.includes("notallowed") || text.includes("permission") || text.includes("security")) return "Camera permission was blocked. Tap the lock icon in your browser, allow Camera, then try again.";
         if (text.includes("notfound") || text.includes("no camera")) return "No camera was found on this device. You can scan a saved QR image instead.";
+        if (text.includes("notreadable") || text.includes("could not start video") || text.includes("in use")) return "Your camera is being used by another app or browser tab. Close it, then try again.";
         if (text.includes("overconstrained") || text.includes("constraint")) return "The selected camera is unavailable. Choose another camera and try again.";
-        return "Camera access needs the deployed HTTPS site. Allow camera permission and try again.";
+        return "Camera could not be opened. Allow camera permission, close other apps using the camera, then try again.";
+    };
+    const getScannerOptions = () => window.Html5QrcodeSupportedFormats ? { formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE] } : {};
+    const clearIncompleteScanner = async () => {
+        try { await scanner?.clear(); } catch (_) { /* A failed stream may not be clearable. */ }
+        scanner = null;
     };
     const startScanner = async () => {
         if (scannerRunning || scannerStarting) return;
@@ -115,20 +121,30 @@
         scannerStarting = true;
         await stopScanner();
         try {
-            const formats = window.Html5QrcodeSupportedFormats ? { formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE] } : {};
-            scanner = new Html5Qrcode("qr-reader", formats);
-            const camera = cameraSelect.value || { facingMode: { ideal: "environment" } };
             startButton.disabled = true;
+            const startWithCamera = async (camera) => {
+                scanner = new Html5Qrcode("qr-reader", getScannerOptions());
+                await scanner.start(camera, { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1 }, (decodedText) => validateTicket(decodedText), () => {});
+            };
+            const requestedCamera = cameraSelect.value || { facingMode: "environment" };
             status.textContent = "Requesting camera access…";
-            await scanner.start(camera, { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1 }, (decodedText) => validateTicket(decodedText), () => {});
+            try {
+                await startWithCamera(requestedCamera);
+            } catch (firstError) {
+                await clearIncompleteScanner();
+                if (cameraSelect.value || typeof Html5Qrcode.getCameras !== "function") throw firstError;
+                const cameras = await Html5Qrcode.getCameras();
+                const fallbackCamera = cameras.find((camera) => /back|rear|environment/i.test(camera.label)) || cameras[0];
+                if (!fallbackCamera) throw firstError;
+                await startWithCamera(fallbackCamera.id);
+            }
             scannerRunning = true;
             startButton.disabled = true; stopButton.disabled = false;
             status.textContent = "Camera active — hold a QR code inside the frame.";
             setState("active", "Scanning");
             await populateCameras();
         } catch (error) {
-            try { await scanner?.clear(); } catch (_) { /* Ignore an incomplete camera setup. */ }
-            scanner = null;
+            await clearIncompleteScanner();
             scannerRunning = false; startButton.disabled = false; stopButton.disabled = true;
             status.textContent = "Camera could not start.";
             setState("error", "Unavailable");
@@ -143,8 +159,7 @@
         if (!window.Html5Qrcode) { setResult("error", "Image scanner unavailable", "Reload the page while connected to the internet."); return; }
         try {
             await stopScanner();
-            const formats = window.Html5QrcodeSupportedFormats ? { formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE] } : {};
-            scanner ||= new Html5Qrcode("qr-reader", formats);
+            scanner ||= new Html5Qrcode("qr-reader", getScannerOptions());
             status.textContent = "Reading QR image…"; setState("active", "Reading image");
             const decodedText = await scanner.scanFile(file, true);
             await validateTicket(decodedText);
