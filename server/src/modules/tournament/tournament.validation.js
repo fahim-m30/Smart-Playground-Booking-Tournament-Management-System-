@@ -16,6 +16,39 @@ const createTournamentValidation = Joi.object({
 
     sportType: Joi.string().valid("Football", "Cricket", "Badminton").required(),
 
+    matchRules: Joi.object({
+        cricketOvers: Joi.number().integer().min(1).max(50),
+        footballDurationMinutes: Joi.number().integer().min(30).max(120),
+        badmintonPointsToWin: Joi.number().integer().min(1).max(30),
+    }).when("sportType", {
+        switch: [
+            {
+                is: "Cricket",
+                then: Joi.object({
+                    cricketOvers: Joi.number().integer().min(1).max(50).required(),
+                    footballDurationMinutes: Joi.forbidden(),
+                    badmintonPointsToWin: Joi.forbidden(),
+                }).required(),
+            },
+            {
+                is: "Football",
+                then: Joi.object({
+                    cricketOvers: Joi.forbidden(),
+                    footballDurationMinutes: Joi.number().integer().min(30).max(120).required(),
+                    badmintonPointsToWin: Joi.forbidden(),
+                }).required(),
+            },
+            {
+                is: "Badminton",
+                then: Joi.object({
+                    cricketOvers: Joi.forbidden(),
+                    footballDurationMinutes: Joi.forbidden(),
+                    badmintonPointsToWin: Joi.number().integer().min(1).max(30).required(),
+                }).required(),
+            },
+        ],
+    }),
+
     playground: Joi.string().length(24).hex().required(),
 
     totalTeams: Joi.number().min(4).max(24).required(),

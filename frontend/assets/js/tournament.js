@@ -42,6 +42,18 @@ const sportProfile = (sport) => ({
     Cricket: { icon: "Cricket", format: "ICC World Cup format — 4-team groups, quarter-finals, semi-finals and final" },
     Badminton: { icon: "Badminton", format: "BWF World Cup format — singles or doubles, groups, knockout and final" },
 }[sport] || { icon: "Tournament", format: "Professional group-stage competition" });
+const matchRuleConfig = (sport) => ({
+    Cricket: { label: "Overs per innings", help: "Choose how many overs each team will bat.", min: 1, max: 50, value: 20 },
+    Football: { label: "Match duration (minutes)", help: "Choose the total regulation playing time for each match.", min: 30, max: 120, value: 90 },
+    Badminton: { label: "Points to win each game", help: "Choose the points needed to win a badminton game.", min: 1, max: 30, value: 21 },
+}[sport] || null);
+const matchRuleLabel = (tournament) => {
+    const rules = tournament?.matchRules || {};
+    if (tournament?.sportType === "Cricket" && rules.cricketOvers) return `${rules.cricketOvers}-over innings`;
+    if (tournament?.sportType === "Football" && rules.footballDurationMinutes) return `${rules.footballDurationMinutes}-minute match`;
+    if (tournament?.sportType === "Badminton" && rules.badmintonPointsToWin) return `First to ${rules.badmintonPointsToWin} points per game`;
+    return "Match rule to be announced";
+};
 const roundRobinMatchdays = (teams) => {
     const rotation = [...teams];
     if (rotation.length % 2) rotation.push(null);
@@ -104,6 +116,13 @@ function renderRoster() {
 }
 window.join = async (id) => { try { selected = await req(`/tournaments/${id}`); $("#join-title").textContent = `Join ${selected.name}`; $("#join-info").textContent = `৳${selected.registrationFee} · ${selected.playingMembers} playing member(s), up to ${selected.extraMembers} extra player(s). ${sportProfile(selected.sportType).format}. Registration closes at the start of ${dateLabel(registrationDeadline(selected))}.`; renderRoster(); $("#join-modal").classList.add("show"); } catch (error) { say(error.message, true); } };
 
+const openJoinModal = window.join;
+window.join = async (id) => {
+    await openJoinModal(id);
+    if (selected) {
+        $("#join-info").textContent = `৳${selected.registrationFee} · ${selected.playingMembers} playing member(s), up to ${selected.extraMembers} extra player(s). Match rule: ${matchRuleLabel(selected)}. ${sportProfile(selected.sportType).format}. Registration closes at the start of ${dateLabel(registrationDeadline(selected))}.`;
+    }
+};
 $("#close-modal").onclick = () => $("#join-modal").classList.remove("show");
 $("#join-form").onsubmit = async (event) => {
     event.preventDefault();
@@ -157,6 +176,10 @@ const applySportRules = () => {
     const sport = creatorForm?.querySelector('[name="sportType"]')?.value;
     const playing = creatorForm?.querySelector('[name="playingMembers"]');
     const extras = creatorForm?.querySelector('[name="extraMembers"]');
+    const matchRule = $("#match-rule");
+    const matchRuleField = $("#match-rule-field");
+    const matchRuleHelp = $("#match-rule-help");
+    const ruleConfig = matchRuleConfig(sport);
     if (!playing || !extras) return;
     if (sport === "Badminton") {
         playing.max = "2";
@@ -170,6 +193,20 @@ const applySportRules = () => {
         extras.removeAttribute("max");
         extras.readOnly = false;
         extras.removeAttribute("title");
+    }
+    matchRuleField.hidden = !ruleConfig;
+    matchRuleHelp.hidden = !ruleConfig;
+    matchRule.disabled = !ruleConfig;
+    if (ruleConfig) {
+        $("#match-rule-label").textContent = ruleConfig.label;
+        matchRuleHelp.textContent = ruleConfig.help;
+        matchRule.min = String(ruleConfig.min);
+        matchRule.max = String(ruleConfig.max);
+        if (matchRule.dataset.sport !== sport) matchRule.value = String(ruleConfig.value);
+        matchRule.dataset.sport = sport;
+    } else {
+        matchRule.value = "";
+        delete matchRule.dataset.sport;
     }
 };
 const setCreateFeedback = (message = "", type = "error") => {
@@ -215,8 +252,14 @@ $("#create-form").onsubmit = async (event) => {
     const form = event.currentTarget;
     event.preventDefault();
     const raw = Object.fromEntries(new FormData(form));
-    const payload = { ...raw, playground: $("#venue").value, totalTeams: Number(raw.totalTeams), groupCount: Number(raw.groupCount), playingMembers: Number(raw.playingMembers), extraMembers: Number(raw.extraMembers), registrationFee: Number(raw.registrationFee) };
+    const ruleConfig = matchRuleConfig(raw.sportType);
+    const ruleValue = Number($("#match-rule").value);
+    const matchRules = raw.sportType === "Cricket" ? { cricketOvers: ruleValue }
+        : raw.sportType === "Football" ? { footballDurationMinutes: ruleValue }
+            : raw.sportType === "Badminton" ? { badmintonPointsToWin: ruleValue } : null;
+    const payload = { ...raw, playground: $("#venue").value, totalTeams: Number(raw.totalTeams), groupCount: Number(raw.groupCount), playingMembers: Number(raw.playingMembers), extraMembers: Number(raw.extraMembers), registrationFee: Number(raw.registrationFee), matchRules };
     setCreateFeedback();
+    if (!ruleConfig || !Number.isInteger(ruleValue) || ruleValue < ruleConfig.min || ruleValue > ruleConfig.max) return setCreateFeedback(`Enter ${ruleConfig?.label?.toLowerCase() || "a valid match rule"} within the allowed range.`);
     const venueSport = $("#venue").selectedOptions?.[0]?.dataset.sportType;
     if (venueSport && payload.sportType !== venueSport) return setCreateFeedback(`This playground supports ${venueSport} only. Create a ${venueSport} tournament for it.`);
     if (payload.sportType === "Badminton" && (payload.playingMembers > 2 || payload.extraMembers > 0)) return setCreateFeedback("Badminton teams allow only 1 player (singles) or 2 players (doubles), with no extra players.");
@@ -230,6 +273,7 @@ $("#create-form").onsubmit = async (event) => {
         setCreateFeedback(message, "ok");
         say(message);
         form.reset();
+        applySportRules();
         updateCreatorPreview();
         list();
     } catch (error) { setCreateFeedback(error.message); say(error.message, true); }
@@ -306,6 +350,22 @@ list = async function () {
         const registrationNote = user.role === "customer" && tournament.status === "Upcoming" ? (canRegister ? `<br><small>Register by ${dateLabel(registrationDeadline(tournament))}.</small>` : '<br><small>Registration is closed for this tournament.</small>') : "";
         return `<article class="card"><span class="badge">${esc(tournamentStatusLabel(tournament))}</span><h3>${esc(tournament.name)}</h3><p><b>${esc(profile.icon)}</b> · ${esc(tournament.sportType)}<br>${dateLabel(tournament.startDate)} – ${dateLabel(tournament.endDate)}<br>${esc(tournament.playground?.name || tournament.playgrounds?.[0]?.name || "Venue TBA")}${registrationNote}</p><div class="card-foot"><strong>৳${Number(tournament.registrationFee || 0).toLocaleString()}</strong>${action}</div></article>`;
     }).join("") : `<div class="empty">${term ? "No tournament matches your search." : "No tournament is available right now."}</div>`;
+};
+
+const renderTournamentMatchRules = () => {
+    document.querySelectorAll("#content > .card").forEach((card) => {
+        const tournament = tournaments.find((item) => item.name === card.querySelector("h3")?.textContent);
+        if (!tournament) return;
+        const rule = document.createElement("small");
+        rule.className = "match-rule";
+        rule.textContent = matchRuleLabel(tournament);
+        card.querySelector("p")?.append(document.createElement("br"), rule);
+    });
+};
+const baseTournamentList = list;
+list = async () => {
+    await baseTournamentList();
+    renderTournamentMatchRules();
 };
 
 const searchPanel = document.createElement("section");
@@ -417,7 +477,12 @@ window.detail = async (id) => {
         const fixtures = pinnedMatches.map((match) => `<article class="fixture-row ${match.matchStatus === "Live" ? "live" : ""}"><div class="fixture-time">${dateLabel(match.matchDate)}<br>${esc(match.startTime)}–${esc(match.endTime)} · ${esc(groupName(match.group))}${match.matchday ? `<br>Matchday ${match.matchday}` : `<br>${esc(match.stage)}`}</div><div class="fixture-teams">${esc(match.teamA?.teamName || "TBD")} <span>vs</span> ${esc(match.teamB?.teamName || "TBD")}</div><div class="fixture-score">${match.matchStatus === "Live" ? '<span class="live-tag">LIVE</span>' : match.matchStatus === "Completed" ? `${match.teamAScore} – ${match.teamBScore}` : esc(match.matchStatus)}</div></article>`).join("") || '<div class="fixture-empty">Fixtures are released automatically one day before the tournament begins.</div>';
         const modal = document.createElement("div"); modal.className = "modal show";
         modal.innerHTML = `<div class="modal-box tournament-centre"><header class="centre-head"><button class="close" type="button">Close</button><span class="eyebrow">${esc(sport.toUpperCase())} COMPETITION</span><h2>${esc(tournament?.name || "Tournament centre")}</h2><p>${dateLabel(tournament?.startDate)} – ${dateLabel(tournament?.endDate)} · ${esc(tournament?.playground?.name || tournament?.playgrounds?.[0]?.name || "Venue TBA")}<br><strong>${esc(sportProfile(sport).format)}</strong></p>${matches.length ? '<button class="fixture-pdf" type="button">Save fixture as PDF</button>' : ""}</header><div class="centre-body"><div class="centre-tabs"><button class="active" data-centre-tab="draw">Group draw</button><button data-centre-tab="preview">Demo fixture</button><button data-centre-tab="table">Points table</button><button data-centre-tab="fixtures">Official fixtures</button></div><section class="centre-panel" data-centre-panel="draw"><div class="group-draw">${draw || '<div class="fixture-empty">Groups will be available after registration closes.</div>'}</div></section><section class="centre-panel" data-centre-panel="preview" hidden>${preview}</section><section class="centre-panel" data-centre-panel="table" hidden>${table}</section><section class="centre-panel" data-centre-panel="fixtures" hidden><div class="fixtures-list">${fixtures}</div></section></div></div>`;
-        document.body.append(modal); modal.querySelector(".close").onclick = () => modal.remove();
+        document.body.append(modal);
+        const rule = document.createElement("span");
+        rule.className = "match-rule";
+        rule.textContent = `Match rule: ${matchRuleLabel(tournament)}`;
+        modal.querySelector(".centre-head p")?.append(document.createElement("br"), rule);
+        modal.querySelector(".close").onclick = () => modal.remove();
         modal.querySelector(".fixture-pdf")?.addEventListener("click", () => downloadFixturePdf(tournament, matches));
         modal.querySelectorAll("[data-centre-tab]").forEach((button) => button.onclick = () => { modal.querySelectorAll("[data-centre-tab]").forEach((tab) => tab.classList.toggle("active", tab === button)); modal.querySelectorAll("[data-centre-panel]").forEach((panel) => { panel.hidden = panel.dataset.centrePanel !== button.dataset.centreTab; }); });
     } catch (error) { say(error.message, true); }

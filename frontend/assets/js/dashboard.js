@@ -60,6 +60,7 @@ function nav(role) {
         { label: "Venue management", icon: "venue", href: "management.html?tab=Playgrounds" },
         { label: "Slots", icon: "slots", href: "management.html?tab=Slots" },
         { label: "Bookings", icon: "bookings", href: "management.html?tab=Bookings" },
+        { label: "QR scanner", icon: "booking", href: "scanner.html" },
         { label: "Income", icon: "income", href: "management.html?tab=Income" }
     );
     items.push({ label: "Reports", icon: "reports", href: "management.html?tab=Reports" });

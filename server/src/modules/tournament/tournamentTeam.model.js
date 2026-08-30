@@ -97,6 +97,22 @@ const tournamentTeamSchema = new mongoose.Schema(
             default: null,
         },
 
+        isScanned: {
+            type: Boolean,
+            default: false,
+        },
+
+        checkedInAt: {
+            type: Date,
+            default: null,
+        },
+
+        checkedInBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            default: null,
+        },
+
         played: {
             type: Number,
             default: 0,

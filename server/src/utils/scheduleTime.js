@@ -56,6 +56,7 @@ const zonedDateTime = ({ year, month, day }, time) => {
 };
 
 const bookingStartsAt = (bookingDate, startTime) => zonedDateTime(dateOnlyParts(bookingDate), startTime);
+const bookingEndsAt = (bookingDate, endTime) => zonedDateTime(dateOnlyParts(bookingDate), endTime);
 
 // Tournament dates represent Bangladesh calendar days.  A 30 August event,
 // for example, accepts registrations through 27 August and closes at the
@@ -72,6 +73,7 @@ const tournamentRegistrationClosesAt = (startDate) => {
 
 module.exports = {
     APP_TIME_ZONE,
+    bookingEndsAt,
     bookingStartsAt,
     calendarDate,
     dateOnlyParts,

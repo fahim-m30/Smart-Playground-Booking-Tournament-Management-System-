@@ -143,7 +143,7 @@ const verifyQRController = async (req, res) => {
             });
         }
 
-        const result = await verifyQR(qrData);
+        const result = await verifyQR(qrData, req.user.userId);
 
         return res.status(200).json({
             success: result.valid,

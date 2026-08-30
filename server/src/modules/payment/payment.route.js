@@ -53,11 +53,13 @@ router.get(
 );
 
 // ======================================================
-// QR Validation (Public - no auth)
+// QR Validation & check-in (playground admin only)
 // ======================================================
 
 router.post(
-    "/verify-qr",
+    "/validate-qr",
+    verifyToken,
+    authorize("playground-admin"),
     paymentController.verifyQR
 );
 

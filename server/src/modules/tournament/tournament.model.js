@@ -42,6 +42,15 @@ const tournamentSchema = new mongoose.Schema(
             default: "Team",
         },
 
+        // Sport-specific rules chosen by the playground admin when the
+        // tournament is published. Only the field for the selected sport is
+        // populated, so customers see one unambiguous match rule.
+        matchRules: {
+            cricketOvers: { type: Number, min: 1, max: 50, default: null },
+            footballDurationMinutes: { type: Number, min: 30, max: 120, default: null },
+            badmintonPointsToWin: { type: Number, min: 1, max: 30, default: null },
+        },
+
         createdBy: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",

@@ -144,6 +144,17 @@ const bookingSchema = new mongoose.Schema(
             default: false,
         },
 
+        checkedInAt: {
+            type: Date,
+            default: null,
+        },
+
+        checkedInBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            default: null,
+        },
+
         reminderSent: {
             type: Boolean,
             default: false,

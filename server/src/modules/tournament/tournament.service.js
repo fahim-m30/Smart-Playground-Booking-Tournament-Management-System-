@@ -33,6 +33,13 @@ const dateRangeFor = (value) => {
 // ===================================================
 
 const createTournament = async (payload, createdBy) => {
+    const rules = payload.matchRules || {};
+    const sportRuleIsValid = (payload.sportType === "Cricket" && Number.isInteger(rules.cricketOvers) && rules.cricketOvers >= 1 && rules.cricketOvers <= 50)
+        || (payload.sportType === "Football" && Number.isInteger(rules.footballDurationMinutes) && rules.footballDurationMinutes >= 30 && rules.footballDurationMinutes <= 120)
+        || (payload.sportType === "Badminton" && Number.isInteger(rules.badmintonPointsToWin) && rules.badmintonPointsToWin >= 1 && rules.badmintonPointsToWin <= 30);
+    if (!sportRuleIsValid) {
+        throw new Error("Choose a valid match rule for the selected sport.");
+    }
     if (payload.sportType === "Badminton" && (payload.playingMembers > 2 || payload.extraMembers > 0)) {
         throw new Error("Badminton teams can have only 1 player (singles) or 2 players (doubles), with no extra players.");
     }

@@ -14,7 +14,7 @@ const Tournament = require("../tournament/tournament.model");
 const TournamentMatch = require("../tournament/tournamentMatch.model");
 const User = require("../user/user.model");
 const Playground = require("../playground/playground.model");
-const { tournamentRegistrationClosesAt } = require("../../utils/scheduleTime");
+const { bookingEndsAt, calendarDate, dateOnlyParts, tournamentRegistrationClosesAt, zonedDateTime } = require("../../utils/scheduleTime");
 
 const { generateQR, verifyQR: baseVerifyQR } = require("../../utils/generateQR");
 const { sendBookingConfirmation, sendTournamentNotification, sendSMS } = require("../../utils/notificationService");
@@ -66,9 +66,7 @@ const confirmPayment = async (paymentId, paymentMethod, transactionId = null) =>
             { new: true }
         );
 
-        const qrExpiresAt = new Date(updatedBooking.bookingDate);
-        const [endHour] = updatedBooking.endTime.split(":").map(Number);
-        qrExpiresAt.setHours(endHour, 0, 0, 0);
+        const qrExpiresAt = bookingEndsAt(updatedBooking.bookingDate, updatedBooking.endTime);
 
         const qrData = {
             type: "SlotBooking",
@@ -104,21 +102,11 @@ const confirmPayment = async (paymentId, paymentMethod, transactionId = null) =>
         );
 
         const tournament = await Tournament.findById(updatedTeam.tournament);
-        const latestMatch = await TournamentMatch.find({
-            tournament: updatedTeam.tournament,
-            $or: [{ teamA: updatedTeam._id }, { teamB: updatedTeam._id }],
-        }).sort({ matchDate: -1, startTime: -1 }).limit(1);
-
-        const qrExpiresAt = latestMatch.length > 0
-            ? new Date(latestMatch[0].matchDate)
-            : new Date(tournament.endDate);
-
-        if (latestMatch.length > 0) {
-            const [endHour] = latestMatch[0].endTime.split(":").map(Number);
-            qrExpiresAt.setHours(endHour, 0, 0, 0);
-        } else {
-            qrExpiresAt.setHours(23, 59, 59, 999);
-        }
+        // A team's tournament path can extend when it advances to knockout
+        // rounds, so the signed QR remains technically usable through the
+        // event end. The scanner below is the authority: it accepts the QR
+        // only while the team remains in the tournament.
+        const qrExpiresAt = zonedDateTime(dateOnlyParts(tournament.endDate), "23:59");
 
         const qrData = {
             type: "TournamentTicket",
@@ -443,93 +431,102 @@ const getSinglePayment = async (paymentId, customerId) => {
 // Verify QR Code
 // ===================================================
 
-const verifyQR = async (qrDataString) => {
+const verifyQR = async (qrDataString, adminId) => {
     const parsed = baseVerifyQR(qrDataString);
 
     if (!parsed.valid) {
         return parsed;
     }
 
-    const { type, id, expiresAt } = parsed.data;
+    const { type, id } = parsed.data;
     const now = new Date();
 
     if (type === "SlotBooking") {
-        const booking = await Booking.findById(id).populate("playground", "name");
+        const booking = await Booking.findById(id)
+            .populate("customer", "name phone")
+            .populate("playground", "name address playgroundAdmin");
 
-        if (!booking) {
+        if (!booking || booking.isDeleted) {
             return { valid: false, message: "Booking not found." };
         }
 
-        if (booking.bookingStatus === "Cancelled") {
-            return { valid: false, message: "Booking has been cancelled." };
+        if (String(booking.playground?.playgroundAdmin) !== String(adminId)) {
+            return { valid: false, message: "This ticket does not belong to one of your playgrounds." };
         }
 
-        if (booking.paymentStatus !== "Paid") {
-            return { valid: false, message: "Payment not completed for this booking." };
+        if (booking.bookingStatus !== "Confirmed" || booking.paymentStatus !== "Paid") {
+            return { valid: false, message: "This booking is not confirmed and paid." };
         }
 
-        const slotEnd = new Date(booking.bookingDate);
-        const [endHour] = booking.endTime.split(":").map(Number);
-        slotEnd.setHours(endHour, 0, 0, 0);
-
+        const slotEnd = bookingEndsAt(booking.bookingDate, booking.endTime);
         if (now > slotEnd) {
             return { valid: false, message: "Slot time has expired. QR code is no longer valid.", expired: true };
         }
 
+        const checkedIn = await Booking.findByIdAndUpdate(
+            booking._id,
+            { $set: { isScanned: true, checkedInAt: booking.checkedInAt || now, checkedInBy: booking.checkedInBy || adminId } },
+            { new: true }
+        );
+
         return {
             valid: true,
-            message: "Slot booking QR is valid.",
+            message: "Slot booking ticket is valid until the slot ends.",
             data: {
                 type: "SlotBooking",
                 bookingId: booking._id.toString(),
-                playground: booking.playground,
+                customerName: booking.customer?.name || "Customer",
+                customerPhone: booking.customer?.phone || null,
+                playground: { id: booking.playground._id.toString(), name: booking.playground.name, address: booking.playground.address },
                 date: booking.bookingDate.toISOString().split("T")[0],
                 startTime: booking.startTime,
                 endTime: booking.endTime,
+                checkedInAt: checkedIn.checkedInAt,
             },
         };
 
     } else if (type === "TournamentTicket") {
-        const team = await TournamentTeam.findById(id).populate("tournament", "name status endDate");
+        const team = await TournamentTeam.findById(id).populate({ path: "tournament", populate: { path: "playground", select: "name address playgroundAdmin" } });
 
-        if (!team) {
+        if (!team || team.isDeleted) {
             return { valid: false, message: "Tournament team not found." };
         }
 
-        if (team.paymentStatus !== "Paid") {
-            return { valid: false, message: "Payment not completed for this tournament registration." };
+        const tournament = team.tournament;
+        if (!tournament || tournament.isDeleted) return { valid: false, message: "Tournament not found." };
+        if (String(tournament.playground?.playgroundAdmin) !== String(adminId)) {
+            return { valid: false, message: "This ticket does not belong to one of your playgrounds." };
+        }
+        if (team.paymentStatus !== "Paid" || ["Cancelled", "Completed"].includes(tournament.status)) {
+            return { valid: false, message: "This tournament ticket is no longer active." };
+        }
+        const eventDate = calendarDate();
+        const startsTodayOrEarlier = new Date(tournament.startDate) <= new Date(Date.UTC(eventDate.year, eventDate.month - 1, eventDate.day));
+        if (!startsTodayOrEarlier) {
+            return { valid: false, message: "This tournament has not started yet." };
+        }
+        if (team.isKnockedOut) {
+            return { valid: false, message: "This team has been eliminated from the tournament.", expired: true };
         }
 
-        const activeMatch = await TournamentMatch.findOne({
-            tournament: team.tournament,
-            $or: [{ teamA: team._id }, { teamB: team._id }],
-            matchStatus: { $in: ["Scheduled", "Live"] },
-        });
-
-        if (!activeMatch) {
-            const latestCompleted = await TournamentMatch.findOne({
-                tournament: team.tournament,
-                $or: [{ teamA: team._id }, { teamB: team._id }],
-            }).sort({ matchDate: -1, startTime: -1 });
-
-            if (latestCompleted && latestCompleted.matchStatus === "Completed") {
-                return { valid: false, message: "All matches for this team have been completed. QR code is no longer valid.", expired: true };
-            }
-
-            const tournament = await Tournament.findById(team.tournament);
-            if (tournament && tournament.status === "Completed") {
-                return { valid: false, message: "Tournament has ended. QR code is no longer valid.", expired: true };
-            }
-        }
+        const checkedIn = await TournamentTeam.findByIdAndUpdate(
+            team._id,
+            { $set: { isScanned: true, checkedInAt: team.checkedInAt || now, checkedInBy: team.checkedInBy || adminId } },
+            { new: true }
+        );
 
         return {
             valid: true,
-            message: "Tournament ticket QR is valid.",
+            message: "Tournament ticket is valid while this team remains in the tournament.",
             data: {
                 type: "TournamentTicket",
                 teamId: team._id.toString(),
                 teamName: team.teamName,
-                tournament: team.tournament,
+                captainName: team.captain?.name || null,
+                contactNumber: team.contactNumber || null,
+                tournament: { id: tournament._id.toString(), name: tournament.name },
+                playground: { id: tournament.playground._id.toString(), name: tournament.playground.name, address: tournament.playground.address },
+                checkedInAt: checkedIn.checkedInAt,
             },
         };
     }
