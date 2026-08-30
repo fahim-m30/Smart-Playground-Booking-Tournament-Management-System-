@@ -14,6 +14,10 @@
     const stopButton = $("#stop-camera");
     const reader = $("#qr-reader");
     let scanner = null;
+    let nativeStream = null;
+    let nativeVideo = null;
+    let nativeDetector = null;
+    let nativeScanFrame = null;
     let scannerRunning = false;
     let scannerStarting = false;
     let validating = false;
@@ -80,11 +84,20 @@
         }
     };
     const stopScanner = async () => {
-        if (!scanner) return;
-        try {
-            if (scannerRunning) await scanner.stop();
-            await scanner.clear();
-        } catch (_) { /* The camera may already be closed. */ }
+        if (!scanner && !nativeStream) return;
+        if (nativeStream) {
+            if (nativeScanFrame) cancelAnimationFrame(nativeScanFrame);
+            nativeStream.getTracks().forEach((track) => track.stop());
+            nativeStream = null;
+            nativeVideo = null;
+            nativeDetector = null;
+            nativeScanFrame = null;
+        } else {
+            try {
+                if (scannerRunning) await scanner.stop();
+                await scanner.clear();
+            } catch (_) { /* The camera may already be closed. */ }
+        }
         scanner = null;
         scannerRunning = false;
         startButton.disabled = false; stopButton.disabled = true;
@@ -109,8 +122,40 @@
     };
     const getScannerOptions = () => window.Html5QrcodeSupportedFormats ? { formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE] } : {};
     const clearIncompleteScanner = async () => {
+        if (nativeScanFrame) cancelAnimationFrame(nativeScanFrame);
+        nativeStream?.getTracks().forEach((track) => track.stop());
+        nativeStream = null;
+        nativeVideo = null;
+        nativeDetector = null;
+        nativeScanFrame = null;
         try { await scanner?.clear(); } catch (_) { /* A failed stream may not be clearable. */ }
         scanner = null;
+    };
+    const createNativeDetector = () => {
+        if (typeof window.BarcodeDetector !== "function") return null;
+        try { return new window.BarcodeDetector({ formats: ["qr_code"] }); } catch (_) { return null; }
+    };
+    const startNativeScanner = async (camera, detector) => {
+        const videoConstraints = typeof camera === "string"
+            ? { deviceId: { exact: camera }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+            : { ...camera, width: { ideal: 1920 }, height: { ideal: 1080 } };
+        nativeStream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints, audio: false });
+        nativeDetector = detector;
+        reader.innerHTML = '<video class="native-scanner-video" autoplay muted playsinline></video><div class="native-scan-guide" aria-hidden="true"></div>';
+        nativeVideo = reader.querySelector("video");
+        nativeVideo.srcObject = nativeStream;
+        await nativeVideo.play();
+        const detectFrame = async () => {
+            if (!nativeStream || !nativeVideo || !nativeDetector) return;
+            if (nativeVideo.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && !validating) {
+                try {
+                    const codes = await nativeDetector.detect(nativeVideo);
+                    if (codes[0]?.rawValue) validateTicket(codes[0].rawValue);
+                } catch (_) { /* Keep scanning; a frame can be unavailable while autofocus adjusts. */ }
+            }
+            nativeScanFrame = requestAnimationFrame(detectFrame);
+        };
+        nativeScanFrame = requestAnimationFrame(detectFrame);
     };
     const scanConfiguration = {
         fps: 15,
@@ -123,7 +168,7 @@
     };
     const startScanner = async () => {
         if (scannerRunning || scannerStarting) return;
-        if (!window.Html5Qrcode) {
+        if (!window.Html5Qrcode && typeof window.BarcodeDetector !== "function") {
             setResult("error", "Scanner could not load", "Check your internet connection, then reload this page.");
             return;
         }
@@ -137,6 +182,11 @@
         try {
             startButton.disabled = true;
             const startWithCamera = async (camera) => {
+                const detector = createNativeDetector();
+                if (detector) {
+                    await startNativeScanner(camera, detector);
+                    return;
+                }
                 scanner = new Html5Qrcode("qr-reader", getScannerOptions());
                 await scanner.start(camera, scanConfiguration, (decodedText) => validateTicket(decodedText), () => {
                     if (Date.now() - lastDecodeHintAt > 1800) {
