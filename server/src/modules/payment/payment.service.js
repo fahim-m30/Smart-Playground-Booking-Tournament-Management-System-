@@ -467,20 +467,32 @@ const verifyQR = async (qrDataString, adminId) => {
             .populate("playground", "name address playgroundAdmin");
 
         if (!booking || booking.isDeleted) {
-            return { valid: false, message: "Booking not found." };
+            return { valid: false, message: "Slot ticket not found.", data: { type: "SlotBooking", ticketType: "Slot booking" } };
         }
 
         if (String(booking.playground?.playgroundAdmin) !== String(adminId)) {
-            return { valid: false, message: "This ticket does not belong to one of your playgrounds." };
+            return { valid: false, message: "Ticket not found at this playground.", data: { type: "SlotBooking", ticketType: "Slot booking" } };
         }
 
+        const ticket = {
+            type: "SlotBooking",
+            ticketType: "Slot booking",
+            bookingId: booking._id.toString(),
+            customerName: booking.customer?.name || "Customer",
+            customerPhone: booking.customer?.phone || null,
+            playground: { id: booking.playground._id.toString(), name: booking.playground.name, address: booking.playground.address },
+            date: booking.bookingDate.toISOString().split("T")[0],
+            startTime: booking.startTime,
+            endTime: booking.endTime,
+        };
+
         if (booking.bookingStatus !== "Confirmed" || booking.paymentStatus !== "Paid") {
-            return { valid: false, message: "This booking is not confirmed and paid." };
+            return { valid: false, message: "Slot booking is not confirmed and paid.", data: ticket };
         }
 
         const slotEnd = bookingEndsAt(booking.bookingDate, booking.endTime);
         if (now > slotEnd) {
-            return { valid: false, message: "Slot time has expired. QR code is no longer valid.", expired: true };
+            return { valid: false, message: "Slot time has ended. This QR ticket is invalid.", expired: true, data: ticket };
         }
 
         const checkedIn = await Booking.findByIdAndUpdate(
@@ -491,16 +503,9 @@ const verifyQR = async (qrDataString, adminId) => {
 
         return {
             valid: true,
-            message: "Slot booking ticket is valid until the slot ends.",
+            message: "Authenticated slot booking. Valid until the slot ends.",
             data: {
-                type: "SlotBooking",
-                bookingId: booking._id.toString(),
-                customerName: booking.customer?.name || "Customer",
-                customerPhone: booking.customer?.phone || null,
-                playground: { id: booking.playground._id.toString(), name: booking.playground.name, address: booking.playground.address },
-                date: booking.bookingDate.toISOString().split("T")[0],
-                startTime: booking.startTime,
-                endTime: booking.endTime,
+                ...ticket,
                 checkedInAt: checkedIn.checkedInAt,
             },
         };
@@ -509,24 +514,34 @@ const verifyQR = async (qrDataString, adminId) => {
         const team = await TournamentTeam.findById(id).populate({ path: "tournament", populate: { path: "playground", select: "name address playgroundAdmin" } });
 
         if (!team || team.isDeleted) {
-            return { valid: false, message: "Tournament team not found." };
+            return { valid: false, message: "Tournament ticket not found.", data: { type: "TournamentTicket", ticketType: "Tournament" } };
         }
 
         const tournament = team.tournament;
-        if (!tournament || tournament.isDeleted) return { valid: false, message: "Tournament not found." };
+        if (!tournament || tournament.isDeleted) return { valid: false, message: "Tournament ticket not found.", data: { type: "TournamentTicket", ticketType: "Tournament" } };
         if (String(tournament.playground?.playgroundAdmin) !== String(adminId)) {
-            return { valid: false, message: "This ticket does not belong to one of your playgrounds." };
+            return { valid: false, message: "Ticket not found at this playground.", data: { type: "TournamentTicket", ticketType: "Tournament" } };
         }
+        const ticket = {
+            type: "TournamentTicket",
+            ticketType: "Tournament",
+            teamId: team._id.toString(),
+            teamName: team.teamName,
+            captainName: team.captain?.name || null,
+            contactNumber: team.contactNumber || null,
+            tournament: { id: tournament._id.toString(), name: tournament.name },
+            playground: { id: tournament.playground._id.toString(), name: tournament.playground.name, address: tournament.playground.address },
+        };
         if (team.paymentStatus !== "Paid" || ["Cancelled", "Completed"].includes(tournament.status)) {
-            return { valid: false, message: "This tournament ticket is no longer active." };
+            return { valid: false, message: "Tournament is no longer active.", data: ticket };
         }
         const eventDate = calendarDate();
         const startsTodayOrEarlier = new Date(tournament.startDate) <= new Date(Date.UTC(eventDate.year, eventDate.month - 1, eventDate.day));
         if (!startsTodayOrEarlier) {
-            return { valid: false, message: "This tournament has not started yet." };
+            return { valid: false, message: "Tournament has not started yet.", data: ticket };
         }
         if (team.isKnockedOut) {
-            return { valid: false, message: "This team has been eliminated from the tournament.", expired: true };
+            return { valid: false, message: "This team has been eliminated from the tournament. QR ticket is invalid.", expired: true, data: ticket };
         }
 
         const checkedIn = await TournamentTeam.findByIdAndUpdate(
@@ -537,15 +552,9 @@ const verifyQR = async (qrDataString, adminId) => {
 
         return {
             valid: true,
-            message: "Tournament ticket is valid while this team remains in the tournament.",
+            message: "Authenticated tournament ticket. This team remains eligible in the tournament.",
             data: {
-                type: "TournamentTicket",
-                teamId: team._id.toString(),
-                teamName: team.teamName,
-                captainName: team.captain?.name || null,
-                contactNumber: team.contactNumber || null,
-                tournament: { id: tournament._id.toString(), name: tournament.name },
-                playground: { id: tournament.playground._id.toString(), name: tournament.playground.name, address: tournament.playground.address },
+                ...ticket,
                 checkedInAt: checkedIn.checkedInAt,
             },
         };

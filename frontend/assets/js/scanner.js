@@ -55,9 +55,15 @@
             });
             const body = await response.json().catch(() => ({}));
             if (response.status === 401 || response.status === 403) { location.replace("login.html"); return; }
-            if (!response.ok || !body.success) throw new Error(body.message || "Ticket could not be validated.");
+            if (!response.ok || !body.success) {
+                beep(false);
+                const ticketType = body.data?.type === "SlotBooking" ? "Slot booking" : body.data?.type === "TournamentTicket" ? "Tournament ticket" : "QR ticket";
+                setResult("error", `${ticketType} invalid`, body.message || "Ticket could not be validated.", body.data ? ticketDetails(body.data) : "");
+                return;
+            }
             beep(true);
-            setResult("success", "Ticket valid", body.message, ticketDetails(body.data));
+            const ticketType = body.data?.type === "SlotBooking" ? "Authenticated slot booking" : "Authenticated tournament ticket";
+            setResult("success", ticketType, body.message, ticketDetails(body.data));
         } catch (error) {
             beep(false);
             setResult("error", "Ticket declined", error.message || "Ticket could not be validated.");

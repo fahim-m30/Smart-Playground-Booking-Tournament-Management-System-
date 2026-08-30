@@ -71,14 +71,14 @@ const verifyQR = (qrData) => {
             return { valid: false, message: "Invalid QR code format." };
         }
 
-        const now = new Date();
         const expiresAt = new Date(decoded.expiresAt);
+        if (Number.isNaN(expiresAt.getTime())) return { valid: false, message: "Invalid QR code format." };
 
-        if (Number.isNaN(expiresAt.getTime()) || now > expiresAt) {
-            return { valid: false, message: "QR code has expired.", expired: true };
-        }
-
-        return { valid: true, data: decoded };
+        // The payment service is the source of truth for ticket eligibility:
+        // it checks the live slot end-time and the team's tournament status.
+        // Keeping the signed payload available here lets the scanner explain
+        // an expired ticket instead of treating it as an unknown QR code.
+        return { valid: true, data: decoded, tokenExpired: new Date() > expiresAt };
     } catch (error) {
         return { valid: false, message: "Invalid QR code." };
     }
