@@ -20,11 +20,14 @@ if (!fs.existsSync(QR_DIR)) {
 
 const QR_VERSION = "TURF1";
 
-const signingSecret = () => process.env.QR_SIGNING_SECRET || process.env.JWT_SECRET;
+// The application already requires JWT_ACCESS_SECRET for authenticated API
+// access. Reuse it only as a safe deployment fallback so tickets still work
+// on existing environments; a dedicated QR_SIGNING_SECRET takes precedence.
+const signingSecret = () => process.env.QR_SIGNING_SECRET || process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET;
 
 const encodeQRPayload = (data) => {
     const secret = signingSecret();
-    if (!secret) throw new Error("QR_SIGNING_SECRET (or JWT_SECRET) must be configured before issuing tickets.");
+    if (!secret) throw new Error("QR signing is unavailable because no signing secret is configured.");
 
     const payload = Buffer.from(JSON.stringify(data)).toString("base64url");
     const signature = crypto.createHmac("sha256", secret).update(`${QR_VERSION}.${payload}`).digest("base64url");
