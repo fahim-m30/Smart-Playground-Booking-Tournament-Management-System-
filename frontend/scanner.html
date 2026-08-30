@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>TURF | QR Ticket Scanner</title>
   <link rel="icon" type="image/png" href="assets/images/favicon.png">
-  <link rel="stylesheet" href="assets/css/scanner.css">
+  <link rel="stylesheet" href="assets/css/scanner.css?v=20260831result1">
 </head>
 <body>
-  <main class="scanner-page">
+  <main class="scanner-page" id="scanner-page">
     <header class="scanner-head">
       <a class="back-link" href="dashboard.html">← Back to dashboard</a>
       <div><p class="eyebrow">Venue gate control</p><h1>Scan &amp; validate tickets</h1><p>Only QR tickets issued for your playground will be accepted.</p></div>
@@ -30,6 +30,7 @@
       <aside class="result-card" aria-live="polite">
         <div class="result-heading"><p class="eyebrow">Live validation</p><span class="secure-badge">Admin protected</span></div>
         <div id="result" class="result idle"><strong>Ready for a ticket</strong><p>Start the camera, then hold the QR code inside the frame.</p></div>
+        <button id="scan-next" class="scan-next" type="button" hidden>Scan next ticket</button>
         <details class="manual-entry"><summary>Paste QR data manually</summary><form id="manual-form"><textarea id="qr-data" rows="4" placeholder="Paste the complete QR value"></textarea><button type="submit">Validate ticket</button></form></details>
         <section class="scanner-policy"><strong>How validation works</strong><p>Slot QR remains valid until its end time. Tournament QR remains valid only while the team is still in that tournament. Tickets for another venue are not accepted.</p></section>
       </aside>

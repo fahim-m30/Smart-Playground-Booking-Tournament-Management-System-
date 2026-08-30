@@ -9,6 +9,8 @@
     const status = $("#camera-status");
     const state = $("#scanner-state");
     const result = $("#result");
+    const page = $("#scanner-page");
+    const scanNextButton = $("#scan-next");
     const reader = $("#qr-reader");
     const cameraSelect = $("#camera-select");
     const startButton = $("#start-camera");
@@ -24,6 +26,9 @@
     const setResult = (kind, title, message, details = "") => {
         result.className = `result ${kind}`;
         result.innerHTML = `<strong>${escapeHTML(title)}</strong><p>${escapeHTML(message)}</p>${details}`;
+        const hasValidationResult = kind === "success" || kind === "error";
+        page.classList.toggle("has-validation-result", hasValidationResult);
+        scanNextButton.hidden = !hasValidationResult;
     };
     const showReaderPlaceholder = () => {
         reader.innerHTML = '<div class="reader-placeholder"><span aria-hidden="true">&#x2315;</span><strong>Camera is off</strong><small>Tap &ldquo;Start QR scanner&rdquo; to scan a ticket</small></div>';
@@ -182,5 +187,11 @@
     });
     $("#qr-image").addEventListener("change", async (event) => { await scanImage(event.target.files?.[0]); event.target.value = ""; });
     $("#manual-form").addEventListener("submit", (event) => { event.preventDefault(); validateTicket($("#qr-data").value.trim()); });
+    scanNextButton.addEventListener("click", () => {
+        page.classList.remove("has-validation-result");
+        scanNextButton.hidden = true;
+        status.textContent = scannerRunning ? "Scanning continuously - point the camera at any QR code." : "Tap the button below to allow camera access.";
+        reader.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
     window.addEventListener("pagehide", stopScanner);
 })();
