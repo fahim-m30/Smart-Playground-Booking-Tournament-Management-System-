@@ -398,7 +398,7 @@ const updateTournamentTeamCountsController = async (req, res) => {
 const deleteTournamentController = async (req, res) => {
     try {
         await deleteTournament(req.params.id, req.user.userId);
-
+    
         res.status(200).json({
             success: true,
             message: "Tournament deleted successfully.",
