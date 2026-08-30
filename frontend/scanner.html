@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>TURF | QR Ticket Scanner</title>
   <link rel="icon" type="image/png" href="assets/images/favicon.png">
   <link rel="stylesheet" href="assets/css/scanner.css">
@@ -10,35 +10,32 @@
 <body>
   <main class="scanner-page">
     <header class="scanner-head">
-      <div><a href="dashboard.html">← Dashboard</a><p class="eyebrow">Playground operations</p><h1>QR ticket scanner</h1><p>Validate paid slot and tournament tickets at your own venue.</p></div>
-      <span class="secure-badge">Admin-only validation</span>
+      <a class="back-link" href="dashboard.html">← Back to dashboard</a>
+      <div><p class="eyebrow">Venue gate control</p><h1>Scan &amp; validate tickets</h1><p>Only QR tickets issued for your playground will be accepted.</p></div>
     </header>
 
     <section class="scanner-layout">
       <article class="scanner-card">
-        <header class="scanner-card-head"><div><h2>Camera scanner</h2><p id="camera-status">Choose a camera, then start scanning.</p></div><span id="scanner-state" class="state idle">Idle</span></header>
-        <div id="qr-reader" class="scanner-reader" aria-label="QR camera preview"></div>
+        <header class="scanner-card-head"><div><h2>Camera scanner</h2><p id="camera-status">Tap the button below to allow camera access.</p></div><span id="scanner-state" class="state idle">Ready</span></header>
+        <button id="start-camera" class="start-scan" type="button"><span>⌁</span> Start QR scanner</button>
+        <p class="permission-note">For mobile scanning, open this page on the deployed <strong>HTTPS</strong> site and tap <strong>Allow</strong> when your browser asks for camera access.</p>
+        <div id="qr-reader" class="scanner-reader" aria-label="Camera QR scanner" tabindex="0"><div class="reader-placeholder"><span>⌁</span><strong>Camera is off</strong><small>Tap “Start QR scanner” to scan a ticket</small></div></div>
         <div class="camera-controls">
           <label>Camera<select id="camera-select" aria-label="Choose camera"><option value="">Back camera (recommended)</option></select></label>
-          <button id="start-camera" type="button">Start scanner</button>
-          <button id="stop-camera" class="secondary" type="button" disabled>Stop</button>
+          <button id="stop-camera" class="secondary" type="button" disabled>Stop camera</button>
         </div>
-        <div class="alternate-scan">
-          <label class="file-button">Scan a saved QR image<input id="qr-image" type="file" accept="image/*" capture="environment"></label>
-          <span>Use this when camera access is unavailable.</span>
-        </div>
-        <p class="hint">Keep the QR inside the frame. The scanner remains ready for the next customer after each validation.</p>
+        <div class="alternate-scan"><label class="file-button">Scan a saved QR image<input id="qr-image" type="file" accept="image/*" capture="environment"></label><span>Use a screenshot or photo if camera access is unavailable.</span></div>
       </article>
 
       <aside class="result-card" aria-live="polite">
-        <p class="eyebrow">Validation result</p>
-        <div id="result" class="result idle"><strong>Ready for a ticket</strong><p>Start the scanner or upload a QR image.</p></div>
+        <div class="result-heading"><p class="eyebrow">Live validation</p><span class="secure-badge">Admin protected</span></div>
+        <div id="result" class="result idle"><strong>Ready for a ticket</strong><p>Start the camera, then hold the QR code inside the frame.</p></div>
         <details class="manual-entry"><summary>Paste QR data manually</summary><form id="manual-form"><textarea id="qr-data" rows="4" placeholder="Paste the complete QR value"></textarea><button type="submit">Validate ticket</button></form></details>
-        <section class="scanner-policy"><strong>Validation policy</strong><p>Slots are valid until their end time. Tournament tickets remain valid until the team is eliminated or the tournament ends.</p></section>
+        <section class="scanner-policy"><strong>How validation works</strong><p>Slot QR remains valid until its end time. Tournament QR remains valid only while the team is still in that tournament. Tickets for another venue are not accepted.</p></section>
       </aside>
     </section>
   </main>
   <script defer src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-  <script defer src="assets/js/scanner.js?v=20260831scanner2"></script>
+  <script defer src="assets/js/scanner.js?v=20260831scanner3"></script>
 </body>
 </html>

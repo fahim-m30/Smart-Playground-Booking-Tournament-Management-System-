@@ -12,8 +12,10 @@
     const cameraSelect = $("#camera-select");
     const startButton = $("#start-camera");
     const stopButton = $("#stop-camera");
+    const reader = $("#qr-reader");
     let scanner = null;
     let scannerRunning = false;
+    let scannerStarting = false;
     let validating = false;
     let lastValue = "";
     let lastScanAt = 0;
@@ -23,6 +25,9 @@
     const setResult = (kind, title, message, details = "") => {
         result.className = `result ${kind}`;
         result.innerHTML = `<strong>${escapeHTML(title)}</strong><p>${escapeHTML(message)}</p>${details}`;
+    };
+    const showReaderPlaceholder = () => {
+        reader.innerHTML = '<div class="reader-placeholder"><span aria-hidden="true">&#x2315;</span><strong>Camera is off</strong><small>Tap &ldquo;Start QR scanner&rdquo; to scan a ticket</small></div>';
     };
     const beep = (success) => {
         try {
@@ -75,10 +80,12 @@
             if (scannerRunning) await scanner.stop();
             await scanner.clear();
         } catch (_) { /* The camera may already be closed. */ }
+        scanner = null;
         scannerRunning = false;
         startButton.disabled = false; stopButton.disabled = true;
         status.textContent = "Scanner stopped.";
         setState("idle", "Idle");
+        showReaderPlaceholder();
     };
     const populateCameras = async () => {
         if (!navigator.mediaDevices?.enumerateDevices) return;
@@ -87,15 +94,30 @@
         if (!cameras.length) return;
         cameraSelect.innerHTML = '<option value="">Back camera (recommended)</option>' + cameras.map((camera, index) => `<option value="${escapeHTML(camera.deviceId)}">${escapeHTML(camera.label || `Camera ${index + 1}`)}</option>`).join("");
     };
+    const cameraErrorMessage = (error) => {
+        const text = `${error?.name || ""} ${error?.message || ""}`.toLowerCase();
+        if (text.includes("notallowed") || text.includes("permission") || text.includes("security")) return "Camera permission was blocked. Tap the lock icon in your browser, allow Camera, then try again.";
+        if (text.includes("notfound") || text.includes("no camera")) return "No camera was found on this device. You can scan a saved QR image instead.";
+        if (text.includes("overconstrained") || text.includes("constraint")) return "The selected camera is unavailable. Choose another camera and try again.";
+        return "Camera access needs the deployed HTTPS site. Allow camera permission and try again.";
+    };
     const startScanner = async () => {
+        if (scannerRunning || scannerStarting) return;
         if (!window.Html5Qrcode) {
             setResult("error", "Scanner could not load", "Check your internet connection, then reload this page.");
             return;
         }
+        if (!window.isSecureContext) {
+            setState("error", "HTTPS required");
+            setResult("error", "Camera needs HTTPS", "Open this page from the deployed HTTPS URL. Mobile browsers block camera access on insecure sites.");
+            return;
+        }
+        scannerStarting = true;
         await stopScanner();
         try {
-            scanner = new Html5Qrcode("qr-reader", { formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE] });
-            const camera = cameraSelect.value || { facingMode: "environment" };
+            const formats = window.Html5QrcodeSupportedFormats ? { formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE] } : {};
+            scanner = new Html5Qrcode("qr-reader", formats);
+            const camera = cameraSelect.value || { facingMode: { ideal: "environment" } };
             startButton.disabled = true;
             status.textContent = "Requesting camera access…";
             await scanner.start(camera, { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1 }, (decodedText) => validateTicket(decodedText), () => {});
@@ -105,10 +127,15 @@
             setState("active", "Scanning");
             await populateCameras();
         } catch (error) {
+            try { await scanner?.clear(); } catch (_) { /* Ignore an incomplete camera setup. */ }
+            scanner = null;
             scannerRunning = false; startButton.disabled = false; stopButton.disabled = true;
             status.textContent = "Camera could not start.";
             setState("error", "Unavailable");
-            setResult("error", "Camera unavailable", "Allow camera access in the browser and ensure this page is opened over HTTPS.");
+            showReaderPlaceholder();
+            setResult("error", "Camera unavailable", cameraErrorMessage(error));
+        } finally {
+            scannerStarting = false;
         }
     };
     const scanImage = async (file) => {
@@ -116,7 +143,8 @@
         if (!window.Html5Qrcode) { setResult("error", "Image scanner unavailable", "Reload the page while connected to the internet."); return; }
         try {
             await stopScanner();
-            scanner ||= new Html5Qrcode("qr-reader", { formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE] });
+            const formats = window.Html5QrcodeSupportedFormats ? { formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE] } : {};
+            scanner ||= new Html5Qrcode("qr-reader", formats);
             status.textContent = "Reading QR image…"; setState("active", "Reading image");
             const decodedText = await scanner.scanFile(file, true);
             await validateTicket(decodedText);
@@ -129,6 +157,10 @@
 
     startButton.addEventListener("click", startScanner);
     stopButton.addEventListener("click", stopScanner);
+    reader.addEventListener("click", () => { if (!scannerRunning && !scannerStarting) startScanner(); });
+    reader.addEventListener("keydown", (event) => {
+        if (!scannerRunning && !scannerStarting && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); startScanner(); }
+    });
     cameraSelect.addEventListener("change", () => { if (scannerRunning) startScanner(); });
     $("#qr-image").addEventListener("change", async (event) => { await scanImage(event.target.files?.[0]); event.target.value = ""; });
     $("#manual-form").addEventListener("submit", (event) => { event.preventDefault(); validateTicket($("#qr-data").value.trim()); });
