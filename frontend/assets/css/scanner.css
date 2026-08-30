@@ -57,10 +57,8 @@ body { min-width: 320px; margin: 0; }
 .scanner-policy { margin-top: 18px; padding: 13px; border-left: 3px solid #58b979; background: #eff9f1; color: #526b5a; font-size: .77rem; line-height: 1.5; }
 .scanner-policy strong { color: #216d3d; }
 .scanner-policy p { margin: 4px 0 0; }
-.has-validation-result .scanner-layout { grid-template-columns: minmax(250px, .56fr) minmax(0, 1.24fr); }
-.has-validation-result .scanner-card { position: sticky; top: 16px; padding: 16px; transform: translateX(-2px); }
-.has-validation-result .scanner-reader, .has-validation-result .scanner-reader video { min-height: 210px !important; height: 210px !important; }
-.has-validation-result .permission-note, .has-validation-result .alternate-scan { display: none; }
+.has-validation-result .scanner-layout { grid-template-columns: minmax(0, 720px); justify-content: center; }
+.has-validation-result .scanner-card { display: none; }
 .has-validation-result .result-card { box-shadow: 0 22px 48px rgba(18, 119, 59, .16); transform: translateY(-3px); }
 .has-validation-result .result { padding: 24px; }
 .has-validation-result .result strong { font-size: 1.35rem; }
@@ -70,8 +68,6 @@ body { min-width: 320px; margin: 0; }
   .scanner-layout, .has-validation-result .scanner-layout { grid-template-columns: 1fr; }
   .scanner-layout .result-card { order: 2; }
   .has-validation-result .result-card { order: 1; }
-  .has-validation-result .scanner-card { position: static; order: 2; transform: none; }
-  .has-validation-result .scanner-reader, .has-validation-result .scanner-reader video { min-height: 220px !important; height: 220px !important; }
 }
 
 @media (max-width: 600px) {
@@ -79,9 +75,6 @@ body { min-width: 320px; margin: 0; }
   .scanner-card, .result-card { padding: 16px; border-radius: 18px; }
   .scanner-card-head { align-items: flex-start; }
   .scanner-reader, .scanner-reader video { min-height: 245px !important; height: 245px !important; }
-  .has-validation-result .scanner-card { padding: 14px; }
-  .has-validation-result .scanner-reader, .has-validation-result .scanner-reader video { min-height: 150px !important; height: 150px !important; }
-  .has-validation-result .camera-controls, .has-validation-result .permission-note, .has-validation-result .alternate-scan { display: none; }
   .has-validation-result .result { padding: 20px; }
   .result dl { grid-template-columns: 1fr; gap: 7px; }
   .scanner-head h1 { font-size: 1.85rem; }

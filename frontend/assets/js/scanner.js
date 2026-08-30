@@ -78,14 +78,17 @@
                 beep(false);
                 const ticketType = body.data?.type === "SlotBooking" ? "Slot booking" : body.data?.type === "TournamentTicket" ? "Tournament ticket" : "QR ticket";
                 setResult("error", `${ticketType} invalid`, body.message || "Ticket could not be validated.", body.data ? ticketDetails(body.data) : "");
+                if (scannerRunning) stopScanner();
                 return;
             }
             beep(true);
             const ticketType = body.data?.type === "SlotBooking" ? "Authenticated slot booking" : "Authenticated tournament ticket";
             setResult("success", ticketType, body.message, ticketDetails(body.data));
+            if (scannerRunning) stopScanner();
         } catch (error) {
             beep(false);
             setResult("error", "Ticket declined", error.message || "Ticket could not be validated.");
+            if (scannerRunning) stopScanner();
         } finally {
             validating = false;
             if (scannerRunning) status.textContent = "Scanning continuously - ready for the next QR code.";
@@ -197,8 +200,8 @@
     scanNextButton.addEventListener("click", () => {
         page.classList.remove("has-validation-result");
         scanNextButton.hidden = true;
-        status.textContent = scannerRunning ? "Scanning continuously - point the camera at any QR code." : "Tap the button below to allow camera access.";
         reader.scrollIntoView({ behavior: "smooth", block: "center" });
+        startScanner();
     });
     window.addEventListener("pagehide", stopScanner);
 })();
