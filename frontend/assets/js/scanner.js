@@ -53,11 +53,9 @@
 
         const tournament = data.tournament || {};
         const match = tournament.currentMatch;
-        const finalMatch = tournament.final;
         const round = match?.matchday ? `${tournament.currentRound || "Fixture pending"} (Matchday ${match.matchday})` : (tournament.currentRound || "Fixture pending");
-        const currentMatch = match ? `${match.opponent} - ${match.date || "Date TBD"}, ${match.startTime || "Time TBD"} (${match.status})` : "No match fixture is confirmed yet";
-        const finalDetails = finalMatch?.exists ? `${finalMatch.matchup} - ${finalMatch.date || "Date TBD"}, ${finalMatch.startTime || "Time TBD"} (${finalMatch.status})` : (finalMatch?.status || "Final is not scheduled yet");
-        return `<dl>${commonDetails}<div><dt>Current round</dt><dd>${escapeHTML(round)}</dd></div><div><dt>Team match</dt><dd>${escapeHTML(currentMatch)}</dd></div><div><dt>Final match</dt><dd>${escapeHTML(finalDetails)}</dd></div><div><dt>Tournament status</dt><dd>${escapeHTML(tournament.status || "Unknown")}</dd></div></dl>`;
+        const opponent = match ? `${match.opponent} - ${match.date || "Date TBD"}, ${match.startTime || "Time TBD"}` : "Opponent has not been fixed yet";
+        return `<dl>${commonDetails}<div><dt>Current round</dt><dd>${escapeHTML(round)}</dd></div><div><dt>Playing against</dt><dd>${escapeHTML(opponent)}</dd></div></dl>`;
     };
     const validateTicket = async (qrData) => {
         if (!qrData || validating) return;

@@ -486,7 +486,7 @@ const verifyQR = async (qrDataString, adminId) => {
 
         const slotEnd = bookingEndsAt(booking.bookingDate, booking.endTime);
         if (now > slotEnd) {
-            return { valid: false, message: "Slot time has ended. This QR ticket is invalid.", expired: true, data: ticket };
+            return { valid: false, message: `Slot time ended at ${booking.endTime} on ${ticket.date}. This QR ticket is invalid.`, expired: true, data: ticket };
         }
 
         const checkedIn = await Booking.findByIdAndUpdate(
@@ -516,18 +516,13 @@ const verifyQR = async (qrDataString, adminId) => {
         if (String(tournament.playground?.playgroundAdmin) !== String(adminId)) {
             return { valid: false, message: "Ticket not found at this playground.", data: { type: "TournamentTicket", ticketType: "Tournament" } };
         }
-        const [teamMatches, finalMatch] = await Promise.all([
-            TournamentMatch.find({
-                tournament: tournament._id,
-                $or: [{ teamA: team._id }, { teamB: team._id }],
-            })
-                .populate("teamA", "teamName")
-                .populate("teamB", "teamName")
-                .sort({ matchDate: 1, startTime: 1 }),
-            TournamentMatch.findOne({ tournament: tournament._id, stage: "Final" })
-                .populate("teamA", "teamName")
-                .populate("teamB", "teamName"),
-        ]);
+        const teamMatches = await TournamentMatch.find({
+            tournament: tournament._id,
+            $or: [{ teamA: team._id }, { teamB: team._id }],
+        })
+            .populate("teamA", "teamName")
+            .populate("teamB", "teamName")
+            .sort({ matchDate: 1, startTime: 1 });
         const matchSummary = (match) => {
             if (!match) return null;
             const isTeamA = String(match.teamA?._id || match.teamA) === String(team._id);
@@ -545,22 +540,8 @@ const verifyQR = async (qrDataString, adminId) => {
         const liveMatch = teamMatches.find((match) => match.matchStatus === "Live");
         const scheduledMatch = teamMatches.find((match) => match.matchStatus === "Scheduled");
         const latestPlayedMatch = [...teamMatches].reverse().find((match) => match.matchStatus === "Completed");
+        const activeRoundMatch = liveMatch || scheduledMatch;
         const currentMatch = liveMatch || scheduledMatch || latestPlayedMatch;
-        const finalSummary = finalMatch ? {
-            exists: true,
-            status: finalMatch.matchStatus,
-            date: finalMatch.matchDate?.toISOString().split("T")[0] || null,
-            startTime: finalMatch.startTime,
-            endTime: finalMatch.endTime,
-            matchup: `${finalMatch.teamA?.teamName || "TBD"} vs ${finalMatch.teamB?.teamName || "TBD"}`,
-        } : {
-            exists: false,
-            status: tournament.status === "Completed" ? "Completed" : "Not scheduled yet",
-            date: null,
-            startTime: null,
-            endTime: null,
-            matchup: "Teams to be confirmed",
-        };
         const ticket = {
             type: "TournamentTicket",
             ticketType: "Tournament",
@@ -572,9 +553,8 @@ const verifyQR = async (qrDataString, adminId) => {
                 id: tournament._id.toString(),
                 name: tournament.name,
                 status: tournament.status,
-                currentRound: team.isKnockedOut ? "Eliminated" : (currentMatch?.stage || "Fixture pending"),
-                currentMatch: matchSummary(currentMatch),
-                final: finalSummary,
+                currentRound: team.isKnockedOut ? "Eliminated" : (activeRoundMatch?.stage || "No active match day"),
+                currentMatch: matchSummary(activeRoundMatch || currentMatch),
             },
             playground: { id: tournament.playground._id.toString(), name: tournament.playground.name, address: tournament.playground.address },
         };
@@ -588,6 +568,9 @@ const verifyQR = async (qrDataString, adminId) => {
         }
         if (team.isKnockedOut) {
             return { valid: false, message: "This team has been eliminated from the tournament. QR ticket is invalid.", expired: true, data: ticket };
+        }
+        if (!activeRoundMatch) {
+            return { valid: false, message: "This team has no active match day or scheduled round. QR ticket is invalid.", data: ticket };
         }
 
         const checkedIn = await TournamentTeam.findByIdAndUpdate(
