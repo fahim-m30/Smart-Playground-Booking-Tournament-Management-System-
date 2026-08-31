@@ -84,9 +84,41 @@
             }));
         } catch (error) { content.innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`; }
     }
-    async function tickets() {
+    async function legacyTickets() {
         content.innerHTML = '<div class="empty">Loading your tickets...</div>';
         try { const payments = await request("/payments/my-payments"); const tickets = payments.filter((payment) => payment.paymentStatus === "Paid"); content.innerHTML = tickets.length ? tickets.map((payment) => { const booking = payment.booking, team = payment.tournamentTeam, qr = booking?.qrCode || team?.qrCode, title = booking?.playground?.name || team?.tournament?.name || "TURF ticket"; return `<article class="card ticket"><div><span class="badge">PAID TICKET</span><h3>${escapeHtml(title)}</h3><p>${booking ? `${date(booking.bookingDate)} · ${escapeHtml(booking.startTime)} – ${escapeHtml(booking.endTime)}` : `Team: ${escapeHtml(team?.teamName)}`}<br>Paid: ৳${Number(payment.amount || 0).toLocaleString()}</p><a class="button alt" href="receipt.html?payment=${encodeURIComponent(payment._id)}">View receipt</a></div>${qr ? `<img src="https://smart-playground-booking-tournament.onrender.com${escapeHtml(qr)}" alt="QR ticket">` : ""}</article>`; }).join("") : '<div class="empty">No paid tickets yet.</div>'; } catch (error) { content.innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`; }
+    }
+    const resolveQrUrl = (value) => {
+        const path = String(value || "").trim();
+        if (!path) return "";
+        if (path.startsWith("data:") || /^https?:\/\//i.test(path)) return path;
+        return `https://smart-playground-booking-tournament.onrender.com${path.startsWith("/") ? "" : "/"}${path}`;
+    };
+    async function tickets() {
+        content.innerHTML = '<div class="empty">Loading your tickets...</div>';
+        try {
+            const payments = await request("/payments/my-payments");
+            const paidTickets = payments.filter((payment) => payment.paymentStatus === "Paid");
+            content.innerHTML = paidTickets.length ? paidTickets.map((payment) => {
+                const booking = payment.booking;
+                const team = payment.tournamentTeam;
+                const title = booking?.playground?.name || team?.tournament?.name || "TURF ticket";
+                const code = resolveQrUrl(booking?.qrCode || team?.qrCode);
+                const schedule = booking
+                    ? `${date(booking.bookingDate)} &middot; ${escapeHtml(booking.startTime)} - ${escapeHtml(booking.endTime)}`
+                    : `Team: ${escapeHtml(team?.teamName || "—")}`;
+                const qrPanel = code
+                    ? `<aside class="ticket-qr"><span class="ticket-qr-label">ENTRY QR</span><div class="ticket-qr-frame"><img class="ticket-qr-image" src="${escapeHtml(code)}" alt="QR ticket for ${escapeHtml(title)}"></div><small>Show this code at venue entry</small></aside>`
+                    : '<aside class="ticket-qr ticket-qr-missing"><span class="ticket-qr-label">ENTRY QR</span><strong>QR unavailable</strong><small>Please open the receipt or contact support.</small></aside>';
+                return `<article class="card ticket"><div class="ticket-copy"><span class="badge">PAID TICKET</span><h3>${escapeHtml(title)}</h3><p>${schedule}<br>Paid: BDT ${Number(payment.amount || 0).toLocaleString()}</p><div class="ticket-actions"><a class="button alt" href="receipt.html?payment=${encodeURIComponent(payment._id)}">View receipt</a></div></div>${qrPanel}</article>`;
+            }).join("") : '<div class="empty">No paid tickets yet.</div>';
+            content.querySelectorAll(".ticket-qr-image").forEach((image) => image.addEventListener("error", () => {
+                const panel = image.closest(".ticket-qr");
+                if (!panel) return;
+                panel.classList.add("ticket-qr-missing");
+                panel.innerHTML = '<span class="ticket-qr-label">ENTRY QR</span><strong>QR unavailable</strong><small>Please open the receipt or contact support.</small>';
+            }, { once: true }));
+        } catch (error) { content.innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`; }
     }
     $("#logout").addEventListener("click", () => { localStorage.removeItem("authToken"); localStorage.removeItem("authUser"); location.replace("login.html"); });
     document.querySelectorAll("[data-view]").forEach((button) => button.addEventListener("click", () => { document.querySelectorAll("[data-view]").forEach((item) => item.classList.toggle("active", item === button)); button.dataset.view === "tickets" ? tickets() : bookings(); }));
