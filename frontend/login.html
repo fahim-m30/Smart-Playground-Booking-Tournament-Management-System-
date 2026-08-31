@@ -11,18 +11,32 @@
 </head>
 <body>
     <section class="auth-page">
-        <div class="auth-card">
+        <div class="auth-card auth-card--login">
             <div class="auth-card__visual">
                 <div class="auth-card__visual-content">
-                    <a class="auth-brand" href="index.html"><img src="assets/images/favicon.png" alt="TURF"><span>TURF</span></a>
-                    <span class="brand-pill">SMART SPORTS BOOKING</span>
-                    <h2>Welcome Back!</h2>
-                    <p>Pick up where you left off—your bookings, entry passes and tournament updates are all in one place.</p>
-                    <div class="auth-benefits" aria-label="TURF benefits"><span>✓ Secure account</span><span>✓ Instant booking access</span><span>✓ QR entry pass</span></div>
+                    <div class="auth-visual__header">
+                        <a class="auth-brand" href="index.html">
+                            <img src="assets/images/favicon.png" alt="TURF">
+                            <span>TURF</span>
+                        </a>
+                        <span class="auth-visual__label">SMART SPORTS BOOKING</span>
+                    </div>
+
+                    <div class="auth-visual__intro">
+                        <span class="auth-visual__eyebrow">READY WHEN YOU ARE</span>
+                        <h2>Welcome back<br>to the game.</h2>
+                        <p>Manage your bookings, entry passes, and tournament updates from one secure place.</p>
+                    </div>
+
+                    <ul class="auth-benefits" aria-label="Your TURF account benefits">
+                        <li><span class="auth-benefits__icon" aria-hidden="true">&#10003;</span><span><strong>Secure access</strong><small>Your account, protected</small></span></li>
+                        <li><span class="auth-benefits__icon" aria-hidden="true">&#10003;</span><span><strong>Book in seconds</strong><small>Find and reserve a slot fast</small></span></li>
+                        <li><span class="auth-benefits__icon" aria-hidden="true">&#10003;</span><span><strong>Entry pass ready</strong><small>Keep your QR tickets together</small></span></li>
+                    </ul>
                 </div>
             </div>
             <form id="login-form" class="auth-form" novalidate>
-                <a class="auth-back" href="index.html" aria-label="Back to TURF home">← Back to home</a>
+                <a class="auth-back" href="index.html" aria-label="Back to TURF home">&larr; Back to home</a>
                 <div>
                     <span class="form-kicker">ACCOUNT ACCESS</span>
                     <h1>Login</h1>
