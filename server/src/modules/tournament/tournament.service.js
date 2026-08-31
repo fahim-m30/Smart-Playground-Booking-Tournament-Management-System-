@@ -740,6 +740,25 @@ const getTournamentMatches = async (tournamentId, stage, actor) => {
 // Update Match Result
 // ===================================================
 
+const assertPreviousRoundsCompleted = async (match, targetStage = match.stage) => {
+    const dependencies = {
+        "Quarter Final": [{ stage: "Group", required: true }],
+        "Semi Final": [{ stage: "Group", required: true }, { stage: "Quarter Final", required: false }],
+        "Final": [{ stage: "Group", required: true }, { stage: "Quarter Final", required: false }, { stage: "Semi Final", required: true }],
+        "Third Place": [{ stage: "Group", required: true }, { stage: "Quarter Final", required: false }, { stage: "Semi Final", required: true }],
+    };
+
+    for (const dependency of dependencies[targetStage] || []) {
+        const matches = await TournamentMatch.find({ tournament: match.tournament, stage: dependency.stage }).select("matchStatus");
+        if (dependency.required && !matches.length) {
+            throw new Error(`${targetStage} cannot start because ${dependency.stage} fixtures have not been generated yet.`);
+        }
+        if (matches.some((fixture) => fixture.matchStatus !== "Completed")) {
+            throw new Error(`${targetStage} is locked until every ${dependency.stage.toLowerCase()} match is completed.`);
+        }
+    }
+};
+
 const advanceKnockoutBracket = async (completedMatch) => {
     if (!['Quarter Final', 'Semi Final'].includes(completedMatch.stage)) return;
     const tournament = await Tournament.findById(completedMatch.tournament).select('sportType playground endDate');
@@ -792,6 +811,10 @@ const updateMatchResult = async (matchId, payload, actor) => {
         throw new Error("Match result has already been recorded.");
     }
 
+    if (match.matchStatus === "Cancelled") {
+        throw new Error("This match is cancelled. Publish its announced reschedule before recording a result.");
+    }
+
     if (!Number.isInteger(payload.teamAScore) || !Number.isInteger(payload.teamBScore) || payload.teamAScore < 0 || payload.teamBScore < 0) {
         throw new Error("Both match scores must be whole numbers of zero or more.");
     }
@@ -800,6 +823,8 @@ const updateMatchResult = async (matchId, payload, actor) => {
         const playground = await Playground.findOne({ _id: match.playground, playgroundAdmin: actor?.userId, isDeleted: false });
         if (!playground) throw new Error("Only the tournament venue admin can update this result.");
     }
+
+    await assertPreviousRoundsCompleted(match);
 
     if (match.stage !== "Group" && payload.teamAScore === payload.teamBScore) {
         throw new Error("FIFA knockout matches cannot end in a draw.");
@@ -812,7 +837,9 @@ const updateMatchResult = async (matchId, payload, actor) => {
     if (payload.teamAWickets !== undefined) match.teamAWickets = payload.teamAWickets;
     if (payload.teamBWickets !== undefined) match.teamBWickets = payload.teamBWickets;
     match.winner = winnerId;
-    match.matchStatus = payload.matchStatus || "Completed";
+    // A score submission is the official completion event; status transitions
+    // such as Live/Scheduled belong to the fixture-management endpoint.
+    match.matchStatus = "Completed";
 
     await match.save();
     emitDashboardUpdate({ type: "match-result", matchId: match._id, tournamentId: match.tournament });
@@ -868,6 +895,32 @@ const updateMatchResult = async (matchId, payload, actor) => {
 // Schedule Match (Admin)
 // ===================================================
 
+const isValidTime = (value) => /^([01]\d|2[0-3]):[0-5]\d$/.test(value || "");
+
+const hasTimeClash = (startA, endA, startB, endB) => startA < endB && endA > startB;
+
+const assertNoFixtureConflict = async (match, matchDate, startTime, endTime) => {
+    const { start, end } = dateRangeFor(matchDate);
+    const otherMatches = await TournamentMatch.find({
+        _id: { $ne: match._id },
+        matchStatus: { $in: ["Scheduled", "Live"] },
+        matchDate: { $gte: start, $lt: end },
+        $or: [
+            { playground: match.playground },
+            { teamA: { $in: [match.teamA, match.teamB] } },
+            { teamB: { $in: [match.teamA, match.teamB] } },
+        ],
+    }).select("teamA teamB playground startTime endTime");
+
+    const conflictingMatch = otherMatches.find((other) => hasTimeClash(startTime, endTime, other.startTime, other.endTime));
+    if (!conflictingMatch) return;
+
+    const venueConflict = String(conflictingMatch.playground) === String(match.playground);
+    throw new Error(venueConflict
+        ? "This playground already has a fixture during the selected time."
+        : "One of these teams already has a fixture during the selected time.");
+};
+
 const scheduleMatch = async (tournamentId, matchId, payload, actor) => {
     const tournament = await Tournament.findById(tournamentId);
 
@@ -881,6 +934,10 @@ const scheduleMatch = async (tournamentId, matchId, payload, actor) => {
         throw new Error("Match not found.");
     }
 
+    if (match.matchStatus === "Completed") {
+        throw new Error("A completed match cannot be cancelled or rescheduled.");
+    }
+
     if (actor?.role !== "super-admin") {
         const ownVenue = await Playground.findOne({ _id: match.playground, playgroundAdmin: actor?.userId, isDeleted: false });
         if (!ownVenue) throw new Error("Only the tournament venue admin can schedule this match.");
@@ -891,13 +948,73 @@ const scheduleMatch = async (tournamentId, matchId, payload, actor) => {
     tournamentStart.setHours(0, 0, 0, 0);
     const tournamentEnd = new Date(tournament.endDate);
     tournamentEnd.setHours(23, 59, 59, 999);
-    if (Number.isNaN(scheduledDate.getTime()) || scheduledDate < tournamentStart || scheduledDate > tournamentEnd) {
-        throw new Error("Match date must be within the tournament dates.");
-    }
     const startTime = payload.startTime || match.startTime;
     const endTime = payload.endTime || match.endTime;
-    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(startTime) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(endTime) || startTime >= endTime) {
+    if (!isValidTime(startTime) || !isValidTime(endTime) || startTime >= endTime) {
         throw new Error("Match end time must be after the kick-off time.");
+    }
+
+    if (payload.matchStatus === "Completed") {
+        throw new Error("Use the result action to complete a match.");
+    }
+
+    // Cancellation is deliberately a separate state from rescheduling. It
+    // preserves the original fixture, broadcasts the reason and announced
+    // make-up slot, and cannot be scored until an admin reinstates it.
+    if (payload.matchStatus === "Cancelled") {
+        if (match.matchStatus === "Cancelled") throw new Error("This match is already cancelled. Reschedule it instead.");
+        const cancellationDate = payload.rescheduledDate ? new Date(payload.rescheduledDate) : null;
+        const cancellationStart = payload.rescheduledStartTime;
+        const cancellationEnd = payload.rescheduledEndTime;
+        if (!payload.cancellationReason || !payload.cancellationDetails?.trim()) {
+            throw new Error("Select a cancellation reason and provide the official notice for teams.");
+        }
+        if (!cancellationDate || Number.isNaN(cancellationDate.getTime()) || cancellationDate < tournamentStart || !isValidTime(cancellationStart) || !isValidTime(cancellationEnd) || cancellationStart >= cancellationEnd) {
+            throw new Error("Give the new match date and a valid start and end time when cancelling a fixture.");
+        }
+        await assertNoFixtureConflict(match, cancellationDate, cancellationStart, cancellationEnd);
+        if (cancellationDate > tournamentEnd) tournament.endDate = cancellationDate;
+        match.matchStatus = "Cancelled";
+        match.cancellation = {
+            reason: payload.cancellationReason,
+            details: payload.cancellationDetails.trim(),
+            announcedAt: new Date(),
+            announcedBy: actor?.userId || null,
+            originalDate: match.matchDate,
+            originalStartTime: match.startTime,
+            originalEndTime: match.endTime,
+            rescheduledDate: cancellationDate,
+            rescheduledStartTime: cancellationStart,
+            rescheduledEndTime: cancellationEnd,
+        };
+        await Promise.all([match.save(), tournament.save()]);
+
+        const teams = await TournamentTeam.find({ _id: { $in: [match.teamA, match.teamB] } }).select("registeredBy teamName");
+        const makeUp = `${new Date(cancellationDate).toLocaleDateString("en-GB")} ${cancellationStart}-${cancellationEnd}`;
+        await Promise.all(teams.filter((team) => team.registeredBy).map((team) => createNotification({
+            recipient: team.registeredBy,
+            type: "MatchCancelled",
+            title: "Match cancelled and rescheduled",
+            message: `${team.teamName}'s ${match.stage.toLowerCase()} match was cancelled: ${payload.cancellationReason}. ${payload.cancellationDetails.trim()} New match time: ${makeUp}.`,
+            link: `tournament.html?fixture=${tournamentId}`,
+        })));
+        emitDashboardUpdate({ type: "match-cancelled", matchId: match._id, tournamentId: match.tournament });
+        return match;
+    }
+
+    const isReinstatingCancelledMatch = match.matchStatus === "Cancelled";
+    if (isReinstatingCancelledMatch && payload.matchStatus !== "Scheduled") {
+        throw new Error("A cancelled match must be rescheduled before it can go live or receive a result.");
+    }
+    if (isReinstatingCancelledMatch && (!payload.matchDate || !payload.startTime || !payload.endTime)) {
+        throw new Error("Set the official replay date, start time and end time before rescheduling this match.");
+    }
+    if (Number.isNaN(scheduledDate.getTime()) || scheduledDate < tournamentStart) {
+        throw new Error("Match date cannot be before the tournament start date.");
+    }
+    if (scheduledDate > tournamentEnd) {
+        if (!isReinstatingCancelledMatch) throw new Error("Match date must be within the tournament dates.");
+        tournament.endDate = scheduledDate;
     }
 
     if (payload.teamA) {
@@ -953,26 +1070,24 @@ const scheduleMatch = async (tournamentId, matchId, payload, actor) => {
         match.endTime = payload.endTime;
     }
 
-    if (payload.stage) {
-        match.stage = payload.stage;
+    if (payload.stage && payload.stage !== match.stage) {
+        throw new Error("The competition stage is fixed by the official bracket and cannot be changed manually.");
     }
 
-    if (payload.matchStatus) {
-        match.matchStatus = payload.matchStatus;
+    if (payload.matchStatus === "Live") await assertPreviousRoundsCompleted(match);
+
+    if (payload.matchStatus) match.matchStatus = payload.matchStatus;
+
+    await assertNoFixtureConflict(match, scheduledDate, startTime, endTime);
+
+    if (isReinstatingCancelledMatch) {
+        match.cancellation.rescheduledDate = scheduledDate;
+        match.cancellation.rescheduledStartTime = startTime;
+        match.cancellation.rescheduledEndTime = endTime;
     }
 
-    await match.save();
-
-    if (payload.matchStatus === "Cancelled") {
-        const teams = await TournamentTeam.find({ _id: { $in: [match.teamA, match.teamB] } }).select("registeredBy teamName");
-        await Promise.all(teams.filter((team) => team.registeredBy).map((team) => createNotification({
-            recipient: team.registeredBy,
-            type: "MatchCancelled",
-            title: "Match cancelled",
-            message: `${team.teamName}'s scheduled match on ${new Date(match.matchDate).toLocaleDateString("en-GB")} has been cancelled.`,
-            link: "tournament.html",
-        })));
-    }
+    await Promise.all([match.save(), tournament.save()]);
+    emitDashboardUpdate({ type: isReinstatingCancelledMatch ? "match-rescheduled" : "match-scheduled", matchId: match._id, tournamentId: match.tournament });
 
     return match;
 };
@@ -990,6 +1105,15 @@ const generateKnockoutStage = async (tournamentId) => {
 
     if (tournament.status !== "Group Stage") {
         throw new Error("Knockout stage can only be generated after group stage.");
+    }
+
+    const unfinishedGroupMatch = await TournamentMatch.exists({
+        tournament: tournamentId,
+        stage: "Group",
+        matchStatus: { $ne: "Completed" },
+    });
+    if (unfinishedGroupMatch) {
+        throw new Error("Knockout stage is locked until every group-stage match, including any cancelled match, has been replayed and completed.");
     }
 
     const groups = await TournamentGroup.find({ tournament: tournamentId }).sort({ name: 1 });

@@ -127,6 +127,16 @@ const scheduleMatchValidation = Joi.object({
     stage: Joi.string().valid("Group", "Quarter Final", "Semi Final", "Final", "Third Place"),
 
     matchStatus: Joi.string().valid("Scheduled", "Live", "Completed", "Cancelled"),
+
+    cancellationReason: Joi.string().valid("Weather", "Unsafe playing conditions", "Venue issue", "Power outage", "Equipment issue", "Security or emergency", "Official decision", "Other"),
+
+    cancellationDetails: Joi.string().trim().max(500).allow(""),
+
+    rescheduledDate: Joi.date(),
+
+    rescheduledStartTime: Joi.string().trim(),
+
+    rescheduledEndTime: Joi.string().trim(),
 });
 
 const updateTournamentTeamCountsValidation = Joi.object({

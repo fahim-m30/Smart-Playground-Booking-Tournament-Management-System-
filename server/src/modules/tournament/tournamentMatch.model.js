@@ -99,6 +99,26 @@ const tournamentMatchSchema = new mongoose.Schema(
             default: "Scheduled",
         },
 
+        // A cancelled fixture remains part of the competition until it is
+        // formally replayed. Keeping the announcement on the match gives
+        // teams one official source for the reason and make-up schedule.
+        cancellation: {
+            reason: {
+                type: String,
+                enum: ["Weather", "Unsafe playing conditions", "Venue issue", "Power outage", "Equipment issue", "Security or emergency", "Official decision", "Other"],
+                default: null,
+            },
+            details: { type: String, trim: true, maxlength: 500, default: null },
+            announcedAt: { type: Date, default: null },
+            announcedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+            originalDate: { type: Date, default: null },
+            originalStartTime: { type: String, default: null },
+            originalEndTime: { type: String, default: null },
+            rescheduledDate: { type: Date, default: null },
+            rescheduledStartTime: { type: String, default: null },
+            rescheduledEndTime: { type: String, default: null },
+        },
+
         reminderSent: {
             type: Boolean,
             default: false,

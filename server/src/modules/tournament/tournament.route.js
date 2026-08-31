@@ -15,7 +15,7 @@ const verifyToken = require("../../middlewares/verifyToken");
 const authorize = require("../../middlewares/authorize");
 const validate = require("../../middlewares/validate");
 const upload = require("../../middlewares/upload.middleware");
-const { createTournamentValidation } = require("./tournament.validation");
+const { createTournamentValidation, scheduleMatchValidation } = require("./tournament.validation");
 
 const teamRosterUpload = upload.fields([
     { name: "captainPhoto", maxCount: 1 },
@@ -77,6 +77,7 @@ router.patch(
     "/:id/matches/:matchId",
     verifyToken,
     authorize("super-admin", "playground-admin"),
+    validate(scheduleMatchValidation),
     tournamentController.scheduleMatch
 );
 
