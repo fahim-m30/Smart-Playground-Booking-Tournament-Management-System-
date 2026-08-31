@@ -122,14 +122,16 @@ function renderThread(messages = activeMessages) {
     list.scrollTop = list.scrollHeight;
 }
 
-async function selectById(contactId) {
+async function selectById(contactId, { keepThreadVisible = false } = {}) {
     const item = availableRecords().find((record) => contactIdOf(record) === String(contactId));
     if (!item) return;
     const selectedId = contactIdOf(item);
     activeContact = { ...contactOf(item), id: selectedId };
-    activeMessages = [];
     renderConversations();
-    renderThread();
+    if (!keepThreadVisible) {
+        activeMessages = [];
+        renderThread();
+    }
     // Abort only an older message request. This prevents a slow previous
     // conversation from replacing the currently selected one.
     activeRequest?.abort();
@@ -158,7 +160,7 @@ async function load(refreshThread = false) {
 
         const activeId = idOf(activeContact?.id);
         if (activeId && refreshThread && availableRecords().some((record) => contactIdOf(record) === activeId)) {
-            await selectById(activeId);
+            await selectById(activeId, { keepThreadVisible: true });
             return;
         }
 
@@ -241,14 +243,23 @@ $("#message-form").onsubmit = async (event) => {
     const button = event.currentTarget.querySelector("button");
     button.disabled = true;
     try {
-        await request("/chat/send-message", {
+        const result = await request("/chat/send-message", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ recipient, message }),
         });
         input.value = "";
-        await load(false);
-        await selectById(recipient);
+        const outgoing = result?.chat;
+        if (outgoing && !activeMessages.some((item) => idOf(item._id) === idOf(outgoing._id))) {
+            activeMessages = [...activeMessages, outgoing];
+            renderThread(activeMessages);
+        }
+        const conversation = conversations.find((item) => contactIdOf(item) === recipient);
+        if (conversation) {
+            conversation.lastMessage = outgoing?.message || message;
+            conversation.lastMessageAt = outgoing?.createdAt || new Date().toISOString();
+            renderConversations();
+        }
     } catch (error) {
         alert(error.message);
     } finally {
