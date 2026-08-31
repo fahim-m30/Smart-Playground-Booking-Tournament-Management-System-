@@ -1,57 +1,32 @@
 /**
- * ==============================================================
- * Project : Smart Playground Booking & Tournament Management System
- * File    : user.validation.js
- * Purpose : User Request Validation
- * Author  : Fahim Muntasir
- * ==============================================================
+ * Login request validation.
+ * Client-side checks improve the experience; this schema is the authoritative
+ * guard for every API caller.
  */
 
-// ===============================
-// Register Validation
-// ===============================
+const Joi = require("joi");
 
-const validateRegister = (req, res, next) => {
-    const { name, email, password } = req.body;
+const loginValidation = Joi.object({
+    email: Joi.string()
+        .trim()
+        .lowercase()
+        .email({ tlds: { allow: false } })
+        .max(254)
+        .required()
+        .messages({
+            "string.empty": "Enter your email address.",
+            "string.email": "Enter a valid email address.",
+            "any.required": "Enter your email address.",
+        }),
+    password: Joi.string()
+        .min(6)
+        .max(128)
+        .required()
+        .messages({
+            "string.empty": "Enter your password.",
+            "string.min": "Password must be at least 6 characters.",
+            "any.required": "Enter your password.",
+        }),
+}).options({ abortEarly: false, allowUnknown: false });
 
-    // Check required fields
-    if (!name || !email || !password) {
-        return res.status(400).json({
-            success: false,
-            message: "Name, email and password are required.",
-        });
-    }
-
-    // Name validation
-    if (name.trim().length < 3) {
-        return res.status(400).json({
-            success: false,
-            message: "Name must be at least 3 characters long.",
-        });
-    }
-
-    // Email validation
-    const emailRegex =
-        /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
-
-    if (!emailRegex.test(email)) {
-        return res.status(400).json({
-            success: false,
-            message: "Invalid email address.",
-        });
-    }
-
-    // Password validation
-    if (password.length < 6) {
-        return res.status(400).json({
-            success: false,
-            message: "Password must be at least 6 characters long.",
-        });
-    }
-
-    next();
-};
-
-module.exports = {
-    validateRegister,
-};
+module.exports = { loginValidation };

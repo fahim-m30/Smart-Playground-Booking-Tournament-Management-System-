@@ -191,13 +191,32 @@ if (loginForm) {
     loginForm.addEventListener("submit", async (event) => {
         event.preventDefault();
 
-        const email = loginForm.email.value.trim();
+        const email = loginForm.email.value.trim().toLowerCase();
         const password = loginForm.password.value;
         const messageContainer = document.querySelector("#login-message");
+        const submitButton = loginForm.querySelector('button[type="submit"]');
+        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
         if (!email || !password) {
             showMessage(messageContainer, "Please enter both email and password.");
             return;
+        }
+        if (!emailPattern.test(email)) {
+            showMessage(messageContainer, "Enter a valid email address.");
+            loginForm.email.focus();
+            return;
+        }
+        if (password.length < 6) {
+            showMessage(messageContainer, "Password must be at least 6 characters.");
+            loginForm.password.focus();
+            return;
+        }
+        if (submitButton?.disabled) return;
+
+        const originalButtonText = submitButton?.textContent;
+        if (submitButton) {
+            submitButton.disabled = true;
+            submitButton.textContent = "Signing in…";
         }
 
         try {
@@ -224,6 +243,11 @@ if (loginForm) {
             }
         } catch (error) {
             showMessage(messageContainer, "Unable to connect to the server.");
+        } finally {
+            if (submitButton) {
+                submitButton.disabled = false;
+                submitButton.textContent = originalButtonText;
+            }
         }
     });
 }

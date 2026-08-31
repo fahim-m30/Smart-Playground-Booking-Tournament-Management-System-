@@ -21,21 +21,21 @@
                     <div class="auth-benefits" aria-label="TURF benefits"><span>✓ Secure account</span><span>✓ Instant booking access</span><span>✓ QR entry pass</span></div>
                 </div>
             </div>
-            <form id="login-form" class="auth-form">
+            <form id="login-form" class="auth-form" novalidate>
                 <a class="auth-back" href="index.html" aria-label="Back to TURF home">← Back to home</a>
                 <div>
                     <span class="form-kicker">ACCOUNT ACCESS</span>
                     <h1>Login</h1>
                     <p>Enter your registered email and password to access your account.</p>
                 </div>
-                <div id="login-message"></div>
+                <div id="login-message" role="status" aria-live="polite"></div>
                 <div class="auth-form__group">
                     <label for="email">Email address</label>
-                    <input type="email" id="email" name="email" placeholder="name@example.com" required>
+                    <input type="email" id="email" name="email" placeholder="name@example.com" autocomplete="email" inputmode="email" maxlength="254" required>
                 </div>
                 <div class="auth-form__group">
                     <label for="password">Password</label>
-                    <div class="password-field"><input type="password" id="password" name="password" placeholder="Enter your password" required><button type="button" class="password-toggle" aria-label="Show password" aria-pressed="false">Show</button></div>
+                    <div class="password-field"><input type="password" id="password" name="password" placeholder="Enter your password" autocomplete="current-password" minlength="6" maxlength="128" required><button type="button" class="password-toggle" aria-label="Show password" aria-pressed="false">Show</button></div>
                 </div>
                 <div class="auth-form__actions">
                     <button type="submit" class="auth-btn auth-btn--primary">Login</button>

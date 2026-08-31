@@ -13,6 +13,8 @@ const router = express.Router();
 const authController = require("./auth.controller");
 const authMiddleware = require("../../middlewares/auth.middleware");
 const upload = require("../../middlewares/upload.middleware");
+const validate = require("../../middlewares/validate");
+const { loginValidation } = require("./auth.validation");
 
 const authUpload = upload.fields([
     { name: "profileImage", maxCount: 1 },
@@ -38,7 +40,7 @@ router.post(
 );
 
 // Login
-router.post("/login", authController.login);
+router.post("/login", validate(loginValidation), authController.login);
 
 // Send Email Verification OTP
 router.post("/send-otp", authController.sendEmailOTP);
