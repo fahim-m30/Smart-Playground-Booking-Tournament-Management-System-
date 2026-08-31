@@ -279,109 +279,22 @@
      Playground Gallery Section
 ================================================== -->
 
-<section class="gallery">
+<section class="gallery home-venues" aria-labelledby="active-playgrounds-title">
 
     <div class="container">
 
-        <div class="section-title">
+        <div class="home-venues-head">
+            <div>
+                <span class="home-venues-kicker"><i class="fa-solid fa-circle"></i> LIVE VENUE DIRECTORY</span>
+                <h2 id="active-playgrounds-title">Active playgrounds</h2>
+                <p id="home-venue-summary">Loading currently active playgrounds from our verified venue network.</p>
+            </div>
 
-            <h2>Explore Our Playgrounds</h2>
-
-            <p>
-                Premium Football, Cricket and Badminton
-                playgrounds available for booking.
-            </p>
-
+            <a class="home-venues-all" href="playgrounds.html">Explore all <i class="fa-solid fa-arrow-right"></i></a>
         </div>
 
-    </div>
-
-    <!-- Football -->
-
-    <div class="marquee">
-
-        <div class="track">
-
-            <img src="assets/images/football1.jpg">
-
-            <img src="assets/images/football2.jpg">
-
-            <img src="assets/images/football3.jpg">
-
-            <img src="assets/images/football4.jpg">
-
-            <img src="assets/images/football5.jpg">
-
-            <img src="assets/images/football1.jpg">
-
-            <img src="assets/images/football2.jpg">
-
-            <img src="assets/images/football3.jpg">
-
-            <img src="assets/images/football4.jpg">
-
-            <img src="assets/images/football5.jpg">
-
-        </div>
-
-    </div>
-
-    <!-- Cricket -->
-
-    <div class="marquee reverse">
-
-        <div class="track">
-
-            <img src="assets/images/cricket1.jpg">
-
-            <img src="assets/images/cricket2.jpg">
-
-            <img src="assets/images/cricket3.jpg">
-
-            <img src="assets/images/cricket4.jpg">
-
-            <img src="assets/images/cricket5.jpg">
-
-            <img src="assets/images/cricket1.jpg">
-
-            <img src="assets/images/cricket2.jpg">
-
-            <img src="assets/images/cricket3.jpg">
-
-            <img src="assets/images/cricket4.jpg">
-
-            <img src="assets/images/cricket5.jpg">
-
-        </div>
-
-    </div>
-
-    <!-- Badminton -->
-
-    <div class="marquee">
-
-        <div class="track">
-
-            <img src="assets/images/badminton1.jpg">
-
-            <img src="assets/images/badminton2.jpg">
-
-            <img src="assets/images/badminton3.jpg">
-
-            <img src="assets/images/badminton4.jpg">
-
-            <img src="assets/images/badminton5.jpg">
-
-            <img src="assets/images/badminton1.jpg">
-
-            <img src="assets/images/badminton2.jpg">
-
-            <img src="assets/images/badminton3.jpg">
-
-            <img src="assets/images/badminton4.jpg">
-
-            <img src="assets/images/badminton5.jpg">
-
+        <div id="home-active-playgrounds" class="home-venue-grid" aria-live="polite" aria-busy="true">
+            <div class="home-venue-loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading active playgrounds...</div>
         </div>
 
     </div>

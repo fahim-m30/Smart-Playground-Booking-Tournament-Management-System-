@@ -320,3 +320,247 @@ body{
     }
 
 }
+
+/* =========================
+   Live Active Playgrounds
+========================= */
+
+.home-venues{
+    padding: 88px 0;
+    background:
+        radial-gradient(circle at 92% 4%, rgba(34, 197, 94, .13), transparent 27rem),
+        #f8fafc;
+}
+
+.home-venues-head{
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    gap:24px;
+    margin-bottom:38px;
+}
+
+.home-venues-kicker{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    margin-bottom:10px;
+    color:#15803d;
+    font-size:12px;
+    font-weight:800;
+    letter-spacing:.12em;
+}
+
+.home-venues-kicker i,
+.home-venue-status i{
+    color:#22c55e;
+    font-size:9px;
+}
+
+.home-venues h2{
+    margin:0;
+    color:#102418;
+    font-size:clamp(30px, 4vw, 44px);
+    line-height:1.1;
+}
+
+.home-venues-head p{
+    max-width:610px;
+    margin:12px 0 0;
+    color:#64748b;
+    font-size:16px;
+    line-height:1.65;
+}
+
+.home-venues-all,
+.home-venue-action{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:9px;
+    border-radius:12px;
+    font-weight:800;
+    text-decoration:none;
+    transition:transform .2s ease, box-shadow .2s ease, background-color .2s ease;
+}
+
+.home-venues-all{
+    flex:none;
+    padding:13px 17px;
+    background:#166534;
+    color:#fff;
+    box-shadow:0 10px 20px rgba(22, 101, 52, .18);
+}
+
+.home-venues-all:hover,
+.home-venue-action:hover{
+    color:#fff;
+    transform:translateY(-2px);
+}
+
+.home-venues-all:hover{ background:#14532d; }
+
+.home-venue-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(255px, 1fr));
+    gap:22px;
+}
+
+.home-venue-card{
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+    min-width:0;
+    background:#fff;
+    border:1px solid #e5e7eb;
+    border-radius:20px;
+    box-shadow:0 10px 28px rgba(15, 23, 42, .06);
+    transition:transform .25s ease, box-shadow .25s ease, border-color .25s ease;
+}
+
+.home-venue-card:hover{
+    border-color:rgba(22, 163, 74, .38);
+    box-shadow:0 18px 34px rgba(15, 23, 42, .12);
+    transform:translateY(-5px);
+}
+
+.home-venue-image{
+    position:relative;
+    height:177px;
+    overflow:hidden;
+    background:linear-gradient(135deg, #123a28, #1f7a4a);
+}
+
+.home-venue-image.no-image::after{
+    position:absolute;
+    inset:0;
+    display:grid;
+    place-items:center;
+    content:"\f1e3";
+    color:rgba(255,255,255,.78);
+    font-family:"Font Awesome 6 Free";
+    font-size:48px;
+    font-weight:900;
+}
+
+.home-venue-image img{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    transition:transform .4s ease;
+}
+
+.home-venue-card:hover .home-venue-image img{ transform:scale(1.05); }
+
+.home-venue-status,
+.home-venue-sport{
+    position:absolute;
+    z-index:1;
+    top:13px;
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    padding:7px 9px;
+    border:1px solid rgba(255,255,255,.24);
+    border-radius:999px;
+    background:rgba(15, 23, 42, .72);
+    color:#fff;
+    font-size:11px;
+    font-weight:800;
+    backdrop-filter:blur(8px);
+}
+
+.home-venue-status{ left:13px; }
+.home-venue-sport{ right:13px; }
+
+.home-venue-content{ padding:19px; }
+
+.home-venue-title-row{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:12px;
+}
+
+.home-venue-title-row h3{
+    margin:0;
+    color:#172033;
+    font-size:19px;
+    line-height:1.3;
+}
+
+.home-venue-rating{
+    flex:none;
+    color:#a16207;
+    font-size:12px;
+    font-weight:800;
+    white-space:nowrap;
+}
+
+.home-venue-rating i{ color:#f59e0b; }
+
+.home-venue-location{
+    overflow:hidden;
+    margin:10px 0 14px;
+    color:#64748b;
+    font-size:13px;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+}
+
+.home-venue-location i{ color:#16a34a; }
+
+.home-venue-meta{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    padding-top:13px;
+    border-top:1px solid #eef0f3;
+    color:#64748b;
+    font-size:12px;
+}
+
+.home-venue-meta span{ min-width:0; }
+.home-venue-meta i{ color:#16a34a; }
+.home-venue-meta strong{ color:#166534; white-space:nowrap; }
+
+.home-venue-action{
+    width:100%;
+    margin-top:16px;
+    padding:11px 14px;
+    background:#ecfdf3;
+    color:#166534;
+    font-size:13px;
+}
+
+.home-venue-action:hover{ background:#166534; }
+
+.home-venue-loading,
+.home-venue-empty{
+    grid-column:1 / -1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    min-height:180px;
+    margin:0;
+    padding:28px;
+    border:1px dashed #bbd7c2;
+    border-radius:18px;
+    background:#fff;
+    color:#64748b;
+    text-align:center;
+}
+
+.home-venue-empty i,
+.home-venue-loading i{ color:#16a34a; font-size:20px; }
+.home-venue-empty p{ margin:0; }
+
+@media (max-width: 640px){
+    .home-venues{ padding:62px 0; }
+    .home-venues-head{ align-items:flex-start; flex-direction:column; margin-bottom:28px; }
+    .home-venues-all{ width:100%; }
+    .home-venue-grid{ grid-template-columns:1fr; gap:16px; }
+    .home-venue-image{ height:188px; }
+}

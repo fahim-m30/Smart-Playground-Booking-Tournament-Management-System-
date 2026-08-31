@@ -134,7 +134,7 @@ const renderPageContent = (page) => {
             <section class="stats-grid">
                 ${data.stats.map((item) => `
                     <div class="stat-card">
-                        <h3>${item.value}</h3>
+                        <h3${item.label === "Active Playgrounds" ? ' id="active-playground-count" aria-live="polite"' : ""}>${item.label === "Active Playgrounds" ? "—" : item.value}</h3>
                         <p>${item.label}</p>
                     </div>
                 `).join("")}
@@ -177,6 +177,24 @@ const renderPageContent = (page) => {
     }
 };
 
+const updateActivePlaygroundCount = async () => {
+    const countElement = document.getElementById("active-playground-count");
+    if (!countElement) return;
+
+    try {
+        const response = await fetch("https://smart-playground-booking-tournament.onrender.com/api/v1/playgrounds?page=1&limit=1");
+        if (!response.ok) throw new Error("Unable to load playground count");
+
+        const payload = await response.json();
+        const total = Number(payload.meta?.total);
+        if (!Number.isFinite(total) || total < 0) throw new Error("Invalid playground count");
+
+        countElement.textContent = String(total);
+    } catch (_) {
+        countElement.textContent = "—";
+    }
+};
+
 document.addEventListener("DOMContentLoaded", () => {
     const page = document.body.dataset.page || "home";
     const shell = document.getElementById("page-shell");
@@ -184,6 +202,7 @@ document.addEventListener("DOMContentLoaded", () => {
         shell.insertAdjacentHTML("beforebegin", buildHeader(page));
         document.body.insertAdjacentHTML("beforeend", buildFooter());
         renderPageContent(page);
+        updateActivePlaygroundCount();
         document.querySelector("[data-logout]")?.addEventListener("click", (event) => {
             event.preventDefault();
             localStorage.removeItem("authToken");
