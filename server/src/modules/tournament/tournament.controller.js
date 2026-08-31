@@ -17,6 +17,7 @@ const {
     registerTeam,
     getTournamentTeams,
     generateGroupMatches,
+    conductTournamentDraw,
     getTournamentMatches,
     updateMatchResult,
     scheduleMatch,
@@ -220,6 +221,15 @@ const generateGroupMatchesController = async (req, res) => {
             success: false,
             message: error.message,
         });
+    }
+};
+
+const conductTournamentDrawController = async (req, res) => {
+    try {
+        const result = await conductTournamentDraw(req.params.id, req.user.userId);
+        return res.status(200).json({ success: true, message: "Official live lottery started. Final fixtures will publish after every placement is revealed.", data: result });
+    } catch (error) {
+        return res.status(400).json({ success: false, message: error.message });
     }
 };
 
@@ -443,6 +453,7 @@ module.exports = {
     registerTeam: registerTeamController,
     getTournamentTeams: getTournamentTeamsController,
     generateGroupMatches: generateGroupMatchesController,
+    conductTournamentDraw: conductTournamentDrawController,
     getTournamentMatches: getTournamentMatchesController,
     updateMatchResult: updateMatchResultController,
     scheduleMatch: scheduleMatchController,

@@ -6,6 +6,55 @@ const esc = (value) => String(value ?? "").replace(/[&<>'"]/g, (c) => ({ "&": "&
 if (!token) location = "login.html";
 const req = async (path, options = {}) => { const response = await fetch(API + path, { ...options, headers: { Authorization: `Bearer ${token}`, ...(options.headers || {}) } }); const body = await response.json(); if (!response.ok) throw new Error(body.message || "Request failed"); return body.data; };
 const say = (message, bad = false) => { const notice = $("#notice"); notice.textContent = message; notice.className = `notice${bad ? " error" : ""}`; notice.style.display = "block"; };
+const realtime = window.io && token ? window.io(API.replace(/\/api\/v1$/, ""), { auth: { token } }) : null;
+const liveDrawStates = new Map();
+
+const liveDrawModal = (event) => {
+    const id = String(event.tournamentId);
+    let state = liveDrawStates.get(id);
+    if (state) return state;
+    const modal = document.createElement("div");
+    modal.className = "modal show live-draw-modal";
+    modal.dataset.tournamentId = id;
+    modal.innerHTML = `<section class="modal-box live-draw-box"><button class="close" type="button">Minimise</button><span class="eyebrow">LIVE OFFICIAL LOTTERY</span><h2>${esc(event.tournamentName || "Tournament group draw")}</h2><p class="meta live-draw-intro">The venue administrator is drawing the official groups. Every reveal is broadcast to registered teams at the same time.</p><div class="draw-stage"><div class="draw-orb"><span>LIVE</span></div><strong class="draw-now">Shuffling the registered teams…</strong><small class="draw-progress">Waiting for the first official placement</small></div><ol class="live-draw-results"></ol></section>`;
+    document.body.append(modal);
+    modal.querySelector(".close").onclick = () => modal.remove();
+    state = { modal, revealed: new Set() };
+    liveDrawStates.set(id, state);
+    return state;
+};
+
+const showLiveDrawReveal = (event) => {
+    const state = liveDrawModal(event);
+    if (state.revealed.has(event.index)) return;
+    state.revealed.add(event.index);
+    const box = state.modal.querySelector(".draw-stage");
+    box.classList.remove("is-revealing");
+    void box.offsetWidth;
+    box.classList.add("is-revealing");
+    box.querySelector(".draw-now").textContent = `${event.team?.name || "Registered team"} → ${event.group?.name || "Official group"}`;
+    box.querySelector(".draw-progress").textContent = `Official placement ${event.index} of ${event.total}`;
+    state.modal.querySelector(".live-draw-results").insertAdjacentHTML("beforeend", `<li><b>${event.index}</b><span>${esc(event.team?.name || "Registered team")}</span><em>${esc(event.group?.name || "Official group")}</em></li>`);
+};
+
+if (realtime) {
+    realtime.on("tournament:draw:started", (event) => liveDrawModal(event));
+    realtime.on("tournament:draw:reveal", showLiveDrawReveal);
+    realtime.on("tournament:draw:completed", async (event) => {
+        const state = liveDrawModal(event);
+        const now = state.modal.querySelector(".draw-now");
+        now.textContent = "Official draw complete — final fixture is ready.";
+        state.modal.querySelector(".draw-progress").textContent = `${event.fixtureCount || 0} group-stage fixtures published.`;
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "live-fixture-button";
+        button.textContent = "View final fixture";
+        button.onclick = () => { state.modal.remove(); detail(event.tournamentId); };
+        state.modal.querySelector(".live-draw-box").append(button);
+        say(`Official lottery completed for ${event.tournamentName}. Final fixture published.`);
+        try { await list(); decorateTournamentManagement(); } catch (_) { /* page can still show the live result */ }
+    });
+}
 const openCancellationConfirmation = ({ title, summary, policy, onConfirm }) => {
     const modal = document.createElement("div");
     modal.className = "modal show cancellation-confirmation";
@@ -309,7 +358,42 @@ function decorateTournamentManagement() {
         button.textContent = "Manage matches";
         button.addEventListener("click", () => manageMatches(tournament._id));
         footer.append(button);
+        if (user.role === "playground-admin" && tournament.status === "Upcoming" && tournament.drawStatus !== "Completed") {
+            const drawButton = document.createElement("button");
+            drawButton.type = "button";
+            drawButton.className = "alt official-draw-action";
+            drawButton.textContent = "Conduct lottery draw";
+            drawButton.title = "Available on the calendar day before the tournament starts.";
+            drawButton.addEventListener("click", () => conductLotteryDraw(tournament));
+            footer.append(drawButton);
+        }
     });
+}
+
+async function conductLotteryDraw(tournament) {
+    const modal = document.createElement("div");
+    modal.className = "modal show";
+    modal.innerHTML = `<section class="modal-box official-draw-box"><button class="close" type="button">Close</button><span class="eyebrow">OFFICIAL GROUP LOTTERY</span><h2>Ready to draw the groups?</h2><p class="meta">Every paid team will be randomly and evenly placed into a group. Once the draw is complete, the final fixture is published and all registered teams are notified.</p><div class="draw-policy"><strong>${esc(tournament.name)}</strong><span>Draw schedule: ${tournament.drawScheduledAt ? `${dateLabel(tournament.drawScheduledAt)} at ${new Date(tournament.drawScheduledAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}` : "One day before the tournament"}</span><span>This action is final and can run only on the day before play.</span></div><div class="cancellation-actions"><button class="alt keep-booking" type="button">Not now</button><button class="confirm-draw" type="button">Start live lottery</button></div><p class="cancellation-error" hidden></p></section>`;
+    const close = () => modal.remove();
+    modal.querySelector(".close").onclick = close;
+    modal.querySelector(".keep-booking").onclick = close;
+    modal.querySelector(".confirm-draw").onclick = async (event) => {
+        const button = event.currentTarget;
+        button.disabled = true;
+        button.textContent = "Drawing teams…";
+        try {
+            const result = await req(`/tournaments/${tournament._id}/conduct-draw`, { method: "POST" });
+            close();
+            liveDrawModal({ tournamentId: tournament._id, tournamentName: tournament.name, total: result.totalDraws });
+            say(`Live lottery started. ${result.totalDraws} registered teams will be revealed one by one.`);
+        } catch (error) {
+            modal.querySelector(".cancellation-error").textContent = error.message;
+            modal.querySelector(".cancellation-error").hidden = false;
+            button.disabled = false;
+            button.textContent = "Start live lottery";
+        }
+    };
+    document.body.append(modal);
 }
 
 async function manageMatches(tournamentId) {
@@ -482,6 +566,9 @@ window.detail = async (id) => {
         const sport = tournament?.sportType || "Tournament";
         const groupName = (group) => group?.name || "Group stage";
         const draw = groups.map((group) => `<article class="group-card"><h3>${esc(group.name)}</h3><ol>${teams.filter((team) => String(team.group?._id || team.group) === String(group._id)).map((team) => `<li>${esc(team.teamName)}</li>`).join("") || "<li>Teams are being assigned</li>"}</ol></article>`).join("");
+        const officialDrawReplay = tournament?.drawStatus === "Completed" && Array.isArray(tournament?.drawSequence) && tournament.drawSequence.length
+            ? `<section class="official-draw-replay"><header><span>OFFICIAL LOTTERY REPLAY</span><strong>Random draw order</strong><small>Published group placement for every registered team.</small></header><ol>${tournament.drawSequence.map((entry, index) => { const team = teams.find((item) => String(item._id) === String(entry.team?._id || entry.team)); const group = groups.find((item) => String(item._id) === String(entry.group?._id || entry.group)); return `<li><b>${index + 1}</b><span>${esc(team?.teamName || "Team")}</span><em>${esc(group?.name || "Group")}</em></li>`; }).join("")}</ol></section>`
+            : "";
         const groupSchedules = groups.map((group) => {
             const groupTeams = teams.filter((team) => String(team.group?._id || team.group) === String(group._id));
             const slots = Array.from({ length: Number(tournament?.teamsPerGroup || 0) }, (_, index) => groupTeams[index]?.teamName || `Open team slot ${index + 1}`);
@@ -529,6 +616,13 @@ window.detail = async (id) => {
         const modal = document.createElement("div"); modal.className = "modal show";
         modal.innerHTML = `<div class="modal-box tournament-centre"><header class="centre-head"><button class="close" type="button">Close</button><span class="eyebrow">${esc(sport.toUpperCase())} COMPETITION</span><h2>${esc(tournament?.name || "Tournament centre")}</h2><p>${dateLabel(tournament?.startDate)} – ${dateLabel(tournament?.endDate)} · ${esc(tournament?.playground?.name || tournament?.playgrounds?.[0]?.name || "Venue TBA")}<br><strong>${esc(sportProfile(sport).format)}</strong></p>${matches.length ? '<button class="fixture-pdf" type="button">Save fixture as PDF</button>' : ""}</header><div class="centre-body"><div class="centre-tabs"><button class="active" data-centre-tab="draw">Group draw</button><button data-centre-tab="preview">Demo fixture</button><button data-centre-tab="table">Points table</button><button data-centre-tab="fixtures">Official fixtures</button></div><section class="centre-panel" data-centre-panel="draw"><div class="group-draw">${draw || '<div class="fixture-empty">Groups will be available after registration closes.</div>'}</div></section><section class="centre-panel" data-centre-panel="preview" hidden>${preview}</section><section class="centre-panel" data-centre-panel="table" hidden>${table}</section><section class="centre-panel" data-centre-panel="fixtures" hidden><div class="fixtures-list">${fixtures}</div></section></div></div>`;
         document.body.append(modal);
+        modal.querySelector(".group-draw")?.insertAdjacentHTML("afterbegin", officialDrawReplay);
+        const lotteryStatus = document.createElement("div");
+        lotteryStatus.className = `lottery-status ${tournament?.drawStatus === "Completed" ? "is-complete" : ""}`;
+        lotteryStatus.textContent = tournament?.drawStatus === "Completed"
+            ? "Official lottery complete — final groups and fixtures are published."
+            : `Official group lottery: ${tournament?.drawScheduledAt ? `${dateLabel(tournament.drawScheduledAt)} at ${new Date(tournament.drawScheduledAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}` : "scheduled one day before play"}. Teams remain unassigned until the live draw.`;
+        modal.querySelector(".centre-head")?.append(lotteryStatus);
         modal.querySelector('[data-centre-panel="fixtures"] .fixtures-list').innerHTML = cancellationFixtureRows;
         const rule = document.createElement("span");
         rule.className = "match-rule";

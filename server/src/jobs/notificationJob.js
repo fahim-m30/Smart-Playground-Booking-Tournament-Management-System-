@@ -16,7 +16,7 @@ const Payment = require("../modules/payment/payment.model");
 const Playground = require("../modules/playground/playground.model");
 const { createNotification } = require("../modules/notification/notification.service");
 const { sendBookingReminder, sendSMS, sendTournamentNotification } = require("../utils/notificationService");
-const { generateGroupMatches } = require("../modules/tournament/tournament.service");
+const { generateGroupMatches, resumeLiveTournamentDraws } = require("../modules/tournament/tournament.service");
 const { bookingStartsAt, calendarDate, dayRange } = require("../utils/scheduleTime");
 const { emitDashboardUpdate } = require("../config/socket");
 
@@ -120,6 +120,41 @@ const processTournamentStartNotifications = async () => {
         // The event is now in progress.  This avoids a stale "Upcoming"
         // label when the scheduler is the only code touching the record.
         if (tournament.status === "Upcoming") tournament.status = "Group Stage";
+        await tournament.save();
+    }
+};
+
+// ===================================================
+// Official Lottery Reminder (2 hours before live draw)
+// ===================================================
+
+const processTournamentDrawReminders = async () => {
+    const now = new Date();
+    const reminderWindow = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+    const tournaments = await Tournament.find({
+        status: "Upcoming",
+        drawStatus: "Scheduled",
+        drawNotificationSent: false,
+        drawScheduledAt: { $gt: now, $lte: reminderWindow },
+        isDeleted: false,
+    });
+
+    for (const tournament of tournaments) {
+        const teams = await TournamentTeam.find({
+            tournament: tournament._id,
+            paymentStatus: "Paid",
+            registeredBy: { $ne: null },
+            isDeleted: false,
+        }).select("registeredBy teamName");
+        const drawTime = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Dhaka", hour: "2-digit", minute: "2-digit", hour12: true }).format(tournament.drawScheduledAt);
+        await Promise.all(teams.map((team) => createNotification({
+            recipient: team.registeredBy,
+            type: "TournamentDrawReminder",
+            title: "Official group lottery starts in 2 hours",
+            message: `${tournament.name} group draw goes live at ${drawTime}. Your team will be randomly placed; the final fixture follows immediately after the draw.`,
+            link: `tournament.html?fixture=${tournament._id}`,
+        })));
+        tournament.drawNotificationSent = true;
         await tournament.save();
     }
 };
@@ -338,12 +373,13 @@ const runNotificationJobs = async () => {
     if (notificationJobsRunning) return;
     notificationJobsRunning = true;
     try {
+        await resumeLiveTournamentDraws();
         await processBookingReminders();
         await processTournamentReminders();
+        await processTournamentDrawReminders();
         await processUnderfilledTournaments();
         await processCancelledTournamentDeletion();
         await processTournamentStartNotifications();
-        await processFixturePublication();
         await processMatchReminders();
         await processExpiredSchedule();
     } catch (error) {

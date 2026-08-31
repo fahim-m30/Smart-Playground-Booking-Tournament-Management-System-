@@ -15,9 +15,10 @@ const Playground = require("../playground/playground.model");
 const User = require("../user/user.model");
 const Payment = require("../payment/payment.model");
 const Slot = require("../slot/slot.model");
+const { randomInt } = require("crypto");
 const { createNotification } = require("../notification/notification.service");
-const { emitDashboardUpdate } = require("../../config/socket");
-const { calendarDate, dayRange, tournamentRegistrationClosesAt } = require("../../utils/scheduleTime");
+const { emitDashboardUpdate, emitToUser } = require("../../config/socket");
+const { calendarDate, dateOnlyParts, dayRange, tournamentRegistrationClosesAt, zonedDateTime } = require("../../utils/scheduleTime");
 
 const tournamentNameKey = (value) => String(value || "").trim().replace(/\s+/g, " ").toLocaleLowerCase();
 const dateRangeFor = (value) => {
@@ -27,6 +28,17 @@ const dateRangeFor = (value) => {
         end: new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + 1)),
     };
 };
+
+const officialDrawTime = (startDate) => {
+    const start = dateOnlyParts(startDate);
+    const drawDay = new Date(Date.UTC(start.year, start.month - 1, start.day - 1));
+    return zonedDateTime({ year: drawDay.getUTCFullYear(), month: drawDay.getUTCMonth() + 1, day: drawDay.getUTCDate() }, "18:00");
+};
+
+// The server owns the timing, so every registered team sees one official,
+// synchronised result rather than a browser-only shuffle.
+const DRAW_REVEAL_INTERVAL_MS = 2400;
+const activeDrawTimers = new Map();
 
 // ===================================================
 // Create Tournament
@@ -126,6 +138,7 @@ const createTournament = async (payload, createdBy) => {
             status: requiresApproval ? "Pending Approval" : "Upcoming",
             venueApprovalStatus: requiresApproval ? "Pending" : "Not Required",
             venueApprovalRequestedAt: requiresApproval ? new Date() : null,
+            drawScheduledAt: officialDrawTime(payload.startDate),
         });
     } catch (error) {
         if (error?.code === 11000) {
@@ -147,23 +160,6 @@ const createTournamentGroups = async (tournament) => {
         name: `Group ${groupNames[index]}`,
         playground: tournament.playground,
     })));
-};
-
-// Customers never choose their own group.  The next team is placed in the
-// least-filled group (A, B, C... is the tie-breaker) so every group remains
-// balanced throughout registration.
-const assignAutomaticGroup = async (tournamentId, teamsPerGroup) => {
-    const groups = await TournamentGroup.find({ tournament: tournamentId }).sort({ name: 1 });
-    if (!groups.length) throw new Error("Tournament groups are not available yet.");
-
-    const groupCounts = await Promise.all(groups.map(async (group) => ({
-        group,
-        count: await TournamentTeam.countDocuments({ tournament: tournamentId, group: group._id, isDeleted: false }),
-    })));
-    const available = groupCounts.filter(({ count }) => count < teamsPerGroup);
-    if (!available.length) throw new Error("All tournament groups are full.");
-    available.sort((first, second) => first.count - second.count || first.group.name.localeCompare(second.group.name));
-    return available[0].group;
 };
 
 const normalizedPhone = (value) => String(value || "").replace(/\D/g, "");
@@ -335,7 +331,14 @@ const getAllTournaments = async (actor = {}) => {
         .populate("playgrounds", "name address sportType")
         .sort({ createdAt: -1 });
 
-    return withoutLegacyDuplicates(tournaments);
+    return withoutLegacyDuplicates(tournaments).map((tournament) => {
+        if (tournament.drawStatus === "Completed") return tournament;
+        const safeTournament = tournament.toObject();
+        // Keep the unannounced sequence server-side. Only socket reveal events
+        // disclose a placement while the live ceremony is in progress.
+        safeTournament.drawSequence = [];
+        return safeTournament;
+    });
 };
 
 // Customer registrations are kept separate from the public tournament list so
@@ -400,6 +403,11 @@ const getSingleTournament = async (id) => {
         throw new Error("Tournament not found.");
     }
 
+    if (tournament.drawStatus !== "Completed") {
+        const safeTournament = tournament.toObject();
+        safeTournament.drawSequence = [];
+        return safeTournament;
+    }
     return tournament;
 };
 
@@ -442,25 +450,6 @@ const addTeam = async (tournamentId, payload, actor) => {
         throw new Error("Team registration closes two calendar days before the tournament starts.");
     }
 
-    const group = await TournamentGroup.findOne({
-        _id: payload.group,
-        tournament: tournamentId,
-    });
-
-    if (!group) {
-        throw new Error("Invalid group for this tournament.");
-    }
-
-    const existingTeams = await TournamentTeam.countDocuments({
-        tournament: tournamentId,
-        group: payload.group,
-        isDeleted: false,
-    });
-
-    if (existingTeams >= tournament.teamsPerGroup) {
-        throw new Error(`Group ${group.name} is already full.`);
-    }
-
     const totalRegistered = await TournamentTeam.countDocuments({
         tournament: tournamentId,
         isDeleted: false,
@@ -479,7 +468,8 @@ const addTeam = async (tournamentId, payload, actor) => {
 
     const team = await TournamentTeam.create({
         tournament: tournamentId,
-        group: payload.group,
+        // Teams have no group until the official lottery draw.
+        group: null,
         teamName: payload.teamName,
         captain,
         contactNumber: captain.phone,
@@ -535,21 +525,10 @@ const registerTeam = async (tournamentId, payload, customerId) => {
 
     const { captain, players } = await validateRoster(tournament, tournamentId, payload);
 
-    const group = await assignAutomaticGroup(tournamentId, tournament.teamsPerGroup);
-
-    const registeredCount = totalRegistered + 1;
-    if (registeredCount === tournament.totalTeams) {
-        const totalFixtures = tournament.groupCount * ((tournament.teamsPerGroup * (tournament.teamsPerGroup - 1)) / 2);
-        const requiredDays = Math.ceil(totalFixtures / 3);
-        const availableDays = Math.floor((new Date(tournament.endDate).setHours(0, 0, 0, 0) - new Date(tournament.startDate).setHours(0, 0, 0, 0)) / 86400000) + 1;
-        if (requiredDays > availableDays) {
-            throw new Error(`This tournament needs at least ${requiredDays} day(s) to publish all ${totalFixtures} group-stage fixtures. Extend the end date before the final registration.`);
-        }
-    }
-
     const team = await TournamentTeam.create({
         tournament: tournamentId,
-        group: group._id,
+        // Group placement is intentionally withheld until the live lottery.
+        group: null,
         teamName: payload.teamName,
         captain,
         contactNumber: captain.phone,
@@ -606,21 +585,31 @@ const buildRoundRobinMatchdays = (teams) => {
     return matchdays;
 };
 
-// Only paid registrations are eligible for the official draw.  If a
-// four-group tournament receives fewer than eight paid teams, reduce it to
-// two balanced groups so the normal semi-final/final route remains valid.
+// Only paid registrations are eligible for the official draw. Keep at least
+// two teams in every active group, so an underfilled competition can still
+// run professionally from the four-team minimum.
+const shuffleTeams = (teams) => {
+    const shuffled = [...teams];
+    for (let index = shuffled.length - 1; index > 0; index -= 1) {
+        const randomIndex = randomInt(index + 1);
+        [shuffled[index], shuffled[randomIndex]] = [shuffled[randomIndex], shuffled[index]];
+    }
+    return shuffled;
+};
+
 const prepareFixtureGroups = async (tournament, teams) => {
-    const effectiveGroupCount = tournament.groupCount === 4 && teams.length < 8 ? 2 : tournament.groupCount;
+    const effectiveGroupCount = Math.max(2, Math.min(tournament.groupCount, Math.floor(teams.length / 2)));
     const allGroups = await TournamentGroup.find({ tournament: tournament._id }).sort({ name: 1 });
     const groups = allGroups.slice(0, effectiveGroupCount);
     if (groups.length !== effectiveGroupCount) throw new Error("Tournament groups are not available yet.");
 
-    await Promise.all(teams.map(async (team, index) => {
-        const group = groups[index % groups.length];
-        team.group = group._id;
-        await TournamentTeam.updateOne({ _id: team._id }, { $set: { group: group._id } });
+    // Round-robin distribution after a Fisher-Yates shuffle keeps groups
+    // balanced while making every team placement genuinely random.
+    const drawnTeams = shuffleTeams(teams);
+    const drawSequence = drawnTeams.map((team, index) => ({
+        team: team._id,
+        group: groups[index % groups.length]._id,
     }));
-
     if (allGroups.length > effectiveGroupCount) {
         await TournamentGroup.deleteMany({ _id: { $in: allGroups.slice(effectiveGroupCount).map((group) => group._id) } });
     }
@@ -629,7 +618,118 @@ const prepareFixtureGroups = async (tournament, teams) => {
         tournament.teamsPerGroup = Math.ceil(teams.length / effectiveGroupCount);
         await tournament.save();
     }
-    return groups;
+    return { groups, drawSequence };
+};
+
+const drawAudience = (teams, adminId) => [...new Set([
+    ...teams.map((team) => String(team.registeredBy || "")).filter(Boolean),
+    String(adminId || ""),
+].filter(Boolean))];
+
+const publishDrawEvent = (audience, event, payload) => {
+    audience.forEach((userId) => emitToUser(userId, event, payload));
+};
+
+const finaliseTournamentDraw = async (tournamentId, audience) => {
+    const tournament = await Tournament.findById(tournamentId);
+    if (!tournament || tournament.drawStatus !== "Live") return;
+
+    const assignments = tournament.drawSequence || [];
+    await Promise.all(assignments.map((entry) => TournamentTeam.updateOne(
+        { _id: entry.team, tournament: tournament._id },
+        { $set: { group: entry.group } },
+    )));
+    const matches = await generateGroupMatches(tournament._id.toString());
+
+    tournament.status = "Group Stage";
+    tournament.drawStatus = "Completed";
+    tournament.drawRevealIndex = assignments.length;
+    tournament.drawCompletedAt = new Date();
+    tournament.fixturesPublishedAt = new Date();
+    await tournament.save();
+
+    const registeredTeams = await TournamentTeam.find({
+        tournament: tournament._id,
+        paymentStatus: "Paid",
+        registeredBy: { $ne: null },
+        isDeleted: false,
+    }).populate("group", "name").select("registeredBy teamName group");
+    await Promise.all(registeredTeams.map((team) => createNotification({
+        title: "Official lottery completed — fixture ready",
+        message: `${team.teamName} was drawn into ${team.group?.name || "the official group"} for ${tournament.name}. Your final match fixture is now available.`,
+        link: `tournament.html?fixture=${tournament._id}`,
+    })));
+
+    publishDrawEvent(audience, "tournament:draw:completed", {
+        tournamentId: String(tournament._id),
+        tournamentName: tournament.name,
+        fixtureCount: matches.length,
+        completedAt: tournament.drawCompletedAt,
+    });
+    emitDashboardUpdate({ type: "tournament-draw-completed", tournamentId: tournament._id });
+};
+
+const scheduleTournamentDraw = ({ tournament, teams, groups, adminId }) => {
+    const tournamentId = String(tournament._id);
+    if (activeDrawTimers.has(tournamentId)) return;
+    const audience = drawAudience(teams, adminId);
+    const groupById = new Map(groups.map((group) => [String(group._id), group]));
+    const teamById = new Map(teams.map((team) => [String(team._id), team]));
+    const timers = [];
+    const revealedCount = Number(tournament.drawRevealIndex || 0);
+
+    tournament.drawSequence.forEach((entry, index) => {
+        if (index < revealedCount) return;
+        const timer = setTimeout(async () => {
+            try {
+                const liveTournament = await Tournament.findOne({ _id: tournamentId, drawStatus: "Live" });
+                if (!liveTournament) return;
+                liveTournament.drawRevealIndex = index + 1;
+                await liveTournament.save();
+                const team = teamById.get(String(entry.team));
+                const group = groupById.get(String(entry.group));
+                publishDrawEvent(audience, "tournament:draw:reveal", {
+                    tournamentId,
+                    tournamentName: tournament.name,
+                    index: index + 1,
+                    total: tournament.drawSequence.length,
+                    team: { id: String(entry.team), name: team?.teamName || "Registered team" },
+                    group: { id: String(entry.group), name: group?.name || "Official group" },
+                });
+                if (index === tournament.drawSequence.length - 1) {
+                    await finaliseTournamentDraw(tournamentId, audience);
+                    activeDrawTimers.delete(tournamentId);
+                }
+            } catch (error) {
+                console.error("Unable to publish tournament draw reveal:", error.message);
+            }
+        }, (index - revealedCount + 1) * DRAW_REVEAL_INTERVAL_MS);
+        timers.push(timer);
+    });
+    activeDrawTimers.set(tournamentId, timers);
+};
+
+// A process restart must not leave an official ceremony stuck in Live. The
+// scheduler resumes from the last persisted reveal; already announced teams
+// are never sent again.
+const resumeLiveTournamentDraws = async () => {
+    const liveTournaments = await Tournament.find({ drawStatus: "Live", isDeleted: false });
+    await Promise.all(liveTournaments.map(async (tournament) => {
+        const tournamentId = String(tournament._id);
+        if (activeDrawTimers.has(tournamentId)) return;
+        const teams = await TournamentTeam.find({
+            tournament: tournament._id,
+            paymentStatus: "Paid",
+            isDeleted: false,
+        }).sort({ createdAt: 1 });
+        const groups = await TournamentGroup.find({ tournament: tournament._id }).sort({ name: 1 });
+        if (!tournament.drawSequence?.length || !teams.length || !groups.length) return;
+        if (Number(tournament.drawRevealIndex || 0) >= tournament.drawSequence.length) {
+            await finaliseTournamentDraw(tournamentId, drawAudience(teams, tournament.createdBy));
+            return;
+        }
+        scheduleTournamentDraw({ tournament, teams, groups, adminId: tournament.createdBy });
+    }));
 };
 
 const generateGroupMatches = async (tournamentId) => {
@@ -641,6 +741,10 @@ const generateGroupMatches = async (tournamentId) => {
 
     if (tournament.status !== "Upcoming") {
         throw new Error("Matches can only be generated for upcoming tournaments.");
+    }
+
+    if (!["Live", "Completed"].includes(tournament.drawStatus)) {
+        throw new Error("The venue administrator must conduct the official group lottery before final fixtures can be generated.");
     }
 
     // The complete draw is intentionally embargoed until the calendar day
@@ -668,7 +772,10 @@ const generateGroupMatches = async (tournamentId) => {
         throw new Error("At least four paid teams are required to publish tournament fixtures.");
     }
 
-    const groups = await prepareFixtureGroups(tournament, allTeams);
+    const groups = await TournamentGroup.find({ tournament: tournament._id }).sort({ name: 1 });
+    if (!groups.length || allTeams.some((team) => !team.group)) {
+        throw new Error("Official group lottery results are not available yet.");
+    }
 
     const matches = [];
     // Three professional match windows per day: 09:00–12:00, 13:00–16:00,
@@ -728,6 +835,67 @@ const generateGroupMatches = async (tournamentId) => {
     await Tournament.findByIdAndUpdate(tournamentId, { status: "Group Stage" });
 
     return matches;
+};
+
+// ===================================================
+// Conduct Official Group Lottery (Venue Admin)
+// ===================================================
+
+const conductTournamentDraw = async (tournamentId, adminId) => {
+    const tournament = await Tournament.findOne({ _id: tournamentId, isDeleted: false });
+    if (!tournament) throw new Error("Tournament not found.");
+
+    const venue = await Playground.findOne({ _id: tournament.playground, playgroundAdmin: adminId, isDeleted: false });
+    if (!venue) throw new Error("Only the tournament venue administrator can conduct this draw.");
+    if (tournament.status !== "Upcoming") throw new Error("The official draw is available only before the tournament begins.");
+    if (tournament.drawStatus === "Completed") throw new Error("This tournament's official lottery has already been completed.");
+    if (tournament.drawStatus === "Live") throw new Error("The official lottery is already live. Wait for the final placement reveal.");
+
+    const fixtureReleaseDay = dayRange(calendarDate(new Date(), 1));
+    if (new Date(tournament.startDate).getTime() !== fixtureReleaseDay.start.getTime()) {
+        throw new Error("The official lottery can be conducted only on the calendar day before the tournament starts.");
+    }
+    if (tournament.drawScheduledAt && new Date() < new Date(tournament.drawScheduledAt)) {
+        throw new Error(`The live lottery is scheduled for ${new Date(tournament.drawScheduledAt).toLocaleString("en-GB")}. Registered teams receive a reminder two hours before it starts.`);
+    }
+    if (await TournamentMatch.exists({ tournament: tournament._id })) throw new Error("The final fixture has already been published for this tournament.");
+
+    const teams = await TournamentTeam.find({
+        tournament: tournament._id,
+        paymentStatus: "Paid",
+        isDeleted: false,
+    }).sort({ createdAt: 1 });
+    if (teams.length < 4) throw new Error("At least four paid teams are required to conduct the official draw.");
+
+    const { groups, drawSequence } = await prepareFixtureGroups(tournament, teams);
+    tournament.drawSequence = drawSequence;
+    tournament.drawStatus = "Live";
+    tournament.drawStartedAt = new Date();
+    tournament.drawRevealIndex = 0;
+    await tournament.save();
+
+    const audience = drawAudience(teams, adminId);
+    publishDrawEvent(audience, "tournament:draw:started", {
+        tournamentId: String(tournament._id),
+        tournamentName: tournament.name,
+        total: drawSequence.length,
+        startedAt: tournament.drawStartedAt,
+        revealIntervalMs: DRAW_REVEAL_INTERVAL_MS,
+    });
+    scheduleTournamentDraw({ tournament, teams, groups, adminId });
+    emitDashboardUpdate({ type: "tournament-draw-started", tournamentId: tournament._id });
+    return { tournament, groups, totalDraws: drawSequence.length, revealIntervalMs: DRAW_REVEAL_INTERVAL_MS };
+
+    /*
+        recipient: team.registeredBy,
+        type: "TournamentDrawCompleted",
+        title: "Official lottery completed — fixture ready",
+        message: `${team.teamName} was drawn into ${team.group?.name || "the official group"} for ${tournament.name}. Your final match fixture is now available.`,
+        link: `tournament.html?fixture=${tournament._id}`,
+    })));
+    emitDashboardUpdate({ type: "tournament-draw-completed", tournamentId: tournament._id });
+    return { tournament, groups, matches };
+    */
 };
 
 // ===================================================
@@ -1375,6 +1543,8 @@ module.exports = {
     registerTeam,
     getTournamentTeams,
     generateGroupMatches,
+    conductTournamentDraw,
+    resumeLiveTournamentDraws,
     getTournamentMatches,
     updateMatchResult,
     scheduleMatch,

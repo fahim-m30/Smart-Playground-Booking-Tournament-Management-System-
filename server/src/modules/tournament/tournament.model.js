@@ -162,6 +162,27 @@ const tournamentSchema = new mongoose.Schema(
             default: null,
         },
 
+        // The official group draw is held by the venue administrator on the
+        // day before play. Registrations stay unassigned until this draw.
+        drawScheduledAt: { type: Date, default: null },
+        drawNotificationSent: { type: Boolean, default: false },
+        drawStatus: {
+            type: String,
+            enum: ["Scheduled", "Live", "Completed"],
+            default: "Scheduled",
+        },
+        drawStartedAt: { type: Date, default: null },
+        // Progress is persisted so a participant joining an in-progress draw
+        // can be shown only placements that have already been revealed.
+        drawRevealIndex: { type: Number, default: 0, min: 0 },
+        drawCompletedAt: { type: Date, default: null },
+        // Immutable published order of the lottery, used for the participant
+        // draw replay without exposing assignments before the draw completes.
+        drawSequence: [{
+            team: { type: mongoose.Schema.Types.ObjectId, ref: "TournamentTeam", required: true },
+            group: { type: mongoose.Schema.Types.ObjectId, ref: "TournamentGroup", required: true },
+        }],
+
         cancellationProcessed: {
             type: Boolean,
             default: false,

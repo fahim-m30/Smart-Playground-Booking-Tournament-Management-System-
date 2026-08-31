@@ -81,6 +81,14 @@ router.patch(
     tournamentController.scheduleMatch
 );
 
+// The venue administrator runs the public group lottery one day before play.
+router.post(
+    "/:id/conduct-draw",
+    verifyToken,
+    authorize("playground-admin"),
+    tournamentController.conductTournamentDraw
+);
+
 // ======================================================
 // Public / Authenticated Routes
 // ======================================================
