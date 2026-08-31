@@ -10,6 +10,11 @@ const idOf = (value) => String(value?._id || value?.id || value || "");
 const initial = (value) => String(value || "T").trim().charAt(0).toUpperCase();
 const displayRole = (value) => String(value || "contact").replace("-", " ");
 const time = (value) => value ? new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit" }).format(new Date(value)) : "";
+const visibleContactRoles = {
+    customer: ["playground-admin", "super-admin"],
+    "playground-admin": ["customer", "super-admin"],
+    "super-admin": ["customer", "playground-admin"],
+};
 const request = async (path, options = {}) => {
     const response = await fetch(API + path, { ...options, headers: { Authorization: "Bearer " + token, ...(options.headers || {}) } });
     const body = await response.json().catch(() => ({}));
@@ -26,17 +31,21 @@ let searchTerm = "";
 let searchTimer;
 let activeRequest;
 let refreshTimer;
+let activeMessages = [];
 
 const contactOf = (item) => item?.contact || item;
 const contactIdOf = (item) => idOf(contactOf(item)?.id);
 const recordFor = (contact, extra = {}) => ({ ...extra, contact: { ...contact, id: idOf(contact?.id) } });
+const chatKeyFor = (first, second) => [idOf(first), idOf(second)].sort().join(":");
+const canDisplayContact = (contact) => visibleContactRoles[user?.role]?.includes(contact?.role);
 
 function availableRecords() {
-    const conversationContactIds = new Set(conversations.map(contactIdOf));
+    const permittedConversations = conversations.filter((item) => canDisplayContact(contactOf(item)));
+    const conversationContactIds = new Set(permittedConversations.map(contactIdOf));
     const newContacts = contacts
-        .filter((contact) => !conversationContactIds.has(idOf(contact.id)))
+        .filter((contact) => canDisplayContact(contact) && !conversationContactIds.has(idOf(contact.id)))
         .map((contact) => recordFor(contact, { isNew: true }));
-    return [...conversations, ...newContacts];
+    return [...permittedConversations, ...newContacts];
 }
 
 function matchesSearch(item) {
@@ -84,7 +93,8 @@ function renderConversations() {
     });
 }
 
-function renderThread(messages = []) {
+function renderThread(messages = activeMessages) {
+    activeMessages = messages;
     const contact = activeContact;
     const title = contact?.name || "Select a conversation";
     const subtitle = contact
@@ -95,6 +105,7 @@ function renderThread(messages = []) {
     $("#message-form").hidden = !contact;
 
     if (!contact) {
+        activeMessages = [];
         $("#message-list").innerHTML = '<div class="thread-empty"><span>💬</span><h2>Find someone to message</h2><p>Use the search field or choose a conversation from the list.</p></div>';
         return;
     }
@@ -115,6 +126,7 @@ async function selectById(contactId) {
     if (!item) return;
     const selectedId = contactIdOf(item);
     activeContact = { ...contactOf(item), id: selectedId };
+    activeMessages = [];
     renderConversations();
     renderThread();
     // Abort only an older message request. This prevents a slow previous
@@ -174,7 +186,19 @@ function connectRealtime() {
         reconnectionAttempts: 8,
         timeout: 10000,
     });
-    socket.on("chat:message", refreshFromRealtime);
+    socket.on("chat:message", (payload) => {
+        const message = payload?.message;
+        const activeKey = activeContact ? chatKeyFor(user._id || user.id, activeContact.id) : "";
+        if (message && payload.conversationKey === activeKey) {
+            if (!activeMessages.some((item) => idOf(item._id) === idOf(message._id))) {
+                activeMessages = [...activeMessages, message];
+                renderThread(activeMessages);
+            }
+            refreshFromRealtime({ refreshThread: false });
+            return;
+        }
+        refreshFromRealtime({ refreshThread: false });
+    });
     socket.on("notification:new", refreshFromRealtime);
     socket.on("connect_error", () => {
         // Socket.IO will reconnect automatically; chat remains usable through REST.

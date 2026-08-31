@@ -16,6 +16,14 @@ const cleanMessage = (message) => {
 
 const idOf = (value) => String(value?._id || value);
 const conversationKey = (first, second) => [idOf(first), idOf(second)].sort().join(":");
+const realtimeChatMessage = (chat) => ({
+    _id: String(chat._id),
+    sender: chat.sender ? String(chat.sender) : null,
+    recipient: chat.recipient ? String(chat.recipient) : null,
+    message: chat.message,
+    senderRole: chat.senderRole,
+    createdAt: chat.createdAt,
+});
 
 // These rules keep communication useful for every account type without
 // exposing a customer-to-customer direct-message channel.
@@ -27,7 +35,7 @@ const messageableRoles = {
 const canMessageRole = (senderRole, recipientRole) =>
     Boolean(messageableRoles[senderRole]?.includes(recipientRole));
 
-const conciergeFlow = canMessageRole;
+const conciergeFlow = (senderRole, recipientRole) => senderRole === "customer" && canMessageRole(senderRole, recipientRole);
 
 // Use Bangladesh calendar days rather than a rolling 24-hour window.
 const bangladeshDayBounds = (now = new Date()) => {
@@ -56,6 +64,51 @@ const createConciergeReply = async ({ senderId, senderRole, recipient, key, play
         playground: playground?._id || null,
         customer: senderRole === "customer" ? senderId : (recipient.role === "customer" ? recipient._id : null),
         admin: senderRole === "playground-admin" ? senderId : (recipient.role === "playground-admin" ? recipient._id : null),
+        recipient: senderId,
+        participants: [senderId, recipient._id],
+        conversationKey: key,
+        message,
+        senderRole: "system",
+        isRead: false,
+    });
+};
+
+const conciergeResponseFor = (rawMessage, serviceName) => {
+    const message = String(rawMessage || "").toLowerCase();
+    const has = (...terms) => terms.some((term) => message.includes(term));
+    const cancellation = has("cancel", "cencel", "cancellation", "refund", "বাতিল", " ফেরত");
+    const tournament = has("tournament", "team registration", "tournament registration", "lottery", "draw", "fixture", "group stage");
+    const slot = has("slot", "booking", "book", "reservation", "field", "মাঠ");
+
+    if (cancellation && tournament) return "Tournament registration may be cancelled until 2 days before the tournament starts. Eligible paid registrations receive an automatic refund to the original payment method, followed by a confirmation notification.";
+    if (cancellation && slot) return "A slot booking may be cancelled at least 2 hours before its start time. If eligible, the refund is processed automatically and a confirmation notification is issued.";
+    if (has("lottery", "draw", "shuffle", "group stage")) return "Registered teams remain unassigned until the official live lottery. The playground administrator conducts the draw one day before play; each placement is revealed live, then the final fixture is published.";
+    if (has("rain", "weather", "bristi", "বৃষ্টি", "unsafe", "power", "match cancel", "match cencel")) return "If a match cannot be played, the playground administrator records the official reason and announces the replay date and time. The next stage remains locked until the required match is completed.";
+    if (has("fixture", "schedule", "semi", "final", "quarter", "knockout")) return "The final fixture is available after the official group draw. Knockout rounds follow the competition order: group stage, quarter-final where applicable, semi-final, then final; a later round cannot begin early.";
+    if (has("payment", "pay", "bkash", "nagad", "rocket", "card", "charge")) return "For payment support, please share the booking or tournament name and payment method only. Never send card numbers, PINs, OTPs, or account credentials in chat.";
+    if (has("available", "availability", "price", "cost", "fee", "rate", "time")) return `To check availability at ${serviceName}, please provide the sport, preferred date, start time, and duration. We will then confirm the suitable slot and price.`;
+    if (has("hello", "hi", "assalam", "help", "support", "salam")) return "Welcome to TURF Support. I can help with slot availability, bookings, payments, cancellations, tournament registration, group draws, and fixtures. Please describe the issue briefly.";
+    return null;
+};
+
+const createProfessionalConciergeReply = async ({ senderId, senderRole, recipient, key, playground, customerMessage }) => {
+    if (!conciergeFlow(senderRole, recipient.role)) return null;
+    const serviceName = recipient.role === "super-admin" ? "TURF Support" : (playground?.name || "this playground");
+    const message = conciergeResponseFor(customerMessage, serviceName);
+    if (!message) return null;
+
+    const recentReply = await Chat.exists({
+        conversationKey: key,
+        senderRole: "system",
+        isDeleted: false,
+        createdAt: { $gte: new Date(Date.now() - 45 * 1000) },
+    });
+    if (recentReply) return null;
+
+    return Chat.create({
+        playground: playground?._id || null,
+        customer: senderId,
+        admin: recipient.role === "playground-admin" ? recipient._id : null,
         recipient: senderId,
         participants: [senderId, recipient._id],
         conversationKey: key,
@@ -153,12 +206,13 @@ const sendMessage = async (payload, senderId, senderRole) => {
         senderRole,
     });
 
-    const botReply = await createConciergeReply({
+    const botReply = await createProfessionalConciergeReply({
         senderId,
         senderRole,
         recipient,
         key: chat.conversationKey,
         playground,
+        customerMessage: message,
     });
 
     await createNotification({
@@ -168,9 +222,20 @@ const sendMessage = async (payload, senderId, senderRole) => {
         message,
         link: "chat.html",
     });
-    emitToUser(recipient._id.toString(), "chat:message", { conversationKey: chat.conversationKey, senderId: senderId.toString() });
+    const chatEvent = { conversationKey: chat.conversationKey, message: realtimeChatMessage(chat) };
+    emitToUser(recipient._id.toString(), "chat:message", chatEvent);
     // A sender can have the same account open in another tab; update it too.
-    emitToUser(senderId.toString(), "chat:message", { conversationKey: chat.conversationKey, senderId: senderId.toString() });
+    emitToUser(senderId.toString(), "chat:message", chatEvent);
+    if (botReply) {
+        const botEvent = {
+            conversationKey: chat.conversationKey,
+            message: realtimeChatMessage(botReply),
+        };
+        // Both people in this private support conversation see the assistant's
+        // policy guidance instantly, so an admin can continue the same case.
+        emitToUser(senderId.toString(), "chat:message", botEvent);
+        emitToUser(recipient._id.toString(), "chat:message", botEvent);
+    }
     return { chat, botReply };
 };
 
@@ -206,4 +271,4 @@ const getMessages = async (userId, userRole, contactId) => {
     return { contact, messages };
 };
 
-module.exports = { sendMessage, getContacts, getConversations, getMessages };
+module.exports = { sendMessage, getContacts, getConversations, getMessages, conciergeResponseFor };
