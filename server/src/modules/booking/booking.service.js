@@ -255,14 +255,14 @@ const cancelBooking = async (id, customerId) => {
         _id: id,
         customer: customerId,
         isDeleted: false,
-    });
+    }).populate("playground", "name");
 
     if (!booking) {
         throw new Error("Booking not found.");
     }
 
-    if (booking.bookingStatus === "Cancelled") {
-        throw new Error("Booking is already cancelled.");
+    if (["Cancelled", "Completed"].includes(booking.bookingStatus)) {
+        throw new Error(`A ${booking.bookingStatus.toLowerCase()} booking cannot be cancelled.`);
     }
 
     const startAt = bookingStartsAt(booking.bookingDate, booking.startTime);
@@ -273,8 +273,32 @@ const cancelBooking = async (id, customerId) => {
 
     booking.bookingStatus = "Cancelled";
     booking.cancelledAt = new Date();
+    const paidPayment = await Payment.findOne({ booking: booking._id, customer: customerId, paymentStatus: "Paid", isDeleted: false });
+    const refundAmount = paidPayment?.amount || 0;
+    if (paidPayment) {
+        paidPayment.paymentStatus = "Refunded";
+        paidPayment.refundAmount = refundAmount;
+        paidPayment.refundStatus = "Completed";
+        paidPayment.refundReason = "Customer cancelled an eligible slot booking.";
+        booking.paymentStatus = "Refunded";
+        booking.refundAmount = refundAmount;
+    } else {
+        await Payment.updateMany(
+            { booking: booking._id, customer: customerId, paymentStatus: "Pending", isDeleted: false },
+            { $set: { paymentStatus: "Cancelled" } }
+        );
+    }
 
-    await booking.save();
+    await Promise.all([booking.save(), paidPayment?.save()]);
+    const refundMessage = refundAmount ? ` A full refund of BDT ${refundAmount} has been completed to your original payment method.` : " No payment was captured, so no refund was needed.";
+    await createNotification({
+        recipient: customerId,
+        type: "BookingCancelled",
+        title: "Slot booking cancelled",
+        message: `Your ${booking.playground?.name || "playground"} slot on ${new Date(booking.bookingDate).toLocaleDateString("en-GB")} (${booking.startTime}-${booking.endTime}) has been cancelled.${refundMessage}`,
+        link: "my-bookings.html",
+    });
+    emitDashboardUpdate({ type: "customer-booking-cancelled", bookingId: booking._id, refundAmount });
 
     return booking;
 };

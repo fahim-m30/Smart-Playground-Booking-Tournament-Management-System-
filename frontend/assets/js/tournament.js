@@ -6,6 +6,23 @@ const esc = (value) => String(value ?? "").replace(/[&<>'"]/g, (c) => ({ "&": "&
 if (!token) location = "login.html";
 const req = async (path, options = {}) => { const response = await fetch(API + path, { ...options, headers: { Authorization: `Bearer ${token}`, ...(options.headers || {}) } }); const body = await response.json(); if (!response.ok) throw new Error(body.message || "Request failed"); return body.data; };
 const say = (message, bad = false) => { const notice = $("#notice"); notice.textContent = message; notice.className = `notice${bad ? " error" : ""}`; notice.style.display = "block"; };
+const openCancellationConfirmation = ({ title, summary, policy, onConfirm }) => {
+    const modal = document.createElement("div");
+    modal.className = "modal show cancellation-confirmation";
+    modal.innerHTML = `<section class="modal-box cancellation-box" role="dialog" aria-modal="true" aria-labelledby="cancellation-title"><button class="close" type="button" aria-label="Close">Close</button><span class="eyebrow">CANCELLATION REVIEW</span><h2 id="cancellation-title">${esc(title)}</h2><p class="meta">${esc(summary)}</p><section class="cancellation-policy"><strong>Before you cancel</strong><ul>${policy.map((item) => `<li>${esc(item)}</li>`).join("")}</ul></section><p class="cancellation-question">Are you sure you want to cancel? This action cannot be undone.</p><div class="cancellation-actions"><button class="alt keep-booking" type="button">Keep registration</button><button class="confirm-cancellation" type="button">Yes, cancel & refund</button></div><p class="cancellation-error" hidden></p></section>`;
+    const close = () => modal.remove();
+    modal.querySelector(".close").onclick = close;
+    modal.querySelector(".keep-booking").onclick = close;
+    modal.onclick = (event) => { if (event.target === modal) close(); };
+    modal.querySelector(".confirm-cancellation").onclick = async (event) => {
+        const confirmButton = event.currentTarget;
+        confirmButton.disabled = true;
+        confirmButton.textContent = "Cancelling…";
+        try { await onConfirm(); close(); }
+        catch (error) { modal.querySelector(".cancellation-error").textContent = error.message; modal.querySelector(".cancellation-error").hidden = false; confirmButton.disabled = false; confirmButton.textContent = "Yes, cancel & refund"; }
+    };
+    document.body.append(modal);
+};
 const openTournamentPayment = (teamId) => {
     const modal = document.createElement("div");
     modal.className = "modal show payment-method-modal";
@@ -428,11 +445,15 @@ async function loadMyTournamentRegistrations() {
         $("#content").before(section);
         section.querySelectorAll("[data-fixture-tournament]").forEach((button) => button.addEventListener("click", () => detail(button.dataset.fixtureTournament)));
         section.querySelectorAll("[data-complete-team]").forEach((button) => button.addEventListener("click", () => openTournamentPayment(button.dataset.completeTeam)));
-        section.querySelectorAll("[data-team-id]").forEach((button) => button.addEventListener("click", async () => {
-            if (!confirm("Cancel this tournament registration? Cancellation is allowed only at least 2 days before it starts. Any paid refund is handled by the tournament organizer.")) return;
-            button.disabled = true;
-            try { await req(`/tournaments/teams/${button.dataset.teamId}/cancel`, { method: "PATCH" }); say("Tournament registration cancelled."); section.remove(); loadMyTournamentRegistrations(); }
-            catch (error) { say(error.message, true); button.disabled = false; }
+        section.querySelectorAll("[data-team-id]").forEach((button) => button.addEventListener("click", () => {
+            const team = teams.find((item) => String(item._id) === String(button.dataset.teamId));
+            if (!team) return;
+            openCancellationConfirmation({
+                title: "Cancel this tournament registration?",
+                summary: `${team.teamName} - ${team.tournament?.name || "Tournament"}`,
+                policy: ["You can cancel only until 2 days before the tournament starts.", "Eligible paid registrations receive a full automatic refund to the original payment method.", "The organiser income report is adjusted immediately after the refund."],
+                onConfirm: async () => { const cancelled = await req(`/tournaments/teams/${button.dataset.teamId}/cancel`, { method: "PATCH" }); say(cancelled?.refundAmount ? `Registration cancelled. BDT ${cancelled.refundAmount} refund completed.` : "Tournament registration cancelled."); section.remove(); loadMyTournamentRegistrations(); },
+            });
         }));
     } catch (error) { say(error.message, true); }
 }

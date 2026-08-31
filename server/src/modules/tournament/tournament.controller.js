@@ -422,8 +422,8 @@ const getMyRegistrationsController = async (req, res) => {
 
 const cancelRegistrationController = async (req, res) => {
     try {
-        await cancelRegistration(req.params.teamId, req.user.userId);
-        return res.status(200).json({ success: true, message: "Tournament registration cancelled successfully." });
+        const result = await cancelRegistration(req.params.teamId, req.user.userId);
+        return res.status(200).json({ success: true, message: "Tournament registration cancelled and refund completed.", data: result });
     } catch (error) {
         return res.status(400).json({ success: false, message: error.message });
     }

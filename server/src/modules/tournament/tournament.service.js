@@ -352,15 +352,34 @@ const cancelRegistration = async (teamId, customerId) => {
     if (team.tournament.status !== "Upcoming" || new Date() >= cancellationDeadline) {
         throw new Error("Tournament registrations can only be cancelled at least 2 days before the tournament starts.");
     }
+    const paidPayment = await Payment.findOne({ tournamentTeam: team._id, customer: customerId, paymentStatus: "Paid", isDeleted: false });
+    const refundAmount = paidPayment?.amount || 0;
     team.isDeleted = true;
+    if (paidPayment) {
+        paidPayment.paymentStatus = "Refunded";
+        paidPayment.refundAmount = refundAmount;
+        paidPayment.refundStatus = "Completed";
+        paidPayment.refundReason = "Customer cancelled an eligible tournament registration.";
+        team.paymentStatus = "Refunded";
+    }
     await Promise.all([
         team.save(),
+        paidPayment?.save(),
         Payment.updateMany(
             { tournamentTeam: team._id, customer: customerId, paymentStatus: "Pending", isDeleted: false },
             { $set: { paymentStatus: "Cancelled" } }
         ),
     ]);
-    return team;
+    const refundMessage = refundAmount ? ` A full refund of BDT ${refundAmount} has been completed to your original payment method.` : " No payment was captured, so no refund was needed.";
+    await createNotification({
+        recipient: customerId,
+        type: "TournamentRegistrationCancelled",
+        title: "Tournament registration cancelled",
+        message: `Your ${team.teamName} registration for ${team.tournament.name} has been cancelled.${refundMessage}`,
+        link: "tournament.html",
+    });
+    emitDashboardUpdate({ type: "customer-tournament-registration-cancelled", tournamentId: team.tournament._id, teamId: team._id, refundAmount });
+    return { team, refundAmount };
 };
 
 // ===================================================
