@@ -32,6 +32,7 @@ let searchTimer;
 let activeRequest;
 let refreshTimer;
 let activeMessages = [];
+let realtimeSocket;
 
 const contactOf = (item) => item?.contact || item;
 const contactIdOf = (item) => idOf(contactOf(item)?.id);
@@ -179,14 +180,19 @@ function refreshFromRealtime({ refreshThread = true } = {}) {
 
 function connectRealtime() {
     if (typeof io === "undefined" || !token) return;
-    const socket = io(SERVER_URL, {
+    realtimeSocket = io(SERVER_URL, {
         auth: { token },
-        transports: ["websocket", "polling"],
+        // Let Socket.IO negotiate the most reliable transport for the
+        // visitor's network instead of forcing a WebSocket-only start.
+        transports: ["polling", "websocket"],
         reconnection: true,
-        reconnectionAttempts: 8,
+        reconnectionAttempts: Infinity,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 8000,
         timeout: 10000,
     });
-    socket.on("chat:message", (payload) => {
+    realtimeSocket.on("connect", () => refreshFromRealtime({ refreshThread: Boolean(activeContact) }));
+    realtimeSocket.on("chat:message", (payload) => {
         const message = payload?.message;
         const activeKey = activeContact ? chatKeyFor(user._id || user.id, activeContact.id) : "";
         if (message && payload.conversationKey === activeKey) {
@@ -199,8 +205,8 @@ function connectRealtime() {
         }
         refreshFromRealtime({ refreshThread: false });
     });
-    socket.on("notification:new", refreshFromRealtime);
-    socket.on("connect_error", () => {
+    realtimeSocket.on("notification:new", refreshFromRealtime);
+    realtimeSocket.on("connect_error", () => {
         // Socket.IO will reconnect automatically; chat remains usable through REST.
     });
 }
@@ -266,3 +272,15 @@ $("#logout").onclick = () => {
 $("#chat-title").textContent = displayRole(user?.role) + " messages";
 load();
 connectRealtime();
+
+// Socket events update instantly. This lightweight fallback keeps messages
+// current if a phone network, proxy or sleeping server delays reconnection.
+const syncChatInBackground = () => {
+    if (!document.hidden) refreshFromRealtime({ refreshThread: Boolean(activeContact) });
+};
+window.setInterval(syncChatInBackground, 10000);
+window.addEventListener("focus", syncChatInBackground);
+document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) syncChatInBackground();
+});
+window.addEventListener("beforeunload", () => realtimeSocket?.disconnect());
