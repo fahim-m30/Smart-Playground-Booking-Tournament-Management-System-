@@ -1,0 +1,6 @@
+/* Branded income marks */
+.income-icon svg{width:25px;height:25px;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.income-icon.slot-icon{background:linear-gradient(145deg,#eaf9ef,#d8f2e1);color:#087a3a}
+.income-icon.tournament-icon{background:linear-gradient(145deg,#fff6df,#ffedc4);color:#a96f00}
+.income-dashboard .panel-title .income-icon.slot-icon{background:linear-gradient(145deg,#eaf9ef,#d8f2e1);color:#087a3a}
+.income-dashboard .tournament-income-panel .panel-title .income-icon.tournament-icon{background:linear-gradient(145deg,#fff6df,#ffedc4);color:#a96f00}

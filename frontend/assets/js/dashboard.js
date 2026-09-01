@@ -2,6 +2,7 @@ const API_ROOT = "https://smart-playground-booking-tournament.onrender.com/api/v
 const token = localStorage.getItem("authToken");
 let user;
 try { user = JSON.parse(localStorage.getItem("authUser") || "null"); } catch (_) { user = null; }
+document.head.insertAdjacentHTML("beforeend", '<link rel="stylesheet" href="assets/css/dashboard-income-icons.css?v=20260901logos1">');
 
 const $ = (selector) => document.querySelector(selector);
 const escapeHTML = (value = "") => { const node = document.createElement("div"); node.textContent = value; return node.innerHTML; };
@@ -141,8 +142,8 @@ function incomeDashboard(income) {
     const money = (value) => `৳${new Intl.NumberFormat("en-BD").format(value || 0)}`;
     const slotRows = income.slots?.slice(0, 4).map((item) => `<div class="list-row"><div><div class="item-title">${escapeHTML(item.playground)}</div><p class="item-meta">${formatDate(item.date)} · ${escapeHTML(item.startTime)}–${escapeHTML(item.endTime)}</p></div><span class="status">${money(item.amount)}</span></div>`).join("") || '<p class="item-meta">No paid slot bookings yet.</p>';
     const tournamentRows = income.tournaments?.slice(0, 4).map((item) => `<div class="list-row"><div><div class="item-title">${escapeHTML(item.tournament)}</div><p class="item-meta">${escapeHTML(item.team)} · ${escapeHTML(item.playground)}</p></div><span class="status">${money(item.amount)}</span></div>`).join("") || '<p class="item-meta">No paid tournament registrations yet.</p>';
-    const slotIcon = '<span class="income-icon slot-icon" aria-hidden="true">◷</span>';
-    const tournamentIcon = '<span class="income-icon tournament-icon" aria-hidden="true">★</span>';
+    const slotIcon = '<span class="income-icon slot-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M8 3v4M16 3v4M4 10h16M12 13v3l2 1"/></svg></span>';
+    const tournamentIcon = '<span class="income-icon tournament-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M8 4h8v4a4 4 0 0 1-8 0V4Z"/><path d="M8 6H5v1a4 4 0 0 0 4 4M16 6h3v1a4 4 0 0 1-4 4M12 12v4M9 20h6M10 16h4"/></svg></span>';
     return `<section class="income-dashboard"><div class="section-heading"><div><h2>Income overview</h2><p>Paid earnings from your own playgrounds.</p></div><a class="text-link" href="management.html?tab=Income">Full income report →</a></div><div class="income-stat-grid"><article>${slotIcon}<div><span>Slot income</span><strong>${money(income.slotTotal)}</strong></div></article><article>${tournamentIcon}<div><span>Tournament income</span><strong>${money(income.tournamentTotal)}</strong></div></article><article class="income-grand-total"><span>Total income</span><strong>${money(income.total)}</strong></article></div><section class="split-grid"><article class="panel income-panel slot-income-panel"><h2 class="panel-title">${slotIcon}<span>Slot booking income</span><small>Paid reservations</small></h2>${slotRows}</article><article class="panel income-panel tournament-income-panel"><h2 class="panel-title">${tournamentIcon}<span>Tournament income</span><small>Registration fees</small></h2>${tournamentRows}</article></section></section>`;
 }
 
