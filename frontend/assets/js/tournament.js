@@ -385,11 +385,50 @@ function decorateTournamentManagement() {
             drawButton.className = "official-draw-action";
             drawButton.textContent = "Start official shuffle";
             drawButton.title = "Starts the live group shuffle when the draw is available.";
-            drawButton.addEventListener("click", () => conductLotteryDraw(tournament, drawButton));
+            drawButton.addEventListener("click", () => {
+                if (!canStartOfficialShuffle(tournament)) return showShuffleSchedule(tournament);
+                conductLotteryDraw(tournament, drawButton);
+            });
             controls.append(drawButton);
         }
     });
 }
+
+const bangladeshDateKey = (date) => {
+    const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Dhaka", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(date);
+    const value = (type) => parts.find((part) => part.type === type)?.value;
+    return `${value("year")}-${value("month")}-${value("day")}`;
+};
+
+const officialShuffleDate = (tournament) => {
+    const [year, month, day] = tournamentDateParts(tournament.startDate);
+    return new Date(Date.UTC(year, month - 1, day - 1)).toISOString().slice(0, 10);
+};
+
+const shuffleScheduleLabel = (tournament) => {
+    const scheduledAt = tournament.drawScheduledAt ? new Date(tournament.drawScheduledAt) : null;
+    if (scheduledAt && !Number.isNaN(scheduledAt.getTime())) {
+        return scheduledAt.toLocaleString("en-GB", { timeZone: "Asia/Dhaka", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false });
+    }
+    return `${dateLabel(officialShuffleDate(tournament))} (Bangladesh time)`;
+};
+
+const canStartOfficialShuffle = (tournament) => {
+    const scheduledAt = tournament.drawScheduledAt ? new Date(tournament.drawScheduledAt) : null;
+    if (scheduledAt && !Number.isNaN(scheduledAt.getTime())) return Date.now() >= scheduledAt.getTime();
+    return bangladeshDateKey(new Date()) === officialShuffleDate(tournament);
+};
+
+const showShuffleSchedule = (tournament) => {
+    const modal = document.createElement("div");
+    modal.className = "modal show shuffle-schedule-modal";
+    modal.innerHTML = `<section class="modal-box shuffle-schedule-box" role="dialog" aria-modal="true" aria-labelledby="shuffle-schedule-title"><button class="close" type="button" aria-label="Close">Close</button><span class="eyebrow">OFFICIAL SHUFFLE SCHEDULE</span><h2 id="shuffle-schedule-title">Shuffle is not available yet</h2><p class="meta">To keep the group draw fair for every registered team, it can start only at its scheduled time.</p><section class="shuffle-schedule-time"><span>Available from</span><strong>${esc(shuffleScheduleLabel(tournament))}</strong><small>${esc(tournament.name)} · Group assignments and the final fixture publish immediately after the live shuffle.</small></section><button class="shuffle-schedule-close" type="button">Got it</button></section>`;
+    const close = () => modal.remove();
+    modal.querySelector(".close").onclick = close;
+    modal.querySelector(".shuffle-schedule-close").onclick = close;
+    modal.onclick = (event) => { if (event.target === modal) close(); };
+    document.body.append(modal);
+};
 
 async function viewRegisteredTeams(tournament) {
     try {
@@ -596,7 +635,7 @@ async function loadMyTournamentRegistrations() {
 }
 loadMyTournamentRegistrations();
 
-document.head.insertAdjacentHTML("beforeend", '<link rel="stylesheet" href="assets/css/tournament-centre.css"><link rel="stylesheet" href="assets/css/tournament-admin.css?v=20260901polish2">');
+document.head.insertAdjacentHTML("beforeend", '<link rel="stylesheet" href="assets/css/tournament-centre.css"><link rel="stylesheet" href="assets/css/tournament-admin.css?v=20260901schedule3">');
 
 function downloadFixturePdf(tournament, matches) {
     if (!matches.length) return say("Fixtures are not published yet.", true);
