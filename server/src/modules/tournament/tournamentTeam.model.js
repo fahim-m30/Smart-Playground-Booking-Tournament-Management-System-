@@ -26,7 +26,9 @@ const tournamentTeamSchema = new mongoose.Schema(
         group: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "TournamentGroup",
-            required: true,
+            // A team remains unassigned while registrations are open. The
+            // playground admin assigns its group only after the official draw.
+            default: null,
         },
 
         teamName: {
