@@ -334,7 +334,7 @@ const getAllTournaments = async (actor = {}) => {
     const visibleTournaments = withoutLegacyDuplicates(tournaments);
     const tournamentIds = visibleTournaments.map((tournament) => tournament._id);
     const teamCounts = tournamentIds.length ? await TournamentTeam.aggregate([
-        { $match: { tournament: { $in: tournamentIds }, isDeleted: false } },
+        { $match: { tournament: { $in: tournamentIds }, isDeleted: { $ne: true } } },
         {
             $group: {
                 _id: "$tournament",
@@ -563,7 +563,7 @@ const registerTeam = async (tournamentId, payload, customerId) => {
 
 const getTournamentTeams = async (tournamentId, groupId, actor) => {
     await assertFixtureViewer(tournamentId, actor);
-    const filter = { tournament: tournamentId, isDeleted: false };
+    const filter = { tournament: tournamentId, isDeleted: { $ne: true } };
 
     if (groupId) {
         filter.group = groupId;
