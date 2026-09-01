@@ -11,6 +11,7 @@ const item = (label, value) => `<div><span>${label}</span><strong>${escapeHTML(v
     const payment = body.data, booking = payment.booking, team = payment.tournamentTeam, isBooking = Boolean(booking);
     document.querySelector("#type").textContent = isBooking ? "SLOT BOOKING" : "TOURNAMENT REGISTRATION";
     document.querySelector("#title").textContent = isBooking ? booking.playground?.name : team?.tournament?.name;
+    if (!isBooking) document.querySelector("#group-assignment-notice").hidden = false;
     document.querySelector("#venue").textContent = isBooking ? booking.playground?.address : `Team: ${team?.teamName || "—"}`;
     const data = isBooking ? [item("Booking date", new Date(booking.bookingDate).toLocaleDateString("en-GB")), item("Time", `${booking.startTime} – ${booking.endTime}`), item("Duration", `${booking.duration} hour(s)`)] : [item("Team", team?.teamName), item("Contact", team?.contactNumber), item("Tournament", team?.tournament?.name)];
     data.push(item("Payment method", payment.paymentMethod), item("Paid at", new Date(payment.paidAt || payment.createdAt).toLocaleString("en-GB")));

@@ -4,6 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>TURF | Entry pass & receipt</title>
+  <style>
+    .group-assignment-notice { margin: -8px 0 26px; padding: 16px 18px; border: 1px solid #b9dfc4; border-left: 4px solid #137a39; border-radius: 10px; background: #f1fbf4; color: #30563b; }
+    .group-assignment-notice strong { display: block; color: #0d6831; font-size: 15px; }
+    .group-assignment-notice p { margin: 6px 0 0; font-size: 13px; line-height: 1.55; }
+  </style>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -14,11 +19,15 @@
   <main class="receipt">
     <header><div><p class="brand">TURF</p><h1>Entry Pass &amp; Money Receipt</h1><p class="sub">Keep this document and show the QR code at the venue gate.</p></div><span class="paid">PAID</span></header>
     <section class="ticket-title"><div><p id="type">BOOKING</p><h2 id="title">Loading receipt…</h2><p id="venue"></p></div><img id="qr" alt="Entry QR code" hidden></section>
+    <section id="group-assignment-notice" class="group-assignment-notice" hidden>
+      <strong>Group assignment pending</strong>
+      <p>The playground admin will run the official shuffle on the day before the tournament. Your group and final fixture will be published immediately after the draw.</p>
+    </section>
     <section class="details" id="details"></section>
     <section class="amount"><span>Total paid</span><strong id="amount">৳0</strong></section>
     <footer><p>Generated electronically by TURF. This is a valid payment receipt and entry pass.</p><p id="reference"></p></footer>
   </main>
   <div class="actions"><a href="booking.html">Back to bookings</a><button onclick="window.print()">Print / Save PDF</button></div>
-  <script src="assets/js/receipt.js?v=20260831qr1"></script>
+  <script src="assets/js/receipt.js?v=20260901group1"></script>
 </body>
 </html>
