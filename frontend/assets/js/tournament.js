@@ -357,15 +357,14 @@ function decorateTournamentManagement() {
         controls.setAttribute("aria-label", "Tournament management actions");
         footer.before(controls);
         if (user.role === "playground-admin") {
-            const registeredTeams = Number(tournament.registeredTeamCount || 0);
-            const paidTeams = Number(tournament.paidTeamCount || 0);
             const totalTeams = Number(tournament.totalTeams || 0);
-            const progressValue = totalTeams ? Math.min(100, Math.round((registeredTeams / totalTeams) * 100)) : 0;
             const progress = document.createElement("section");
             progress.className = "team-registration-progress";
             progress.setAttribute("aria-label", "Team registration progress");
-            progress.innerHTML = `<div><strong>${registeredTeams}<small> / ${totalTeams} teams</small></strong><span>${paidTeams} paid${registeredTeams - paidTeams ? ` · ${registeredTeams - paidTeams} pending` : ""}</span></div><div class="team-progress-track" role="progressbar" aria-label="Registered teams" aria-valuemin="0" aria-valuemax="${totalTeams}" aria-valuenow="${registeredTeams}"><i style="width:${progressValue}%"></i></div>`;
+            progress.classList.add("is-loading");
+            progress.innerHTML = "<span>Checking registered teams…</span>";
             controls.before(progress);
+            refreshTeamRegistrationProgress(tournament, progress, totalTeams, Number(tournament.registeredTeamCount || 0), Number(tournament.paidTeamCount || 0));
         }
         const teamsButton = document.createElement("button");
         teamsButton.type = "button";
@@ -393,6 +392,23 @@ function decorateTournamentManagement() {
         }
     });
 }
+
+const renderTeamRegistrationProgress = (progress, registeredTeams, paidTeams, totalTeams) => {
+    const progressValue = totalTeams ? Math.min(100, Math.round((registeredTeams / totalTeams) * 100)) : 0;
+    const pendingTeams = Math.max(0, registeredTeams - paidTeams);
+    progress.classList.remove("is-loading");
+    progress.innerHTML = `<div><strong>${registeredTeams}<small> / ${totalTeams} teams</small></strong><span>${paidTeams} paid${pendingTeams ? ` · ${pendingTeams} pending` : ""}</span></div><div class="team-progress-track" role="progressbar" aria-label="Registered teams" aria-valuemin="0" aria-valuemax="${totalTeams}" aria-valuenow="${registeredTeams}"><i style="width:${progressValue}%"></i></div>`;
+};
+
+const refreshTeamRegistrationProgress = async (tournament, progress, totalTeams, fallbackRegisteredTeams, fallbackPaidTeams) => {
+    try {
+        const teams = await req(`/tournaments/${tournament._id}/teams`);
+        renderTeamRegistrationProgress(progress, teams.length, teams.filter((team) => team.paymentStatus === "Paid").length, totalTeams);
+    } catch (_) {
+        // Keep the summary returned with the tournament list if a refresh fails.
+        renderTeamRegistrationProgress(progress, fallbackRegisteredTeams, fallbackPaidTeams, totalTeams);
+    }
+};
 
 const bangladeshDateKey = (date) => {
     const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Dhaka", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(date);
@@ -635,7 +651,7 @@ async function loadMyTournamentRegistrations() {
 }
 loadMyTournamentRegistrations();
 
-document.head.insertAdjacentHTML("beforeend", '<link rel="stylesheet" href="assets/css/tournament-centre.css"><link rel="stylesheet" href="assets/css/tournament-admin.css?v=20260901schedule3">');
+document.head.insertAdjacentHTML("beforeend", '<link rel="stylesheet" href="assets/css/tournament-centre.css"><link rel="stylesheet" href="assets/css/tournament-admin.css?v=20260901count4">');
 
 function downloadFixturePdf(tournament, matches) {
     if (!matches.length) return say("Fixtures are not published yet.", true);
