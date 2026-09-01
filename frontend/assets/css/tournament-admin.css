@@ -1,0 +1,6 @@
+/* Playground-admin tournament controls */
+.team-registration-progress{display:grid;gap:9px;margin:4px 0 0;padding:11px 12px;border:1px solid #d3e9d8;border-radius:11px;background:linear-gradient(135deg,#f7fcf8,#edf9f0)}
+.team-registration-progress>div:first-child{display:flex;align-items:baseline;justify-content:space-between;gap:8px}.team-registration-progress strong{color:#0c6430;font-size:1rem}.team-registration-progress strong small{color:#5f7c68;font-size:.71rem;font-weight:700}.team-registration-progress span{color:#617b69;font-size:.68rem;font-weight:700}
+.team-progress-track{height:7px;overflow:hidden;border-radius:999px;background:#dcefe0}.team-progress-track i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#0b7a38,#39a85e);transition:width .25s ease}
+.official-draw-action{background:linear-gradient(135deg,#086f35,#1a994b)!important;color:#fff!important;border-color:#086f35!important;box-shadow:0 7px 14px rgba(10,113,53,.16)}.official-draw-action:disabled{cursor:wait;opacity:.72;transform:none!important}
+@media(max-width:480px){.team-registration-progress>div:first-child{align-items:flex-start;flex-direction:column;gap:3px}}

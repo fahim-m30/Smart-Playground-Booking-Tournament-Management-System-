@@ -349,9 +349,20 @@ $("#logout").onclick = () => { localStorage.clear(); location = "login.html"; };
 function decorateTournamentManagement() {
     if (!["super-admin", "playground-admin"].includes(user.role)) return;
     document.querySelectorAll("#content > .card").forEach((card, index) => {
-        const tournament = tournaments[index];
+        const tournament = tournaments.find((item) => item.name === card.querySelector("h3")?.textContent) || tournaments[index];
         if (!tournament) return;
         const footer = card.querySelector(".card-foot");
+        if (user.role === "playground-admin") {
+            const registeredTeams = Number(tournament.registeredTeamCount || 0);
+            const paidTeams = Number(tournament.paidTeamCount || 0);
+            const totalTeams = Number(tournament.totalTeams || 0);
+            const progressValue = totalTeams ? Math.min(100, Math.round((registeredTeams / totalTeams) * 100)) : 0;
+            const progress = document.createElement("section");
+            progress.className = "team-registration-progress";
+            progress.setAttribute("aria-label", "Team registration progress");
+            progress.innerHTML = `<div><strong>${registeredTeams}<small> / ${totalTeams} teams</small></strong><span>${paidTeams} paid${registeredTeams - paidTeams ? ` · ${registeredTeams - paidTeams} pending` : ""}</span></div><div class="team-progress-track" role="progressbar" aria-label="Registered teams" aria-valuemin="0" aria-valuemax="${totalTeams}" aria-valuenow="${registeredTeams}"><i style="width:${progressValue}%"></i></div>`;
+            footer.before(progress);
+        }
         const button = document.createElement("button");
         button.type = "button";
         button.className = "alt";
@@ -361,16 +372,30 @@ function decorateTournamentManagement() {
         if (user.role === "playground-admin" && tournament.status === "Upcoming" && tournament.drawStatus !== "Completed") {
             const drawButton = document.createElement("button");
             drawButton.type = "button";
-            drawButton.className = "alt official-draw-action";
-            drawButton.textContent = "Conduct lottery draw";
-            drawButton.title = "Available on the calendar day before the tournament starts.";
-            drawButton.addEventListener("click", () => conductLotteryDraw(tournament));
+            drawButton.className = "official-draw-action";
+            drawButton.textContent = "Start official shuffle";
+            drawButton.title = "Starts the live group shuffle when the draw is available.";
+            drawButton.addEventListener("click", () => conductLotteryDraw(tournament, drawButton));
             footer.append(drawButton);
         }
     });
 }
 
-async function conductLotteryDraw(tournament) {
+async function conductLotteryDraw(tournament, button = null) {
+    if (button) {
+        button.disabled = true;
+        button.textContent = "Starting shuffle…";
+        try {
+            const result = await req(`/tournaments/${tournament._id}/conduct-draw`, { method: "POST" });
+            liveDrawModal({ tournamentId: tournament._id, tournamentName: tournament.name, total: result.totalDraws });
+            say(`Official shuffle started. ${result.totalDraws} paid teams will be revealed one by one.`);
+        } catch (error) {
+            say(error.message, true);
+            button.disabled = false;
+            button.textContent = "Start official shuffle";
+        }
+        return;
+    }
     const modal = document.createElement("div");
     modal.className = "modal show";
     modal.innerHTML = `<section class="modal-box official-draw-box"><button class="close" type="button">Close</button><span class="eyebrow">OFFICIAL GROUP LOTTERY</span><h2>Ready to draw the groups?</h2><p class="meta">Every paid team will be randomly and evenly placed into a group. Once the draw is complete, the final fixture is published and all registered teams are notified.</p><div class="draw-policy"><strong>${esc(tournament.name)}</strong><span>Draw schedule: ${tournament.drawScheduledAt ? `${dateLabel(tournament.drawScheduledAt)} at ${new Date(tournament.drawScheduledAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}` : "One day before the tournament"}</span><span>This action is final and can run only on the day before play.</span></div><div class="cancellation-actions"><button class="alt keep-booking" type="button">Not now</button><button class="confirm-draw" type="button">Start live lottery</button></div><p class="cancellation-error" hidden></p></section>`;
@@ -543,7 +568,7 @@ async function loadMyTournamentRegistrations() {
 }
 loadMyTournamentRegistrations();
 
-document.head.insertAdjacentHTML("beforeend", '<link rel="stylesheet" href="assets/css/tournament-centre.css">');
+document.head.insertAdjacentHTML("beforeend", '<link rel="stylesheet" href="assets/css/tournament-centre.css"><link rel="stylesheet" href="assets/css/tournament-admin.css?v=20260901shuffle1">');
 
 function downloadFixturePdf(tournament, matches) {
     if (!matches.length) return say("Fixtures are not published yet.", true);

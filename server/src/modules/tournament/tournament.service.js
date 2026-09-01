@@ -331,9 +331,26 @@ const getAllTournaments = async (actor = {}) => {
         .populate("playgrounds", "name address sportType")
         .sort({ createdAt: -1 });
 
-    return withoutLegacyDuplicates(tournaments).map((tournament) => {
-        if (tournament.drawStatus === "Completed") return tournament;
+    const visibleTournaments = withoutLegacyDuplicates(tournaments);
+    const tournamentIds = visibleTournaments.map((tournament) => tournament._id);
+    const teamCounts = tournamentIds.length ? await TournamentTeam.aggregate([
+        { $match: { tournament: { $in: tournamentIds }, isDeleted: false } },
+        {
+            $group: {
+                _id: "$tournament",
+                registeredTeamCount: { $sum: 1 },
+                paidTeamCount: { $sum: { $cond: [{ $eq: ["$paymentStatus", "Paid"] }, 1, 0] } },
+            },
+        },
+    ]) : [];
+    const countsByTournament = new Map(teamCounts.map((count) => [String(count._id), count]));
+
+    return visibleTournaments.map((tournament) => {
         const safeTournament = tournament.toObject();
+        const counts = countsByTournament.get(String(tournament._id));
+        safeTournament.registeredTeamCount = counts?.registeredTeamCount || 0;
+        safeTournament.paidTeamCount = counts?.paidTeamCount || 0;
+        if (tournament.drawStatus === "Completed") return safeTournament;
         // Keep the unannounced sequence server-side. Only socket reveal events
         // disclose a placement while the live ceremony is in progress.
         safeTournament.drawSequence = [];
