@@ -118,7 +118,7 @@ const confirmPayment = async (paymentId, paymentMethod, transactionId = null) =>
             qrCode: qrCodePath,
             qrExpiresAt: qrExpiresAt,
         });
-        const registrationMessage = `${updatedTeam.teamName} is registered for ${tournament.name}. Payment is complete. Your group will be assigned only in the official lottery on the day before the tournament; the demo fixture remains available until then.`;
+        const registrationMessage = `${updatedTeam.teamName} is registered for ${tournament.name}. Payment is complete. Your group is not assigned yet: the playground admin will run the official shuffle on the day before the tournament. Your group and final fixture will be published immediately after the draw.`;
         await Promise.all([
             updatedTeam.contactNumber ? sendSMS(updatedTeam.contactNumber, registrationMessage) : Promise.resolve(),
             createNotification({
