@@ -352,6 +352,10 @@ function decorateTournamentManagement() {
         const tournament = tournaments.find((item) => item.name === card.querySelector("h3")?.textContent) || tournaments[index];
         if (!tournament) return;
         const footer = card.querySelector(".card-foot");
+        const controls = document.createElement("section");
+        controls.className = "admin-tournament-actions";
+        controls.setAttribute("aria-label", "Tournament management actions");
+        footer.before(controls);
         if (user.role === "playground-admin") {
             const registeredTeams = Number(tournament.registeredTeamCount || 0);
             const paidTeams = Number(tournament.paidTeamCount || 0);
@@ -361,14 +365,20 @@ function decorateTournamentManagement() {
             progress.className = "team-registration-progress";
             progress.setAttribute("aria-label", "Team registration progress");
             progress.innerHTML = `<div><strong>${registeredTeams}<small> / ${totalTeams} teams</small></strong><span>${paidTeams} paid${registeredTeams - paidTeams ? ` · ${registeredTeams - paidTeams} pending` : ""}</span></div><div class="team-progress-track" role="progressbar" aria-label="Registered teams" aria-valuemin="0" aria-valuemax="${totalTeams}" aria-valuenow="${registeredTeams}"><i style="width:${progressValue}%"></i></div>`;
-            footer.before(progress);
+            controls.before(progress);
         }
+        const teamsButton = document.createElement("button");
+        teamsButton.type = "button";
+        teamsButton.className = "admin-view-teams";
+        teamsButton.textContent = "View registered teams";
+        teamsButton.addEventListener("click", () => viewRegisteredTeams(tournament));
+        controls.append(teamsButton);
         const button = document.createElement("button");
         button.type = "button";
         button.className = "alt";
         button.textContent = "Manage matches";
         button.addEventListener("click", () => manageMatches(tournament._id));
-        footer.append(button);
+        controls.append(button);
         if (user.role === "playground-admin" && tournament.status === "Upcoming" && tournament.drawStatus !== "Completed") {
             const drawButton = document.createElement("button");
             drawButton.type = "button";
@@ -376,9 +386,27 @@ function decorateTournamentManagement() {
             drawButton.textContent = "Start official shuffle";
             drawButton.title = "Starts the live group shuffle when the draw is available.";
             drawButton.addEventListener("click", () => conductLotteryDraw(tournament, drawButton));
-            footer.append(drawButton);
+            controls.append(drawButton);
         }
     });
+}
+
+async function viewRegisteredTeams(tournament) {
+    try {
+        const teams = await req(`/tournaments/${tournament._id}/teams`);
+        const modal = document.createElement("div");
+        modal.className = "modal show registered-teams-modal";
+        const rows = teams.length
+            ? teams.map((team, index) => `<li><b>${index + 1}</b><span>${esc(team.teamName)}</span><em class="${team.paymentStatus === "Paid" ? "is-paid" : "is-pending"}">${esc(team.paymentStatus)}</em></li>`).join("")
+            : "<li class=\"no-registered-team\">No team has registered yet.</li>";
+        modal.innerHTML = `<section class="modal-box registered-teams-box" role="dialog" aria-modal="true" aria-labelledby="registered-teams-title"><button class="close" type="button" aria-label="Close">Close</button><span class="eyebrow">TOURNAMENT ROSTER</span><h2 id="registered-teams-title">${esc(tournament.name)}</h2><p class="meta">${teams.length} registered team${teams.length === 1 ? "" : "s"} · Paid teams can join the official shuffle.</p><ol class="registered-teams-list">${rows}</ol></section>`;
+        const close = () => modal.remove();
+        modal.querySelector(".close").onclick = close;
+        modal.onclick = (event) => { if (event.target === modal) close(); };
+        document.body.append(modal);
+    } catch (error) {
+        say(error.message, true);
+    }
 }
 
 async function conductLotteryDraw(tournament, button = null) {
