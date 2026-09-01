@@ -2,7 +2,7 @@ const API_ROOT = "https://smart-playground-booking-tournament.onrender.com/api/v
 const token = localStorage.getItem("authToken");
 let user;
 try { user = JSON.parse(localStorage.getItem("authUser") || "null"); } catch (_) { user = null; }
-document.head.insertAdjacentHTML("beforeend", '<link rel="stylesheet" href="assets/css/dashboard-income-icons.css?v=20260901logos2">');
+document.head.insertAdjacentHTML("beforeend", '<link rel="stylesheet" href="assets/css/dashboard-income-icons.css?v=20260901logos3">');
 
 const $ = (selector) => document.querySelector(selector);
 const escapeHTML = (value = "") => { const node = document.createElement("div"); node.textContent = value; return node.innerHTML; };
