@@ -53,6 +53,13 @@ router.get(
     playgroundController.getAllPlaygroundsForAdmin
 );
 
+router.get(
+    "/resolve-location",
+    verifyToken,
+    authorize("playground-admin", "super-admin"),
+    playgroundController.resolveMapLocation
+);
+
 // Approve Playground
 router.patch(
     "/:id/approve",

@@ -12,6 +12,7 @@ const message = (text, error = false) => {
 };
 const isUsableImage = (file) => file && file.type.startsWith("image/") && file.size <= 5 * 1024 * 1024;
 const isMapUrl = (value) => /^https?:\/\//i.test(String(value || "").trim());
+let mapLookupTimer;
 const mapCoordinates = (value) => {
     const link = String(value || "");
     const match = link.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/)
@@ -64,25 +65,32 @@ function refreshMapPreview() {
 }
 
 async function autofillAddressFromMap() {
-    const coordinates = mapCoordinates($("#map-share-link").value);
-    if (!coordinates) return;
+    const sharedUrl = $("#map-share-link").value.trim();
+    if (!isMapUrl(sharedUrl)) return;
 
     const status = $("#map-status");
     status.textContent = "Finding address…";
     try {
-        const response = await fetch("https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&lat=" + encodeURIComponent(coordinates.lat) + "&lon=" + encodeURIComponent(coordinates.lng), { headers: { Accept: "application/json" } });
-        const place = await response.json();
-        if (!response.ok || !place?.address) throw new Error("Location not found");
-        const address = place.address;
-        $("#address").value = place.display_name || $("#address").value;
-        $("#area").value = address.suburb || address.neighbourhood || address.quarter || address.village || address.town || $("#area").value;
-        $("#district").value = address.city_district || address.county || address.state_district || address.city || $("#district").value;
-        $("#division").value = address.state || $("#division").value;
+        const response = await fetch(API_ROOT + "/playgrounds/resolve-location?url=" + encodeURIComponent(sharedUrl), { headers: { Authorization: "Bearer " + token } });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !result.data) throw new Error(result.message || "Location not found");
+        const location = result.data;
+        $("#address").value = location.address || $("#address").value;
+        $("#area").value = location.area || $("#area").value;
+        $("#district").value = location.district || $("#district").value;
+        $("#division").value = location.division || $("#division").value;
+        $("#map-share-link").value = location.googleMapLocation || sharedUrl;
         status.textContent = "Address auto-filled";
         status.classList.add("is-selected");
         refreshMapPreview();
-    } catch (_) {
-        status.textContent = "Exact pin selected — add address manually";
+    } catch (error) {
+        const coordinates = mapCoordinates(sharedUrl);
+        if (coordinates) {
+            status.textContent = "Pin saved — address lookup is unavailable";
+            status.classList.add("is-selected");
+            return;
+        }
+        status.textContent = error.message || "Could not read this map link";
         status.classList.add("is-selected");
     }
 }
@@ -130,7 +138,14 @@ $("#galleryImages").addEventListener("change", (event) => {
 });
 
 $("#preview-map").addEventListener("click", refreshMapPreview);
-$("#map-share-link").addEventListener("input", refreshMapPreview);
+$("#map-share-link").addEventListener("input", () => {
+    refreshMapPreview();
+    clearTimeout(mapLookupTimer);
+    if (isMapUrl($("#map-share-link").value)) {
+        $("#map-status").textContent = "Reading selected pin…";
+        mapLookupTimer = setTimeout(autofillAddressFromMap, 650);
+    }
+});
 $("#map-share-link").addEventListener("change", autofillAddressFromMap);
 ["#name", "#address", "#area", "#district", "#division"].forEach((selector) => $(selector).addEventListener("input", () => {
     if (!$("#map-share-link").value.trim()) refreshMapPreview();

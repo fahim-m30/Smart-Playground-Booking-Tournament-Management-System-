@@ -18,8 +18,22 @@ const {
     activatePlayground,
     deactivatePlayground,
 } = require("./playground.service");
+const axios = require("axios");
 const fileToDataUrl = (file) => file?.buffer ? `data:${file.mimetype || "image/jpeg"};base64,${file.buffer.toString("base64")}` : null;
 const withImages = (req) => ({ ...req.body, ...(typeof req.body.pricing === "string" ? { pricing: JSON.parse(req.body.pricing) } : {}), ...(typeof req.body.facilities === "string" ? { facilities: req.body.facilities.split(",").map((item) => item.trim()).filter(Boolean) } : {}), ...(req.files?.coverImage?.[0] ? { coverImage: fileToDataUrl(req.files.coverImage[0]) } : {}), ...(req.files?.galleryImages ? { galleryImages: req.files.galleryImages.map(fileToDataUrl) } : {}) });
+const isGoogleMapsUrl = (value) => {
+    try {
+        const host = new URL(value).hostname.toLowerCase();
+        return host === "google.com" || host.endsWith(".google.com") || host === "goo.gl" || host.endsWith(".goo.gl");
+    } catch (_) { return false; }
+};
+const coordinatesFromUrl = (value) => {
+    const link = String(value || "");
+    const match = link.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/)
+        || link.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/)
+        || link.match(/[?&](?:q|query)=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
+    return match ? { lat: match[1], lng: match[2] } : null;
+};
 // ===============================
 // Create Playground
 // ===============================
@@ -72,6 +86,50 @@ const getAllPlaygroundsForAdminController = async (req, res) => {
         res.status(200).json({ success: true, message: "All playgrounds fetched successfully.", data: playgrounds });
     } catch (error) {
         res.status(400).json({ success: false, message: error.message });
+    }
+};
+
+// Resolve Google Maps share links (including maps.app.goo.gl short links) into venue address fields.
+const resolveMapLocationController = async (req, res) => {
+    try {
+        const sharedUrl = String(req.query.url || "").trim();
+        if (!isGoogleMapsUrl(sharedUrl)) throw new Error("Please provide a valid Google Maps link.");
+
+        const mapResponse = await axios.get(sharedUrl, {
+            timeout: 10000,
+            maxRedirects: 5,
+            responseType: "text",
+            headers: { "User-Agent": "TURF Venue Setup/1.0" },
+            beforeRedirect: (options) => {
+                const host = String(options.hostname || "").toLowerCase();
+                if (!(host === "google.com" || host.endsWith(".google.com") || host === "goo.gl" || host.endsWith(".goo.gl"))) throw new Error("The map link redirected to an unsupported location.");
+            },
+        });
+        const resolvedUrl = mapResponse.request?.res?.responseUrl || sharedUrl;
+        const coordinates = coordinatesFromUrl(resolvedUrl) || coordinatesFromUrl(mapResponse.data);
+        if (!coordinates) throw new Error("We could not read this pin. Open the Google Maps link, copy its full browser URL, then paste it here.");
+
+        const geocode = await axios.get("https://nominatim.openstreetmap.org/reverse", {
+            timeout: 10000,
+            params: { format: "jsonv2", zoom: 18, lat: coordinates.lat, lon: coordinates.lng },
+            headers: { "User-Agent": "TURF Venue Setup/1.0 (venue location lookup)" },
+        });
+        const place = geocode.data;
+        if (!place?.address) throw new Error("The selected pin could not be matched to an address.");
+        const address = place.address;
+
+        res.status(200).json({
+            success: true,
+            data: {
+                googleMapLocation: resolvedUrl,
+                address: place.display_name || "",
+                area: address.suburb || address.neighbourhood || address.quarter || address.village || address.town || "",
+                district: address.city_district || address.county || address.state_district || address.city || "",
+                division: address.state || "",
+            },
+        });
+    } catch (error) {
+        res.status(400).json({ success: false, message: error.message || "Could not resolve the Google Maps location." });
     }
 };
 
@@ -237,6 +295,7 @@ module.exports = {
     createPlayground: createPlaygroundController,
     getAllPlaygrounds: getAllPlaygroundsController,
     getAllPlaygroundsForAdmin: getAllPlaygroundsForAdminController,
+    resolveMapLocation: resolveMapLocationController,
     getSinglePlayground: getSinglePlaygroundController,
     getMyPlaygrounds: getMyPlaygroundsController,
     updatePlayground: updatePlaygroundController,
