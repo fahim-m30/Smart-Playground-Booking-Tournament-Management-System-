@@ -2,7 +2,7 @@
     if (!document.querySelector("link[data-turf-dialog-styles]")) {
         const stylesheet = document.createElement("link");
         stylesheet.rel = "stylesheet";
-        stylesheet.href = "assets/css/ui-dialog.css";
+        stylesheet.href = "assets/css/ui-dialog.css?v=20260903dialog2";
         stylesheet.dataset.turfDialogStyles = "";
         document.head.append(stylesheet);
     }
