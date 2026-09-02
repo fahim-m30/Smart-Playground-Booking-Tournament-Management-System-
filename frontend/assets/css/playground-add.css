@@ -408,8 +408,8 @@ body { background:#f6faf7; color:var(--ink); }
 .top-bar h1 { color:var(--ink); font-size:1.55rem; }
 .eyebrow { color:var(--green); letter-spacing:.12em; }
 .subtitle { max-width:620px; color:var(--muted); font-size:.84rem; }
-.topbar-back { display:inline-flex; align-items:center; min-height:40px; padding:0 13px; border:1px solid #cde2d2; border-radius:9px; color:var(--green-dark); background:#fff; text-decoration:none; font-size:.8rem; font-weight:800; }
-.topbar-back:hover { background:var(--mint); }
+.topbar-back { display:inline-block; margin:0 0 13px; color:var(--green-dark); text-decoration:none; font-size:.8rem; font-weight:800; }
+.topbar-back:hover { color:var(--green); text-decoration:underline; }
 .form-card { width:min(100%,1080px); max-width:none; margin:28px auto 0; padding:0; overflow:hidden; border:1px solid var(--line); border-radius:16px; box-shadow:var(--shadow); }
 .form-card-header { display:flex; align-items:center; justify-content:space-between; gap:20px; padding:21px 25px; border-bottom:1px solid #edf2ee; background:linear-gradient(110deg,#fff,#f4fbf6); }
 .form-card-header span { display:block; color:var(--green); font-size:.65rem; font-weight:800; letter-spacing:.12em; }
@@ -430,7 +430,7 @@ body { background:#f6faf7; color:var(--ink); }
 .btn-primary:hover { background:var(--green-dark); }
 .form-message { font-size:.78rem; }
 @media (max-width:800px) { .page-shell{grid-template-columns:1fr}.side-panel{min-height:auto;padding:14px 18px;flex-direction:row;align-items:center}.workspace-label,.back-link{display:none}.side-links{display:flex;margin-left:auto;max-width:72%;overflow:auto}.side-links a{white-space:nowrap;padding:8px}.main-area{padding:0 18px 28px}.top-bar{min-height:0;padding:20px 0;gap:15px}.form-card{margin-top:20px}.form-grid{grid-template-columns:1fr} }
-@media (max-width:560px) { .side-panel{display:grid;grid-template-columns:auto 1fr;gap:10px;padding:13px 14px}.side-links{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%;max-width:none;margin:0;overflow:visible;gap:7px}.side-links a{min-width:0;padding:9px 8px;white-space:normal;text-align:center;font-size:.76rem}.main-area{padding:0 14px 26px}.top-bar{align-items:flex-start;padding:18px 0}.topbar-back{min-height:36px;padding:0 10px;font-size:.72rem}.form-card{border-radius:14px}.form-card-header{align-items:flex-start;padding:18px}.form-card-header h2{font-size:.96rem}.form-card-header p{line-height:1.45}.form-grid{padding:18px;gap:14px}.form-actions{align-items:stretch;flex-direction:column;gap:10px}.btn-primary{width:100%} }
+@media (max-width:560px) { .side-panel{display:grid;grid-template-columns:auto 1fr;gap:10px;padding:13px 14px}.side-links{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%;max-width:none;margin:0;overflow:visible;gap:7px}.side-links a{min-width:0;padding:9px 8px;white-space:normal;text-align:center;font-size:.76rem}.main-area{padding:0 14px 26px}.top-bar{align-items:flex-start;padding:18px 0}.topbar-back{min-height:0;padding:0;font-size:.72rem}.form-card{border-radius:14px}.form-card-header{align-items:flex-start;padding:18px}.form-card-header h2{font-size:.96rem}.form-card-header p{line-height:1.45}.form-grid{padding:18px;gap:14px}.form-actions{align-items:stretch;flex-direction:column;gap:10px}.btn-primary{width:100%} }
 
 /* Only the dashboard owns a sidebar. Setup pages use the standard portal layout. */
 .page-shell { display:block; min-height:0; }
