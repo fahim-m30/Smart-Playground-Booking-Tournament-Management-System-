@@ -36,8 +36,9 @@
             </header>
 
             <div class="form-card">
-                <header class="form-card-header"><div><span>VENUE PROFILE</span><h2>Tell customers about your playground</h2><p>These details appear in the venue directory after approval.</p></div><b>1 / 1</b></header>
+                <header class="form-card-header"><div><span>VENUE SETUP</span><h2 id="setup-title">Tell customers about your playground</h2><p id="setup-subtitle">Add the venue details and confirm its location on Google Maps.</p></div><b id="setup-count">1 / 2</b></header>
                 <form id="playground-form" class="form-grid" novalidate>
+                    <section class="setup-step is-active" id="details-step" data-step="1">
                     <div class="form-group full">
                         <label for="name">Playground Name</label>
                         <input type="text" id="name" name="name" placeholder="e.g. Dhaka Turf Arena" required>
@@ -63,9 +64,13 @@
                         <input type="text" id="address" name="address" placeholder="Street, area, landmark" required>
                     </div>
 
-                    <div class="form-group full">
-                        <label for="googleMapLocation">Google Maps Location <span class="optional">Optional</span></label>
-                        <input type="url" id="googleMapLocation" name="googleMapLocation" placeholder="Paste the Google Maps share link for this venue">
+                    <div class="form-group full venue-map-picker">
+                        <div class="map-picker-heading"><div><label for="map-share-link">Venue location on Google Maps</label><p>Preview the address below. For an exact pin, choose the venue in Google Maps and paste its share link.</p></div><span id="map-status">Location pending</span></div>
+                        <div class="map-picker-actions"><button id="preview-map" type="button" class="map-preview-button">Preview map</button><a id="open-google-map" class="map-external-link" href="https://www.google.com/maps" target="_blank" rel="noopener">Choose exact pin in Google Maps ↗</a></div>
+                        <iframe id="venue-map-preview" title="Venue location preview" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+                        <label class="map-link-label" for="map-share-link">Google Maps share link <span class="optional">Optional, recommended for an exact pin</span></label>
+                        <input type="url" id="map-share-link" placeholder="Paste the Google Maps share link after choosing your turf">
+                        <input type="hidden" id="googleMapLocation" name="googleMapLocation">
                     </div>
 
                     <div class="form-group">
@@ -113,6 +118,11 @@
                         <textarea id="description" name="description" rows="4" placeholder="Short description about the playground..." required></textarea>
                     </div>
 
+                    <div class="form-actions step-actions"><p class="form-message">Step 1 of 2 · Your address will be saved as the customer map location.</p><button id="continue-to-images" type="button" class="btn-primary">Continue to photos <span aria-hidden="true">→</span></button></div>
+                    </section>
+
+                    <section class="setup-step" id="photos-step" data-step="2">
+                    <div class="step-intro full"><span>STEP 2 OF 2</span><h3>Add venue photos</h3><p>A clear cover photo helps customers recognise the playground before booking.</p></div>
                     <div class="form-group full">
                         <label class="upload-label">Cover Photo</label>
                         <div class="upload-box">
@@ -132,9 +142,11 @@
                     </div>
 
                     <div class="form-actions">
+                        <button id="back-to-details" type="button" class="btn-secondary">← Back to venue details</button>
                         <button type="submit" class="btn-primary">Save Playground</button>
                         <p id="form-message" class="form-message"></p>
                     </div>
+                    </section>
                 </form>
             </div>
         </main>

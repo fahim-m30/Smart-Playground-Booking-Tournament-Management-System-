@@ -101,9 +101,11 @@
             const savedMapUrl = /^https?:\/\//i.test(String(ground.googleMapLocation || ""))
                 ? ground.googleMapLocation
                 : "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(mapQuery);
+            const savedCoordinates = String(ground.googleMapLocation || "").match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
+            const mapEmbedQuery = savedCoordinates ? savedCoordinates[1] + "," + savedCoordinates[2] : mapQuery;
             const map = document.createElement("section");
             map.className = "venue-map-preview";
-            map.innerHTML = '<div><strong>Live venue location</strong><a href="' + escapeHtml(savedMapUrl) + '" target="_blank" rel="noopener">Open in Google Maps ↗</a></div><iframe title="' + escapeHtml(ground.name) + ' location map" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://www.google.com/maps?q=' + encodeURIComponent(mapQuery) + '&output=embed"></iframe>';
+            map.innerHTML = '<div><strong>Live venue location</strong><a href="' + escapeHtml(savedMapUrl) + '" target="_blank" rel="noopener">Open in Google Maps ↗</a></div><iframe title="' + escapeHtml(ground.name) + ' location map" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://www.google.com/maps?q=' + encodeURIComponent(mapEmbedQuery) + '&output=embed"></iframe>';
             modal.querySelector(".facility-list").after(map);
         }
         const close = () => modal.remove();

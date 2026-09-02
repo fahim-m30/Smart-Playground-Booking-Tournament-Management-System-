@@ -438,3 +438,31 @@ body { background:#f6faf7; color:var(--ink); }
 .main-area { width:min(1180px,100%); margin:0 auto; padding:0 20px 55px; overflow:visible; }
 .top-bar { min-height:104px; }
 @media (max-width:560px) { .main-area { padding:0 14px 35px; } }
+
+/* Two-step venue setup and map confirmation */
+.form-grid { display:block; }
+.setup-step { display:none; }
+.setup-step.is-active { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+.setup-step .full { grid-column:1/-1; }
+.step-intro { padding:2px 0 3px; }
+.step-intro span { color:var(--green); font-size:.67rem; font-weight:800; letter-spacing:.12em; }
+.step-intro h3 { margin:6px 0 3px; color:#173d23; font-size:1.08rem; letter-spacing:-.025em; }
+.step-intro p { margin:0; color:var(--muted); font-size:.78rem; }
+.venue-map-picker { display:grid; gap:11px; padding:17px; border:1px solid #d7e9db; border-radius:13px; background:linear-gradient(135deg,#fbfffc,#f2fbf5); }
+.map-picker-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:15px; }
+.map-picker-heading label { display:block; }
+.map-picker-heading p { margin:5px 0 0; color:var(--muted); font-size:.74rem; line-height:1.5; }
+#map-status { flex:0 0 auto; border-radius:99px; padding:5px 8px; background:#edf3ee; color:#64756a; font-size:.67rem; font-weight:800; }
+#map-status.is-selected { background:#dff6e6; color:#087033; }
+.map-picker-actions { display:flex; align-items:center; flex-wrap:wrap; gap:9px; }
+.map-preview-button,.btn-secondary { min-height:38px; border:1px solid #bddbc5; border-radius:8px; background:#fff; color:var(--green-dark); padding:8px 12px; font:800 .76rem Inter,Arial,sans-serif; cursor:pointer; }
+.map-preview-button:hover,.btn-secondary:hover { border-color:var(--green); background:#effbf3; }
+.map-external-link { color:var(--green-dark); font-size:.75rem; font-weight:800; text-decoration:none; }
+.map-external-link:hover { text-decoration:underline; }
+#venue-map-preview { display:block; width:100%; height:225px; border:1px solid #cce0d1; border-radius:10px; background:#edf4ef; }
+.map-link-label { color:#3f5a48; font-size:.75rem; font-weight:800; }
+.step-actions { display:flex; align-items:center; justify-content:space-between; gap:16px; grid-column:1/-1; margin-top:3px; padding-top:18px; border-top:1px solid #edf2ee; }
+.step-actions .form-message { margin:0; color:var(--muted); }
+.form-actions { display:flex; align-items:center; flex-wrap:wrap; gap:10px; grid-column:1/-1; }
+.form-actions .form-message { margin:0; }
+@media (max-width:680px) { .setup-step.is-active { grid-template-columns:1fr; }.map-picker-heading,.step-actions { align-items:flex-start; flex-direction:column; }.step-actions .btn-primary,.form-actions .btn-primary,.form-actions .btn-secondary { width:100%; }.step-actions { gap:10px; } #venue-map-preview { height:190px; } }
