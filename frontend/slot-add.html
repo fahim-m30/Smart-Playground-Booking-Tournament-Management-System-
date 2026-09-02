@@ -98,8 +98,19 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="pricePerSlot">Price Per Slot (BDT)</label>
-                        <input type="number" id="pricePerSlot" name="pricePerSlot" min="0" placeholder="e.g. 2500" required>
+                        <label for="morningPrice">Morning Price Per Slot (BDT)</label>
+                        <input type="number" id="morningPrice" name="morningPrice" min="0" placeholder="e.g. 1800" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="eveningPrice">Evening Price Per Slot (BDT)</label>
+                        <input type="number" id="eveningPrice" name="eveningPrice" min="0" placeholder="e.g. 2500" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="eveningStartTime">Evening Price Starts</label>
+                        <input type="time" id="eveningStartTime" name="eveningStartTime" value="18:00" required>
+                        <span class="field-hint">Slots starting from this time use the evening price.</span>
                     </div>
 
                     <div class="form-group full">
