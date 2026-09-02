@@ -274,7 +274,7 @@ $("#profile-image-upload").addEventListener("change", async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith("image/") || file.size > 5 * 1024 * 1024) {
-        alert("Choose an image file no larger than 5 MB.");
+        TurfDialog.alert({ title: "Image not accepted", message: "Choose an image file no larger than 5 MB." });
         event.target.value = "";
         return;
     }
@@ -288,7 +288,7 @@ $("#profile-image-upload").addEventListener("change", async (event) => {
         localStorage.setItem("authUser", JSON.stringify(user));
         renderAvatar();
     } catch (error) {
-        alert(error.message);
+        TurfDialog.alert({ title: "Could not update your profile", message: error.message });
     } finally {
         event.target.value = "";
     }

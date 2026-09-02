@@ -55,10 +55,10 @@ if (realtime) {
         try { await list(); decorateTournamentManagement(); } catch (_) { /* page can still show the live result */ }
     });
 }
-const openCancellationConfirmation = ({ title, summary, policy, onConfirm }) => {
+const openCancellationConfirmation = ({ title, summary, onConfirm }) => {
     const modal = document.createElement("div");
     modal.className = "modal show cancellation-confirmation";
-    modal.innerHTML = `<section class="modal-box cancellation-box" role="dialog" aria-modal="true" aria-labelledby="cancellation-title"><button class="close" type="button" aria-label="Close">Close</button><span class="eyebrow">CANCELLATION REVIEW</span><h2 id="cancellation-title">${esc(title)}</h2><p class="meta">${esc(summary)}</p><section class="cancellation-policy"><strong>Before you cancel</strong><ul>${policy.map((item) => `<li>${esc(item)}</li>`).join("")}</ul></section><p class="cancellation-question">Are you sure you want to cancel? This action cannot be undone.</p><div class="cancellation-actions"><button class="alt keep-booking" type="button">Keep registration</button><button class="confirm-cancellation" type="button">Yes, cancel & refund</button></div><p class="cancellation-error" hidden></p></section>`;
+    modal.innerHTML = `<section class="modal-box cancellation-box" role="dialog" aria-modal="true" aria-labelledby="cancellation-title"><button class="close" type="button" aria-label="Close">Close</button><span class="eyebrow">CANCELLATION CONFIRMATION</span><h2 id="cancellation-title">${esc(title)}</h2><p class="meta">${esc(summary)}</p><p class="cancellation-question">Are you sure you want to cancel this registration? This action cannot be undone.</p><div class="cancellation-actions"><button class="alt keep-booking" type="button">Keep registration</button><button class="confirm-cancellation" type="button">Yes, cancel & refund</button></div><p class="cancellation-error" hidden></p></section>`;
     const close = () => modal.remove();
     modal.querySelector(".close").onclick = close;
     modal.querySelector(".keep-booking").onclick = close;
@@ -647,6 +647,22 @@ async function loadMyTournamentRegistrations() {
                 onConfirm: async () => { const cancelled = await req(`/tournaments/teams/${button.dataset.teamId}/cancel`, { method: "PATCH" }); say(cancelled?.refundAmount ? `Registration cancelled. BDT ${cancelled.refundAmount} refund completed.` : "Tournament registration cancelled."); section.remove(); loadMyTournamentRegistrations(); },
             });
         }));
+        section.querySelectorAll(".registration-card").forEach((card, index) => {
+            const team = teams[index];
+            if (!team || team.paymentStatus !== "Paid" || cancellationAllowed(team)) return;
+            const actionArea = card.querySelector(".registration-secondary");
+            if (!actionArea) return;
+            const info = document.createElement("button");
+            info.type = "button";
+            info.className = "alt";
+            info.textContent = "Cancel registration";
+            info.onclick = () => TurfDialog.alert({
+                title: "Tournament cancellation is unavailable",
+                message: "The registration cancellation deadline has passed.",
+                rules: ["A tournament registration can be cancelled only until 2 days before the tournament starts.", "Eligible paid registrations receive a full refund to the original payment method.", "After the deadline, the organiser needs the confirmed team list to finalise the fixture."],
+            });
+            actionArea.append(info);
+        });
     } catch (error) { say(error.message, true); }
 }
 loadMyTournamentRegistrations();

@@ -181,7 +181,7 @@ async function selectById(contactId, { keepThreadVisible = false } = {}) {
     } catch (error) {
         if (error.name === "AbortError") return;
         if (idOf(activeContact?.id) === selectedId) renderThread([]);
-        alert(error.message);
+        TurfDialog.alert({ title: "Message could not be sent", message: error.message });
     }
 }
 
@@ -300,7 +300,7 @@ $("#message-form").onsubmit = async (event) => {
             renderConversations();
         }
     } catch (error) {
-        alert(error.message);
+        TurfDialog.alert({ title: "Message could not be sent", message: error.message });
     } finally {
         button.disabled = false;
         input.focus();

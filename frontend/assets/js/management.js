@@ -291,12 +291,13 @@ async function myGrounds() {
 }
 window.editGround = async (id) => {
     const ground = (await R("/playgrounds/my-playgrounds")).find((item) => item._id === id);
-    const name = prompt("Playground name", ground.name);
+    const name = await TurfDialog.prompt({ title: "Edit playground name", message: "Use the public name customers will recognise.", label: "Playground name", value: ground.name, placeholder: "Enter playground name", confirmLabel: "Save changes" });
     if (!name) return;
     try { await R("/playgrounds/" + id, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) }); say("Playground updated."); myGrounds(); } catch (error) { say(error.message, true); }
 };
 window.removeGround = async (id) => {
-    if (!confirm("Delete this playground?")) return;
+    const approved = await TurfDialog.confirm({ title: "Delete this playground?", message: "This will permanently remove the playground and its public listing.", confirmLabel: "Delete playground" });
+    if (!approved) return;
     try { await R("/playgrounds/" + id, { method: "DELETE" }); say("Playground deleted."); myGrounds(); } catch (error) { say(error.message, true); }
 };
 
@@ -307,7 +308,8 @@ async function slots() {
     $("#panel").innerHTML = all.length ? all.map((slot) => '<article class="card"><span class="badge">' + (slot.isActive ? "Active" : "Inactive") + "</span><h3>" + E(slot.ground) + "</h3><p>Day " + slot.dayOfWeek + " · " + E(slot.startTime) + " – " + E(slot.endTime) + '</p><div class="card-foot"><button class="alt" onclick="deleteSlot(\'' + slot._id + '\')">Remove slot</button></div></article>').join("") : '<div class="empty">No slots yet. Add slots from dashboard.</div>';
 }
 window.deleteSlot = async (id) => {
-    if (!confirm("Remove this slot?")) return;
+    const approved = await TurfDialog.confirm({ title: "Remove this slot?", message: "Customers will no longer be able to book this scheduled time.", confirmLabel: "Remove slot" });
+    if (!approved) return;
     try { await R("/slots/" + id, { method: "DELETE" }); say("Slot removed."); slots(); } catch (error) { say(error.message, true); }
 };
 
@@ -339,7 +341,7 @@ async function bookings() {
 window.cancelBookingAsAdmin = (bookingId) => {
     const modal = document.createElement("div");
     modal.className = "modal show";
-    modal.innerHTML = '<section class="modal-box cancellation-box" role="dialog" aria-modal="true" aria-labelledby="admin-cancel-title"><button class="close" type="button">Close</button><span class="eyebrow">VENUE ACTION</span><h2 id="admin-cancel-title">Cancel this booked slot?</h2><p class="meta">The customer will be notified immediately. Any paid amount will receive a full demo refund and be removed from your venue income.</p><form id="admin-cancel-form" class="form-grid"><label class="full">Reason for cancellation<textarea name="reason" minlength="8" maxlength="500" placeholder="Example: The field is unavailable due to urgent maintenance." required></textarea></label><p class="full cancellation-question">This action cannot be undone.</p><div class="full cancellation-actions"><button class="alt" type="button" data-close>Keep booking</button><button class="confirm-cancellation" type="submit">Cancel, refund &amp; notify</button></div><p class="full cancellation-error" hidden></p></form></section>';
+    modal.innerHTML = '<section class="modal-box cancellation-box" role="dialog" aria-modal="true" aria-labelledby="admin-cancel-title"><button class="close" type="button">Close</button><span class="eyebrow">VENUE ACTION</span><h2 id="admin-cancel-title">Cancel this booked slot?</h2><p class="meta">Enter a clear reason that will be shared with the customer.</p><form id="admin-cancel-form" class="form-grid"><label class="full">Reason for cancellation<textarea name="reason" minlength="8" maxlength="500" placeholder="Example: The field is unavailable due to urgent maintenance." required></textarea></label><p class="full cancellation-question">Are you sure you want to cancel this booking? The customer will be notified and any paid amount will be fully refunded.</p><div class="full cancellation-actions"><button class="alt" type="button" data-close>Keep booking</button><button class="confirm-cancellation" type="submit">Cancel, refund &amp; notify</button></div><p class="full cancellation-error" hidden></p></form></section>';
     document.body.append(modal);
     const close = () => modal.remove();
     modal.querySelector(".close").onclick = close;

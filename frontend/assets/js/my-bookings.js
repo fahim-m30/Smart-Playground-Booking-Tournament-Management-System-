@@ -15,10 +15,10 @@
         notice.className = `notice${bad ? " error" : ""}`;
         notice.style.display = "block";
     };
-    const openCancellationConfirmation = ({ title, summary, policy, onConfirm }) => {
+    const openCancellationConfirmation = ({ title, summary, onConfirm }) => {
         const modal = document.createElement("div");
         modal.className = "modal show cancellation-confirmation";
-        modal.innerHTML = `<section class="modal-box cancellation-box" role="dialog" aria-modal="true" aria-labelledby="cancellation-title"><button class="close" type="button" aria-label="Close">Close</button><span class="eyebrow">CANCELLATION REVIEW</span><h2 id="cancellation-title">${escapeHtml(title)}</h2><p class="meta">${escapeHtml(summary)}</p><section class="cancellation-policy"><strong>Before you cancel</strong><ul>${policy.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></section><p class="cancellation-question">Are you sure you want to cancel? This action cannot be undone.</p><div class="cancellation-actions"><button class="alt keep-booking" type="button">Keep booking</button><button class="confirm-cancellation" type="button">Yes, cancel & refund</button></div><p class="cancellation-error" hidden></p></section>`;
+        modal.innerHTML = `<section class="modal-box cancellation-box" role="dialog" aria-modal="true" aria-labelledby="cancellation-title"><button class="close" type="button" aria-label="Close">Close</button><span class="eyebrow">CANCELLATION CONFIRMATION</span><h2 id="cancellation-title">${escapeHtml(title)}</h2><p class="meta">${escapeHtml(summary)}</p><p class="cancellation-question">Are you sure you want to cancel this booking? This action cannot be undone.</p><div class="cancellation-actions"><button class="alt keep-booking" type="button">Keep booking</button><button class="confirm-cancellation" type="button">Yes, cancel & refund</button></div><p class="cancellation-error" hidden></p></section>`;
         const close = () => modal.remove();
         modal.querySelector(".close").onclick = close;
         modal.querySelector(".keep-booking").onclick = close;
@@ -53,7 +53,14 @@
                 Array.from(content.querySelectorAll(".card")).slice(0, activeSlots.length).forEach((card, index) => {
                     const booking = activeSlots[index];
                     const startAt = new Date(`${String(booking.bookingDate).slice(0, 10)}T${booking.startTime}:00+06:00`);
-                    if (startAt.getTime() <= Date.now()) card.querySelector(".cancel")?.replaceWith(Object.assign(document.createElement("span"), { className: "meta", textContent: "The slot has already started, so it cannot be cancelled." }));
+                    if (startAt.getTime() - Date.now() < 2 * 60 * 60 * 1000) {
+                        const info = document.createElement("button");
+                        info.type = "button";
+                        info.className = "alt cancel-info";
+                        info.dataset.kind = "slot";
+                        info.textContent = "Cancel booking";
+                        card.querySelector(".cancel")?.replaceWith(info);
+                    }
                 });
             }
             if (activeTeams.length) {
@@ -63,7 +70,7 @@
                     const startAt = new Date(`${String(team.tournament?.startDate || "").slice(0, 10)}T00:00:00+06:00`);
                     const action = startAt.getTime() - Date.now() >= 48 * 60 * 60 * 1000
                         ? `<button class="alt cancel-tournament" data-team-id="${team._id}">Cancel registration</button>`
-                        : '<span class="meta">Cancellation closes 2 days before the tournament.</span>';
+                        : `<button class="alt cancel-info" type="button" data-kind="tournament">Cancel registration</button>`;
                     card.querySelector(".card-foot")?.insertAdjacentHTML("beforeend", action);
                 });
             }
@@ -75,7 +82,13 @@
             content.querySelectorAll(".cancel").forEach((button) => button.addEventListener("click", () => {
                 const booking = list.find((item) => String(item._id) === String(button.dataset.id));
                 if (!booking) return;
-                openCancellationConfirmation({ title: "Cancel this slot booking?", summary: `${booking.playground?.name || "Playground"} - ${date(booking.bookingDate)}, ${booking.startTime}-${booking.endTime}`, policy: ["You can cancel anytime before the slot starts.", "A paid booking receives a full refund to the original payment method.", "The venue income report is adjusted immediately after the refund."], onConfirm: async () => { const cancelled = await request(`/bookings/${button.dataset.id}/cancel`, { method: "PATCH" }); showNotice(cancelled.refundAmount ? `Booking cancelled. BDT ${cancelled.refundAmount} refund completed.` : "Booking cancelled successfully."); bookings(); } });
+                openCancellationConfirmation({ title: "Cancel this slot booking?", summary: `${booking.playground?.name || "Playground"} - ${date(booking.bookingDate)}, ${booking.startTime}-${booking.endTime}`, policy: ["You can cancel only until 2 hours before the slot starts.", "A paid booking receives a full refund to the original payment method.", "The venue income report is adjusted immediately after the refund."], onConfirm: async () => { const cancelled = await request(`/bookings/${button.dataset.id}/cancel`, { method: "PATCH" }); showNotice(cancelled.refundAmount ? `Booking cancelled. BDT ${cancelled.refundAmount} refund completed.` : "Booking cancelled successfully."); bookings(); } });
+            }));
+            content.querySelectorAll(".cancel-info").forEach((button) => button.addEventListener("click", () => {
+                const slotRules = ["A slot can be cancelled only until 2 hours before its start time.", "Once the deadline passes, the booking stays confirmed for venue operations.", "For urgent help, contact the playground admin through chat."];
+                const tournamentRules = ["A tournament registration can be cancelled only until 2 days before the tournament starts.", "Eligible paid registrations receive a full refund to the original payment method.", "The organiser income report is adjusted immediately after the refund."];
+                const isSlot = button.dataset.kind === "slot";
+                TurfDialog.alert({ title: isSlot ? "Slot cancellation is unavailable" : "Tournament cancellation is unavailable", message: isSlot ? "The slot cancellation deadline has passed." : "The tournament registration deadline has passed.", rules: isSlot ? slotRules : tournamentRules });
             }));
             content.querySelectorAll(".cancel-tournament").forEach((button) => button.addEventListener("click", () => {
                 const team = teams.find((item) => String(item._id) === String(button.dataset.teamId));

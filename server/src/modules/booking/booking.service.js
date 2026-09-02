@@ -266,8 +266,9 @@ const cancelBooking = async (id, customerId) => {
     }
 
     const startAt = bookingStartsAt(booking.bookingDate, booking.startTime);
-    if (new Date() >= startAt) {
-        throw new Error("A booking can be cancelled only before the slot starts.");
+    const cancellationDeadline = new Date(startAt.getTime() - 2 * 60 * 60 * 1000);
+    if (new Date() > cancellationDeadline) {
+        throw new Error("Bookings can only be cancelled at least 2 hours before the slot starts.");
     }
 
     booking.bookingStatus = "Cancelled";

@@ -58,10 +58,10 @@
     }
 
     const showNotice = (message, bad = false) => { const notice = $("#notice"); notice.textContent = message; notice.className = `notice${bad ? " error" : ""}`; notice.style.display = "block"; };
-    const openCancellationConfirmation = ({ title, summary, policy, onConfirm }) => {
+    const openCancellationConfirmation = ({ title, summary, onConfirm }) => {
         const modal = document.createElement("div");
         modal.className = "modal show cancellation-confirmation";
-        modal.innerHTML = `<section class="modal-box cancellation-box" role="dialog" aria-modal="true" aria-labelledby="cancellation-title"><button class="close" type="button" aria-label="Close">Close</button><span class="eyebrow">CANCELLATION REVIEW</span><h2 id="cancellation-title">${escapeHtml(title)}</h2><p class="meta">${escapeHtml(summary)}</p><section class="cancellation-policy"><strong>Before you cancel</strong><ul>${policy.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></section><p class="cancellation-question">Are you sure you want to cancel? This action cannot be undone.</p><div class="cancellation-actions"><button class="alt keep-booking" type="button">Keep booking</button><button class="confirm-cancellation" type="button">Yes, cancel & refund</button></div><p class="cancellation-error" hidden></p></section>`;
+        modal.innerHTML = `<section class="modal-box cancellation-box" role="dialog" aria-modal="true" aria-labelledby="cancellation-title"><button class="close" type="button" aria-label="Close">Close</button><span class="eyebrow">CANCELLATION CONFIRMATION</span><h2 id="cancellation-title">${escapeHtml(title)}</h2><p class="meta">${escapeHtml(summary)}</p><p class="cancellation-question">Are you sure you want to cancel this booking? This action cannot be undone.</p><div class="cancellation-actions"><button class="alt keep-booking" type="button">Keep booking</button><button class="confirm-cancellation" type="button">Yes, cancel & refund</button></div><p class="cancellation-error" hidden></p></section>`;
         const close = () => modal.remove();
         modal.querySelector(".close").onclick = close;
         modal.querySelector(".keep-booking").onclick = close;
@@ -185,11 +185,12 @@
                 const [hour, minute] = String(booking.startTime || "00:00").split(":").map(Number);
                 const startAt = new Date(booking.bookingDate);
                 startAt.setHours(hour, minute, 0, 0);
-                const deadlinePassed = new Date() >= startAt;
-                const message = booking.bookingStatus === "Cancelled" ? "Already cancelled" : booking.bookingStatus === "Completed" ? "Completed bookings cannot be cancelled" : deadlinePassed ? "The slot has already started, so it cannot be cancelled." : "";
+                const deadlinePassed = new Date() > new Date(startAt.getTime() - 2 * 60 * 60 * 1000);
+                const message = booking.bookingStatus === "Cancelled" ? "Already cancelled" : booking.bookingStatus === "Completed" ? "Completed bookings cannot be cancelled" : deadlinePassed ? "Cancellation closes 2 hours before the slot starts." : "";
                 if (!message) return;
-                if (existingFooter) existingFooter.innerHTML = `<span class="meta">${message}</span>`;
-                else card.insertAdjacentHTML("beforeend", `<div class="card-foot"><span class="meta">${message}</span></div>`);
+                const action = deadlinePassed ? `<button class="alt cancellation-info" type="button" data-booking-id="${escapeHtml(booking._id)}">Cancel booking</button>` : `<span class="meta">${message}</span>`;
+                if (existingFooter) existingFooter.innerHTML = action;
+                else card.insertAdjacentHTML("beforeend", `<div class="card-foot">${action}</div>`);
             });
             content.querySelectorAll(".cancel-booking").forEach((button) => button.addEventListener("click", () => {
                 const booking = bookings.find((item) => String(item._id) === String(button.dataset.bookingId));
@@ -197,9 +198,12 @@
                 openCancellationConfirmation({
                     title: "Cancel this slot booking?",
                     summary: `${booking.playground?.name || "Playground"} - ${bookingDate(String(booking.bookingDate).slice(0, 10))}, ${booking.startTime}-${booking.endTime}`,
-                    policy: ["You can cancel anytime before the slot starts.", "A paid booking receives a full refund to the original payment method.", "The venue income report is adjusted immediately after the refund."],
+                    policy: ["You can cancel only until 2 hours before the slot starts.", "A paid booking receives a full refund to the original payment method.", "The venue income report is adjusted immediately after the refund."],
                     onConfirm: async () => { const cancelled = await request(`/bookings/${button.dataset.bookingId}/cancel`, { method: "PATCH" }); showNotice(cancelled.refundAmount ? `Booking cancelled. BDT ${cancelled.refundAmount} refund completed.` : "Booking cancelled successfully."); await loadBookings(); loadAvailability(); },
                 });
+            }));
+            content.querySelectorAll(".cancellation-info").forEach((button) => button.addEventListener("click", () => {
+                TurfDialog.alert({ title: "Slot cancellation is unavailable", message: "The cancellation deadline for this booking has passed.", rules: ["A slot can be cancelled only until 2 hours before its start time.", "Once the deadline passes, the booking remains confirmed for venue operations.", "For urgent help, contact the playground admin through chat."] });
             }));
         } catch (error) { showContent(`<div class="empty">${escapeHtml(error.message)}</div>`); }
     }
@@ -229,7 +233,7 @@
                     link.download = `turf-ticket-${button.dataset.ticketId}.png`;
                     link.click();
                     URL.revokeObjectURL(link.href);
-                } catch (error) { alert(error.message); }
+                } catch (error) { TurfDialog.alert({ title: "Could not open chat", message: error.message }); }
                 finally { button.disabled = false; button.textContent = original; }
             }));
         } catch (error) { showContent(`<div class="empty">${escapeHtml(error.message)}</div>`); }
@@ -247,7 +251,7 @@
             const checkout = await request("/payments/demo/checkout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ booking: booking._id, paymentMethod: labels[method.value] }) });
             location.href = `demo-payment.html?payment=${encodeURIComponent(checkout.payment._id)}`;
         } catch (error) {
-            alert(error.message);
+            TurfDialog.alert({ title: "Booking could not continue", message: error.message });
             reserve.disabled = false;
             reserve.textContent = "Continue to payment";
             loadAvailability();
