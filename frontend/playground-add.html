@@ -15,10 +15,12 @@
     <div class="page-shell">
         <aside class="side-panel">
             <a class="brand" href="index.html"><img src="assets/images/favicon.png" alt="TURF"><span>TURF</span></a>
+            <p class="workspace-label">VENUE WORKSPACE</p>
             <nav class="side-links">
                 <a href="dashboard.html">Dashboard</a>
-                <a href="management.html">Management</a>
-                <a href="playground-admin-dashboard.html">Admin Panel</a>
+                <a class="active" href="playground-add.html">Add playground</a>
+                <a href="slot-add.html">Manage slots</a>
+                <a href="management.html?tab=Bookings">Bookings</a>
             </nav>
             <a class="back-link" href="dashboard.html">← Back to dashboard</a>
         </aside>
@@ -30,9 +32,11 @@
                     <h1>Add New Playground</h1>
                     <p class="subtitle">Fill in the details below to register a new venue on TURF.</p>
                 </div>
+                <a class="topbar-back" href="dashboard.html">Back to dashboard</a>
             </header>
 
             <div class="form-card">
+                <header class="form-card-header"><div><span>VENUE PROFILE</span><h2>Tell customers about your playground</h2><p>These details appear in the venue directory after approval.</p></div><b>1 / 1</b></header>
                 <form id="playground-form" class="form-grid" novalidate>
                     <div class="form-group full">
                         <label for="name">Playground Name</label>
