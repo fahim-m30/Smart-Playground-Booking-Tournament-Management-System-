@@ -11,6 +11,26 @@ const initial = (value) => String(value || "T").trim().charAt(0).toUpperCase();
 const displayRole = (value) => String(value || "contact").replace("-", " ");
 const venueOf = (item) => item?.playground || contactOf(item)?.playground || null;
 const venueName = (item) => venueOf(item)?.name || "";
+const mapsUrlFor = (item) => {
+    const venue = venueOf(item);
+    if (!venue) return "";
+    const savedUrl = String(venue.googleMapLocation || "").trim();
+    if (/^https?:\/\//i.test(savedUrl)) return savedUrl;
+    const query = [venue.name, venue.address].filter(Boolean).join(", ");
+    return query ? "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(query) : "";
+};
+const contactContext = (item) => {
+    const contact = contactOf(item);
+    const venue = venueName(item);
+    if (contact?.role === "playground-admin") return venue
+        ? { label: "Playground", value: venue }
+        : { label: "Role", value: "Playground administrator" };
+    if (contact?.role === "customer") return venue
+        ? { label: "Recent booking", value: venue }
+        : { label: "Role", value: "TURF customer" };
+    if (contact?.role === "super-admin") return { label: "Service", value: "TURF Platform Support" };
+    return { label: "Role", value: displayRole(contact?.role) };
+};
 const time = (value) => value ? new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit" }).format(new Date(value)) : "";
 const visibleContactRoles = {
     customer: ["playground-admin", "super-admin"],
@@ -54,7 +74,8 @@ function availableRecords() {
 function matchesSearch(item) {
     if (!searchTerm) return true;
     const contact = contactOf(item);
-    const haystack = [contact.name, contact.email, contact.subtitle, venueName(item), contact.role, item.lastMessage]
+    const context = contactContext(item);
+    const haystack = [contact.name, contact.email, contact.subtitle, context.value, contact.role, item.lastMessage]
         .filter(Boolean)
         .join(" ")
         .toLowerCase();
@@ -80,7 +101,7 @@ function renderConversations() {
         const contactId = contactIdOf(item);
         const selected = idOf(activeContact?.id) === contactId;
         const preview = item.lastMessage || contact.subtitle || ("New " + displayRole(contact.role) + " chat");
-        const venue = venueName(item);
+        const context = contactContext(item);
         const meta = item.lastMessageAt ? time(item.lastMessageAt) : "New";
         const unread = item.unreadCount ? '<b class="unread">' + item.unreadCount + "</b>" : "";
         // The API already limits the contact list by role, so every displayed
@@ -90,7 +111,7 @@ function renderConversations() {
         return '<div class="conversation-row"><button class="conversation ' + (selected ? "active" : "") + '" type="button" data-contact-id="' + escapeHTML(contactId) + '">'
             + '<span class="conversation-avatar">' + escapeHTML(initial(contact.name)) + "</span>"
             + '<span class="conversation-copy"><strong>' + escapeHTML(contact.name) + "</strong>"
-            + (venue ? '<span class="conversation-venue"><b>Venue</b>' + escapeHTML(venue) + "</span>" : "")
+            + '<span class="conversation-venue"><b>' + escapeHTML(context.label) + "</b>" + escapeHTML(context.value) + "</span>"
             + '<span class="conversation-preview">' + escapeHTML(preview) + "</span></span>"
             + '<span class="conversation-meta">' + escapeHTML(meta) + unread + "</span></button>" + call + "</div>";
     }).join("");
@@ -103,12 +124,14 @@ function renderThread(messages = activeMessages) {
     activeMessages = messages;
     const contact = activeContact;
     const title = contact?.name || "Select a conversation";
-    const venue = venueName(contact);
+    const context = contactContext(contact);
+    const mapUrl = mapsUrlFor(contact);
     const subtitle = contact
-        ? (venue ? "Venue: " + venue + " · " : "") + displayRole(contact.role) + " · " + (contact.email || contact.subtitle || "Direct messages")
+        ? context.label + ": " + context.value + " · " + displayRole(contact.role) + " · " + (contact.email || contact.subtitle || "Direct messages")
         : "Choose a contact from the list to start a chat.";
+    const mapAction = mapUrl ? '<a class="thread-map" href="' + escapeHTML(mapUrl) + '" target="_blank" rel="noopener" aria-label="Open venue location in Google Maps">⌖ <span>Open map</span></a>' : "";
     $("#thread-header").innerHTML = '<div class="chat-avatar">' + escapeHTML(initial(title)) + '</div><div><strong>'
-        + escapeHTML(title) + "</strong><span>" + escapeHTML(subtitle) + "</span></div>";
+        + escapeHTML(title) + "</strong><span>" + escapeHTML(subtitle) + "</span></div>" + mapAction;
     $("#message-form").hidden = !contact;
 
     if (!contact) {
@@ -263,6 +286,11 @@ $("#message-form").onsubmit = async (event) => {
         const outgoing = result?.chat;
         if (outgoing && !activeMessages.some((item) => idOf(item._id) === idOf(outgoing._id))) {
             activeMessages = [...activeMessages, outgoing];
+            renderThread(activeMessages);
+        }
+        const botReply = result?.botReply;
+        if (botReply && !activeMessages.some((item) => idOf(item._id) === idOf(botReply._id))) {
+            activeMessages = [...activeMessages, botReply];
             renderThread(activeMessages);
         }
         const conversation = conversations.find((item) => contactIdOf(item) === recipient);

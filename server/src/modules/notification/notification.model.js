@@ -20,6 +20,7 @@ const notificationSchema = new mongoose.Schema({
             "AccountSuspended",
             "VenueApproval",
             "ChatMessage",
+            "ChatHandoff",
         ],
         required: true,
     },

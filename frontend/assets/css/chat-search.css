@@ -73,3 +73,25 @@
     .conversation-copy .conversation-preview { display: none; }
     .conversation-copy .conversation-venue { display: block; font-size: .58rem; }
 }
+
+.thread-map {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-left: auto;
+    padding: 8px 10px;
+    border: 1px solid #c9e4d0;
+    border-radius: 8px;
+    background: #f2fbf4;
+    color: #087338;
+    font: 800 .68rem Inter, Arial, sans-serif;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.thread-map:hover { border-color: #75b989; background: #e6f7ea; }
+
+@media (max-width: 720px) {
+    .thread-map { padding: 7px; }
+    .thread-map span { display: none; }
+}

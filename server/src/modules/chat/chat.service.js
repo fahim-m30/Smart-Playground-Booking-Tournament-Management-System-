@@ -1,6 +1,7 @@
 const Chat = require("./chat.model");
 const Booking = require("../booking/booking.model");
 const Playground = require("../playground/playground.model");
+const Slot = require("../slot/slot.model");
 const Tournament = require("../tournament/tournament.model");
 const TournamentTeam = require("../tournament/tournamentTeam.model");
 const User = require("../user/user.model");
@@ -35,7 +36,7 @@ const messageableRoles = {
 const canMessageRole = (senderRole, recipientRole) =>
     Boolean(messageableRoles[senderRole]?.includes(recipientRole));
 
-const conciergeFlow = (senderRole, recipientRole) => senderRole === "customer" && canMessageRole(senderRole, recipientRole);
+const conciergeFlow = (senderRole) => ["customer", "super-admin"].includes(senderRole);
 
 // Use Bangladesh calendar days rather than a rolling 24-hour window.
 const bangladeshDayBounds = (now = new Date()) => {
@@ -73,7 +74,7 @@ const createConciergeReply = async ({ senderId, senderRole, recipient, key, play
     });
 };
 
-const conciergeResponseFor = (rawMessage, serviceName) => {
+const legacyConciergeResponseFor = (rawMessage, serviceName) => {
     const message = String(rawMessage || "").toLowerCase();
     const has = (...terms) => terms.some((term) => message.includes(term));
     const cancellation = has("cancel", "cencel", "cancellation", "refund", "বাতিল", " ফেরত");
@@ -91,24 +92,77 @@ const conciergeResponseFor = (rawMessage, serviceName) => {
     return null;
 };
 
-const createProfessionalConciergeReply = async ({ senderId, senderRole, recipient, key, playground, customerMessage }) => {
-    if (!conciergeFlow(senderRole, recipient.role)) return null;
-    const serviceName = recipient.role === "super-admin" ? "TURF Support" : (playground?.name || "this playground");
-    const message = conciergeResponseFor(customerMessage, serviceName);
-    if (!message) return null;
+const money = (value) => `৳${Number(value || 0).toLocaleString("en-BD")}`;
+const shortDate = (value) => value ? new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" }).format(new Date(value)) : "Date to be confirmed";
+const botHas = (message, ...terms) => terms.some((term) => message.includes(term));
+const handoffResponse = "Thanks for your message. A TURF representative will contact you shortly. Your request has been sent to the responsible support team for review.";
 
-    const recentReply = await Chat.exists({
+const venueInformation = (playground) => {
+    if (!playground) return "Please select a playground or message its administrator so I can provide venue information.";
+    const location = [playground.address, playground.area, playground.district].filter(Boolean).join(", ") || "Location not listed";
+    const facilities = (playground.facilities || []).slice(0, 5).join(", ") || "Facilities are not listed yet";
+    const hours = playground.openingTime && playground.closingTime ? `${playground.openingTime}–${playground.closingTime}` : "Hours to be confirmed";
+    const mapHint = playground.googleMapLocation ? " Use the Open map button in this chat for live directions." : "";
+    return `${playground.name} is a ${playground.sportType || "sports"} venue at ${location}. Hours: ${hours}. Capacity: up to ${playground.maxPlayers || "—"} players. Facilities: ${facilities}.${mapHint}`;
+};
+
+const slotInformation = async (playground) => {
+    if (!playground) return "Please select a playground first so I can show its active slots and prices.";
+    const slots = await Slot.find({ playground: playground._id, isActive: true, isDeleted: false })
+        .select("startTime endTime durationMinutes price")
+        .sort({ startTime: 1, endTime: 1 });
+    const uniqueSlots = Array.from(new Map(slots.map((slot) => [`${slot.startTime}-${slot.endTime}-${slot.price}`, slot])).values()).slice(0, 5);
+    if (!uniqueSlots.length) return `${playground.name} has no active slot schedule published yet. Please check with the venue administrator.`;
+    const schedule = uniqueSlots.map((slot) => `${slot.startTime}–${slot.endTime} (${slot.durationMinutes || 60} min, ${money(slot.price)})`).join(" · ");
+    return `${playground.name} active slot prices: ${schedule}. Availability changes by date, so share your preferred date to confirm an open slot.`;
+};
+
+const tournamentInformation = async (playground) => {
+    if (!playground) return "Please select a playground first so I can show its tournament information.";
+    const tournaments = await Tournament.find({ playground: playground._id, isDeleted: false, status: { $nin: ["Cancelled", "Completed"] } })
+        .select("name sportType startDate registrationFee totalTeams status")
+        .sort({ startDate: 1 })
+        .limit(3);
+    if (!tournaments.length) return `There is no active or upcoming tournament at ${playground.name} right now.`;
+    const details = tournaments.map((tournament) => `${tournament.name} (${tournament.sportType}, ${shortDate(tournament.startDate)}, ${money(tournament.registrationFee)}, ${tournament.totalTeams} teams, ${tournament.status})`).join(" · ");
+    return `Tournament information for ${playground.name}: ${details}. Open Tournament Centre for registration and official fixtures.`;
+};
+
+const conciergeResponseFor = async (rawMessage, playground) => {
+    const message = String(rawMessage || "").toLowerCase();
+    const cancellation = botHas(message, "cancel", "cencel", "cancellation", "refund", "বাতিল", "ফেরত");
+    const tournament = botHas(message, "tournament", "team registration", "tournament registration", "lottery", "draw", "fixture", "group stage", "টুর্নামেন্ট", "ফিক্সচার");
+    const slot = botHas(message, "slot", "booking", "book", "reservation", "availability", "price", "cost", "rate", "time", "স্লট", "বুকিং", "দাম");
+    const venue = botHas(message, "venue", "playground", "location", "address", "facility", "facilities", "ground", "মাঠ", "ভেন্যু", "ঠিকানা", "সুবিধা");
+    if (cancellation && tournament) return "Tournament registration may be cancelled until 2 days before the tournament starts. Eligible paid registrations receive an automatic refund to the original payment method, followed by a confirmation notification.";
+    if (cancellation && slot) return "A slot booking may be cancelled at least 2 hours before its start time. If eligible, the refund is processed automatically and a confirmation notification is issued.";
+    if (tournament) return tournamentInformation(playground);
+    if (slot) return slotInformation(playground);
+    if (venue) return venueInformation(playground);
+    if (botHas(message, "payment", "pay", "bkash", "nagad", "rocket", "card", "charge")) return "For payment support, please share the booking or tournament name and payment method only. Never send card numbers, PINs, OTPs, or account credentials in chat.";
+    if (botHas(message, "hello", "hi", "assalam", "help", "support", "salam", "হ্যালো", "হাই", "সাহায্য")) return "I can help with venue details, facilities, slot schedules and prices, bookings, tournaments, registration, group draws and fixtures. Tell me what you would like to know.";
+    return handoffResponse;
+};
+
+const createProfessionalConciergeReply = async ({ senderId, senderRole, recipient, key, playground, customerMessage }) => {
+    if (!conciergeFlow(senderRole)) return null;
+    const response = await conciergeResponseFor(customerMessage, playground);
+    const { start, end } = bangladeshDayBounds();
+    const welcomedToday = await Chat.exists({
         conversationKey: key,
         senderRole: "system",
         isDeleted: false,
-        createdAt: { $gte: new Date(Date.now() - 45 * 1000) },
+        createdAt: { $gte: start, $lt: end },
     });
-    if (recentReply) return null;
+    const serviceName = playground?.name || (recipient.role === "super-admin" ? "TURF Support" : "TURF Support Desk");
+    const welcome = welcomedToday ? "" : `Welcome to ${serviceName}. I’m the TURF virtual assistant.`;
+    const message = [welcome, response].filter(Boolean).join(" ");
+    if (!message) return null;
 
-    return Chat.create({
+    const botReply = await Chat.create({
         playground: playground?._id || null,
-        customer: senderId,
-        admin: recipient.role === "playground-admin" ? recipient._id : null,
+        customer: senderRole === "customer" ? senderId : (recipient.role === "customer" ? recipient._id : null),
+        admin: senderRole === "playground-admin" ? senderId : (recipient.role === "playground-admin" ? recipient._id : null),
         recipient: senderId,
         participants: [senderId, recipient._id],
         conversationKey: key,
@@ -116,6 +170,10 @@ const createProfessionalConciergeReply = async ({ senderId, senderRole, recipien
         senderRole: "system",
         isRead: false,
     });
+    // This flag is only used while handling the current request. It is not
+    // persisted on the chat record.
+    botReply.needsHumanHandoff = response === handoffResponse;
+    return botReply;
 };
 
 // Keep conversations created by the former playground-only chat readable.
@@ -153,6 +211,7 @@ const playgroundSummary = (playground) => playground ? {
     name: playground.name,
     sportType: playground.sportType,
     address: playground.address,
+    googleMapLocation: playground.googleMapLocation,
 } : null;
 
 const getContacts = async (userId, userRole, search = "") => {
@@ -169,15 +228,31 @@ const getContacts = async (userId, userRole, search = "") => {
     }
     const users = await User.find(query).select("name role email phone").sort({ name: 1 }).limit(50);
     const adminIds = users.filter((contact) => contact.role === "playground-admin").map((contact) => contact._id);
-    const playgrounds = adminIds.length
-        ? await Playground.find({ playgroundAdmin: { $in: adminIds }, isDeleted: false })
-            .select("playgroundAdmin name sportType address")
-            .sort({ createdAt: 1 })
-        : [];
+    const customerIds = users.filter((contact) => contact.role === "customer").map((contact) => contact._id);
+    const [playgrounds, customerBookings] = await Promise.all([
+        adminIds.length
+            ? Playground.find({ playgroundAdmin: { $in: adminIds }, isDeleted: false })
+                .select("playgroundAdmin name sportType address googleMapLocation")
+                .sort({ createdAt: 1 })
+            : [],
+        customerIds.length
+            ? Booking.find({ customer: { $in: customerIds }, isDeleted: false })
+                .select("customer playground bookingDate createdAt")
+                .populate("playground", "name sportType address googleMapLocation")
+                .sort({ bookingDate: -1, createdAt: -1 })
+            : [],
+    ]);
     const playgroundByAdmin = new Map();
     playgrounds.forEach((playground) => {
         const adminId = idOf(playground.playgroundAdmin);
         if (!playgroundByAdmin.has(adminId)) playgroundByAdmin.set(adminId, playgroundSummary(playground));
+    });
+    const recentPlaygroundByCustomer = new Map();
+    customerBookings.forEach((booking) => {
+        const customerId = idOf(booking.customer);
+        if (booking.playground && !recentPlaygroundByCustomer.has(customerId)) {
+            recentPlaygroundByCustomer.set(customerId, playgroundSummary(booking.playground));
+        }
     });
     return users.map((contact) => ({
         id: contact._id,
@@ -185,16 +260,31 @@ const getContacts = async (userId, userRole, search = "") => {
         role: contact.role,
         email: contact.email,
         phone: contact.phone,
-        playground: playgroundByAdmin.get(idOf(contact._id)) || null,
+        playground: contact.role === "playground-admin"
+            ? playgroundByAdmin.get(idOf(contact._id)) || null
+            : recentPlaygroundByCustomer.get(idOf(contact._id)) || null,
         subtitle: contact.role.replace("-", " "),
     }));
 };
 
 const assertRecipientAllowed = async (senderId, senderRole, recipient) => {
-    if (!conciergeFlow(senderRole, recipient.role)) return null;
-    if (senderRole === "playground-admin") return null;
-    const grounds = await Playground.find({ playgroundAdmin: recipient._id, isDeleted: false }).select("_id name").sort({ createdAt: 1 });
-    return grounds[0] || null;
+    const adminId = recipient.role === "playground-admin"
+        ? recipient._id
+        : (senderRole === "playground-admin" ? senderId : null);
+    if (adminId) {
+        return Playground.findOne({ playgroundAdmin: adminId, isDeleted: false })
+            .select("playgroundAdmin name sportType address area district openingTime closingTime maxPlayers facilities googleMapLocation")
+            .sort({ createdAt: 1 });
+    }
+
+    const customerId = senderRole === "customer"
+        ? senderId
+        : (recipient.role === "customer" ? recipient._id : null);
+    if (!customerId) return null;
+    const booking = await Booking.findOne({ customer: customerId, isDeleted: false })
+        .sort({ bookingDate: -1, createdAt: -1 })
+        .populate("playground", "playgroundAdmin name sportType address area district openingTime closingTime maxPlayers facilities googleMapLocation");
+    return booking?.playground || null;
 };
 
 const sendMessage = async (payload, senderId, senderRole) => {
@@ -240,10 +330,53 @@ const sendMessage = async (payload, senderId, senderRole) => {
         message,
         link: "chat.html",
     });
+
+    // If the assistant cannot answer a customer or super-admin question, copy
+    // the request and its handoff reply into the responsible venue admin's
+    // conversation. This lets that admin read the complete support request.
+    const handoffAdminId = idOf(playground?.playgroundAdmin);
+    let handoffChat = null;
+    let handoffBotReply = null;
+    if (botReply?.needsHumanHandoff && handoffAdminId && handoffAdminId !== idOf(recipient)) {
+        const handoffKey = conversationKey(senderId, handoffAdminId);
+        handoffChat = await Chat.create({
+            playground: playground._id,
+            customer,
+            admin: handoffAdminId,
+            sender: senderId,
+            recipient: handoffAdminId,
+            participants: [senderId, handoffAdminId],
+            conversationKey: handoffKey,
+            message,
+            senderRole,
+        });
+        handoffBotReply = await Chat.create({
+            playground: playground._id,
+            customer,
+            admin: handoffAdminId,
+            recipient: handoffAdminId,
+            participants: [senderId, handoffAdminId],
+            conversationKey: handoffKey,
+            message: botReply.message,
+            senderRole: "system",
+            isRead: false,
+        });
+        await createNotification({
+            recipient: handoffAdminId,
+            type: "ChatHandoff",
+            title: "New venue support request",
+            message: `${sender.name} needs assistance at ${playground.name}: ${message.slice(0, 180)}`,
+            link: "chat.html?contact=" + encodeURIComponent(String(senderId)),
+        });
+    }
     const chatEvent = { conversationKey: chat.conversationKey, message: realtimeChatMessage(chat) };
     emitToUser(recipient._id.toString(), "chat:message", chatEvent);
     // A sender can have the same account open in another tab; update it too.
     emitToUser(senderId.toString(), "chat:message", chatEvent);
+    if (handoffChat) {
+        emitToUser(handoffAdminId, "chat:message", { conversationKey: handoffChat.conversationKey, message: realtimeChatMessage(handoffChat) });
+        emitToUser(handoffAdminId, "chat:message", { conversationKey: handoffChat.conversationKey, message: realtimeChatMessage(handoffBotReply) });
+    }
     if (botReply) {
         const botEvent = {
             conversationKey: chat.conversationKey,
@@ -262,7 +395,7 @@ const getConversations = async (userId, userRole) => {
     const chats = await Chat.find({ participants: userId, isDeleted: false, sender: { $ne: null } })
         .populate("sender", "name role email phone")
         .populate("recipient", "name role email phone")
-        .populate("playground", "name sportType address")
+        .populate("playground", "name sportType address googleMapLocation")
         .sort({ createdAt: -1 });
     const conversations = new Map();
     for (const chat of chats) {
@@ -298,7 +431,7 @@ const getMessages = async (userId, userRole, contactId) => {
     const key = conversationKey(userId, contactId);
     const messages = await Chat.find({ conversationKey: key, participants: userId, isDeleted: false })
         .populate("sender", "name role")
-        .populate("playground", "name sportType address")
+        .populate("playground", "name sportType address googleMapLocation")
         .sort({ createdAt: 1 });
     await Chat.updateMany({ conversationKey: key, recipient: userId, isRead: false }, { isRead: true });
     const latestPlayground = [...messages].reverse().find((message) => message.playground)?.playground;

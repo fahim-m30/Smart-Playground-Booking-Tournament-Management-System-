@@ -114,8 +114,9 @@
 }
 
 .report-card {
-    padding: 17px 19px;
+    padding: 21px 23px;
     border-bottom: 1px solid #edf3ee;
+    background: linear-gradient(90deg, #ffffff 0%, #ffffff 76%, #fbfdfb 100%);
 }
 
 .report-card:last-child {
@@ -145,13 +146,15 @@
 }
 
 .report-meta span {
-    padding-right: 10px;
-    border-right: 1px solid #dce7df;
+    padding: 5px 8px;
+    border: 1px solid #e1ebe4;
+    border-radius: 7px;
+    background: #fbfdfb;
 }
 
 .report-meta span:last-child {
-    border: 0;
-    padding: 0;
+    border: 1px solid #e1ebe4;
+    padding: 5px 8px;
 }
 
 .report-status,
@@ -178,9 +181,11 @@
     display: grid;
     gap: 9px;
     margin-top: 14px;
-    padding: 12px;
-    border-radius: 10px;
-    background: #f7fbf8;
+    padding: 14px 16px;
+    border: 1px solid #dbeee0;
+    border-left: 4px solid #54a76d;
+    border-radius: 11px;
+    background: #f5fbf6;
 }
 
 .report-review p {
@@ -192,7 +197,11 @@
     grid-template-columns: 150px 1fr auto;
     gap: 8px;
     align-items: end;
-    margin-top: 14px;
+    margin-top: 18px;
+    padding: 17px;
+    border: 1px solid #e0ece3;
+    border-radius: 12px;
+    background: #f9fcfa;
 }
 
 .report-actions select,
@@ -208,7 +217,7 @@
 }
 
 .report-actions textarea {
-    min-height: 39px;
+    min-height: 72px;
     resize: vertical;
 }
 
@@ -225,10 +234,27 @@
     font-weight: 800;
 }
 
-.review-field span { display: flex; justify-content: space-between; gap: 8px; }
+.review-field > span { display: flex; justify-content: space-between; gap: 8px; }
 .review-field em { color: #7b8980; font-style: normal; font-weight: 600; }
 .review-field small { color: #708076; font-size: .65rem; font-weight: 500; line-height: 1.4; }
-.report-actions button { min-height: 39px; white-space: nowrap; }
+.report-actions button {
+    display: grid;
+    min-width: 160px;
+    min-height: 72px;
+    align-content: center;
+    gap: 3px;
+    padding: 12px 17px;
+    border: 0;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #0f7a3a, #219c55);
+    box-shadow: 0 8px 18px rgba(17, 122, 57, .16);
+    color: #fff;
+    cursor: pointer;
+    text-align: left;
+}
+.report-actions button:hover { transform: translateY(-1px); box-shadow: 0 11px 22px rgba(17, 122, 57, .22); }
+.report-actions button strong { font-size: .82rem; }
+.report-actions button small { color: rgba(255, 255, 255, .8); font-size: .66rem; font-weight: 600; }
 
 .report-filters {
     display: grid;

@@ -96,6 +96,16 @@
         modal.className = "modal show";
         modal.innerHTML = `<div class="modal-box ground-details"><button class="close" type="button" aria-label="Close details">×</button><img class="ground-detail-image" src="${escapeHtml(image)}" alt="${escapeHtml(ground.name)}"><span class="badge">${escapeHtml(ground.sportType || "Sports")}</span><h2>${escapeHtml(ground.name)}</h2><p class="meta">${escapeHtml(ground.address || ground.area || "Location not provided")}</p><p class="ground-description">${escapeHtml(ground.description || "No additional venue description has been added yet.")}</p><div class="ground-info"><span><strong>Opening hours</strong>${escapeHtml(ground.openingTime || "—")} – ${escapeHtml(ground.closingTime || "—")}</span><span><strong>Players</strong>Up to ${escapeHtml(ground.maxPlayers || "—")} players</span><span><strong>Starting price</strong>৳${Number(ground.pricing?.morning || 0).toLocaleString()} / hour</span></div><h3>Facilities</h3><div class="facility-list">${facilities}</div>${contactActions}<button class="choose-from-details" type="button">Choose this playground</button></div>`;
         document.body.append(modal);
+        const mapQuery = [ground.name, ground.address, ground.area, ground.district].filter(Boolean).join(", ");
+        if (mapQuery) {
+            const savedMapUrl = /^https?:\/\//i.test(String(ground.googleMapLocation || ""))
+                ? ground.googleMapLocation
+                : "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(mapQuery);
+            const map = document.createElement("section");
+            map.className = "venue-map-preview";
+            map.innerHTML = '<div><strong>Live venue location</strong><a href="' + escapeHtml(savedMapUrl) + '" target="_blank" rel="noopener">Open in Google Maps ↗</a></div><iframe title="' + escapeHtml(ground.name) + ' location map" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://www.google.com/maps?q=' + encodeURIComponent(mapQuery) + '&output=embed"></iframe>';
+            modal.querySelector(".facility-list").after(map);
+        }
         const close = () => modal.remove();
         modal.querySelector(".close").addEventListener("click", close);
         modal.addEventListener("click", (event) => { if (event.target === modal) close(); });

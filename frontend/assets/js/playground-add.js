@@ -55,6 +55,7 @@ $("#playground-form").addEventListener("submit", async (event) => {
     data.append("phone", user.phone || "Not provided");
     data.append("email", user.email || "");
     data.append("facilities", fields.facilities || "");
+    data.append("googleMapLocation", fields.googleMapLocation || "");
     const morning = Number(fields.morning);
     const evening = Number(fields.evening);
     data.append("pricing", JSON.stringify({ morning, day: morning, evening, weekend: evening }));
