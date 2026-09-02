@@ -65,11 +65,11 @@
                     </div>
 
                     <div class="form-group full venue-map-picker">
-                        <div class="map-picker-heading"><div><label for="map-share-link">Venue location on Google Maps</label><p>Preview the address below. For an exact pin, choose the venue in Google Maps and paste its share link.</p></div><span id="map-status">Location pending</span></div>
+                        <div class="map-picker-heading"><div><label for="map-share-link">Venue location on Google Maps</label><p>Choose the exact turf pin in Google Maps and paste its full share link. The address fields will fill automatically when coordinates are available.</p></div><span id="map-status">Location pending</span></div>
                         <div class="map-picker-actions"><button id="preview-map" type="button" class="map-preview-button">Preview map</button><a id="open-google-map" class="map-external-link" href="https://www.google.com/maps" target="_blank" rel="noopener">Choose exact pin in Google Maps ↗</a></div>
                         <iframe id="venue-map-preview" title="Venue location preview" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
-                        <label class="map-link-label" for="map-share-link">Google Maps share link <span class="optional">Optional, recommended for an exact pin</span></label>
-                        <input type="url" id="map-share-link" placeholder="Paste the Google Maps share link after choosing your turf">
+                        <label class="map-link-label" for="map-share-link">Google Maps full share link <span class="optional">Use a link containing the selected pin</span></label>
+                        <input type="url" id="map-share-link" placeholder="Paste the full Google Maps link to auto-fill the address">
                         <input type="hidden" id="googleMapLocation" name="googleMapLocation">
                     </div>
 

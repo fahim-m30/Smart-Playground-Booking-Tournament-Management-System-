@@ -12,6 +12,13 @@ const message = (text, error = false) => {
 };
 const isUsableImage = (file) => file && file.type.startsWith("image/") && file.size <= 5 * 1024 * 1024;
 const isMapUrl = (value) => /^https?:\/\//i.test(String(value || "").trim());
+const mapCoordinates = (value) => {
+    const link = String(value || "");
+    const match = link.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/)
+        || link.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/)
+        || link.match(/[?&](?:q|query)=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
+    return match ? { lat: match[1], lng: match[2] } : null;
+};
 
 if (!token || !user?.role) location.replace("login.html");
 
@@ -54,6 +61,30 @@ function refreshMapPreview() {
     }
 
     preview.src = query ? "https://www.google.com/maps?q=" + encodeURIComponent(query) + "&output=embed" : "about:blank";
+}
+
+async function autofillAddressFromMap() {
+    const coordinates = mapCoordinates($("#map-share-link").value);
+    if (!coordinates) return;
+
+    const status = $("#map-status");
+    status.textContent = "Finding address…";
+    try {
+        const response = await fetch("https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&lat=" + encodeURIComponent(coordinates.lat) + "&lon=" + encodeURIComponent(coordinates.lng), { headers: { Accept: "application/json" } });
+        const place = await response.json();
+        if (!response.ok || !place?.address) throw new Error("Location not found");
+        const address = place.address;
+        $("#address").value = place.display_name || $("#address").value;
+        $("#area").value = address.suburb || address.neighbourhood || address.quarter || address.village || address.town || $("#area").value;
+        $("#district").value = address.city_district || address.county || address.state_district || address.city || $("#district").value;
+        $("#division").value = address.state || $("#division").value;
+        status.textContent = "Address auto-filled";
+        status.classList.add("is-selected");
+        refreshMapPreview();
+    } catch (_) {
+        status.textContent = "Exact pin selected — add address manually";
+        status.classList.add("is-selected");
+    }
 }
 
 function setStep(step) {
@@ -100,6 +131,7 @@ $("#galleryImages").addEventListener("change", (event) => {
 
 $("#preview-map").addEventListener("click", refreshMapPreview);
 $("#map-share-link").addEventListener("input", refreshMapPreview);
+$("#map-share-link").addEventListener("change", autofillAddressFromMap);
 ["#name", "#address", "#area", "#district", "#division"].forEach((selector) => $(selector).addEventListener("input", () => {
     if (!$("#map-share-link").value.trim()) refreshMapPreview();
 }));
