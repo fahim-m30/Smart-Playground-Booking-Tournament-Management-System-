@@ -542,17 +542,25 @@ const registerTeam = async (tournamentId, payload, customerId) => {
 
     const { captain, players } = await validateRoster(tournament, tournamentId, payload);
 
-    const team = await TournamentTeam.create({
-        tournament: tournamentId,
-        // Group placement is intentionally withheld until the live lottery.
-        group: null,
-        teamName: payload.teamName,
-        captain,
-        contactNumber: captain.phone,
-        players: players,
-        registeredBy: customerId,
-        paymentStatus: "Pending",
-    });
+    let team;
+    try {
+        team = await TournamentTeam.create({
+            tournament: tournamentId,
+            // Group placement is intentionally withheld until the live lottery.
+            group: null,
+            teamName: payload.teamName,
+            captain,
+            contactNumber: captain.phone,
+            players: players,
+            registeredBy: customerId,
+            paymentStatus: "Pending",
+        });
+    } catch (error) {
+        if (error?.code === 11000) {
+            throw new Error("You have already registered one team for this tournament. You may register a team in another tournament.");
+        }
+        throw error;
+    }
 
     return team;
 };

@@ -180,13 +180,13 @@ function renderRoster() {
     const extras = Math.max(0, Number(selected.extraMembers));
     $("#roster-fields").innerHTML = `<h3>Playing players</h3><p class="meta">Add every player’s name, phone number and recent photo.</p><div class="grid">${Array.from({ length: playing }, (_, index) => rosterField(index, false)).join("")}</div>${extras ? `<h3>Extra players</h3><p class="meta">Extra-player details are optional, but all three fields are required once you add one.</p><div class="grid">${Array.from({ length: extras }, (_, index) => rosterField(index, true)).join("")}</div>` : ""}`;
 }
-window.join = async (id) => { try { selected = await req(`/tournaments/${id}`); $("#join-title").textContent = `Join ${selected.name}`; $("#join-info").textContent = `৳${selected.registrationFee} · ${selected.playingMembers} playing member(s), up to ${selected.extraMembers} extra player(s). ${sportProfile(selected.sportType).format}. Registration closes at the start of ${dateLabel(registrationDeadline(selected))}.`; renderRoster(); $("#join-modal").classList.add("show"); } catch (error) { say(error.message, true); } };
+window.join = async (id) => { try { selected = await req(`/tournaments/${id}`); $("#join-title").textContent = `Join ${selected.name}`; $("#join-info").textContent = `৳${selected.registrationFee} · ${selected.playingMembers} playing member(s), up to ${selected.extraMembers} extra player(s). ${sportProfile(selected.sportType).format}. One account can register one team in this tournament. Registration closes at the start of ${dateLabel(registrationDeadline(selected))}.`; renderRoster(); $("#join-modal").classList.add("show"); } catch (error) { say(error.message, true); } };
 
 const openJoinModal = window.join;
 window.join = async (id) => {
     await openJoinModal(id);
     if (selected) {
-        $("#join-info").textContent = `৳${selected.registrationFee} · ${selected.playingMembers} playing member(s), up to ${selected.extraMembers} extra player(s). Match rule: ${matchRuleLabel(selected)}. ${sportProfile(selected.sportType).format}. Registration closes at the start of ${dateLabel(registrationDeadline(selected))}.`;
+        $("#join-info").textContent = `৳${selected.registrationFee} · ${selected.playingMembers} playing member(s), up to ${selected.extraMembers} extra player(s). Match rule: ${matchRuleLabel(selected)}. ${sportProfile(selected.sportType).format}. One account can register one team in this tournament. Registration closes at the start of ${dateLabel(registrationDeadline(selected))}.`;
     }
 };
 $("#close-modal").onclick = () => $("#join-modal").classList.remove("show");

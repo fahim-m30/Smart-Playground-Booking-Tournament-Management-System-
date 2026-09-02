@@ -188,6 +188,14 @@ const tournamentTeamSchema = new mongoose.Schema(
     }
 );
 
+// A customer account can captain/register only one active team in the same
+// tournament. The service validates this first; the database index protects
+// the rule even if two registration requests arrive at the same moment.
+tournamentTeamSchema.index(
+    { tournament: 1, registeredBy: 1 },
+    { unique: true, partialFilterExpression: { isDeleted: false, registeredBy: { $type: "objectId" } } },
+);
+
 const TournamentTeam = mongoose.model("TournamentTeam", tournamentTeamSchema);
 
 module.exports = TournamentTeam;
