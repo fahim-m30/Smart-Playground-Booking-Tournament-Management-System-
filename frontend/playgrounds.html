@@ -38,7 +38,10 @@
                 ? ground.facilities.map((facility) => '<span class="badge">' + escapeHtml(facility) + "</span>").join(" ")
                 : '<span class="meta">Facilities will be confirmed by the venue.</span>';
             const contact = isCustomer ? '<div class="venue-contact-actions">' + (ownerId ? '<a class="button alt" href="chat.html?contact=' + encodeURIComponent(ownerId) + '">Chat with venue</a>' : "") + (phone ? '<a class="button alt call-venue" href="tel:' + escapeHtml(phone) + '">Call venue</a>' : "") + "</div>" : "";
-            const book = isCustomer ? '<a class="button choose-from-details" href="booking.html?playground=' + encodeURIComponent(ground._id) + '">Book this playground</a>' : "";
+            const mapQuery = [ground.name, ground.address, ground.area, ground.district].filter(Boolean).join(", ");
+            const savedMapUrl = String(ground.googleMapLocation || "").trim();
+            const mapUrl = /^https?:\/\//i.test(savedMapUrl) ? savedMapUrl : "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(mapQuery);
+            const book = mapQuery ? '<section class="venue-map-preview"><header><div><span>VENUE LOCATION</span><strong>Find this playground on Google Maps</strong></div><a href="' + escapeHtml(mapUrl) + '" target="_blank" rel="noopener">Open map</a></header><iframe title="' + escapeHtml(ground.name) + ' location map" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://www.google.com/maps?q=' + encodeURIComponent(mapQuery) + '&output=embed"></iframe></section>' : "";
             const modal = document.createElement("div");
             modal.id = "ground-details-modal";
             modal.className = "modal show";
