@@ -46,6 +46,16 @@ const slotSchema = new mongoose.Schema(
             default: 60,
         },
 
+        breakStartTime: {
+            type: String,
+            default: null,
+        },
+
+        breakEndTime: {
+            type: String,
+            default: null,
+        },
+
         price: {
             type: Number,
             min: 0,

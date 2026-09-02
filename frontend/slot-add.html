@@ -77,6 +77,18 @@
                     </div>
 
                     <div class="form-group">
+                        <label for="breakStartTime">Break Starts <span class="optional">Optional</span></label>
+                        <input type="time" id="breakStartTime" name="breakStartTime">
+                        <span class="field-hint">No slots will be created during this break.</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="breakEndTime">Break Ends <span class="optional">Optional</span></label>
+                        <input type="time" id="breakEndTime" name="breakEndTime">
+                        <span class="field-hint">Leave both break fields empty when there is no break.</span>
+                    </div>
+
+                    <div class="form-group">
                         <label for="dayType">Day Type</label>
                         <select id="dayType" name="dayType">
                             <option value="all">Every day</option>

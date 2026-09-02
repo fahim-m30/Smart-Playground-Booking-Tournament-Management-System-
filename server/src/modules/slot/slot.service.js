@@ -33,12 +33,20 @@ const assertValidRange = ({ startTime, endTime, durationMinutes }) => {
     }
 };
 
+const assertValidBreak = ({ breakStartTime, breakEndTime }) => {
+    if (!breakStartTime && !breakEndTime) return;
+    if (!breakStartTime || !breakEndTime || timeToMinutes(breakEndTime) <= timeToMinutes(breakStartTime)) {
+        throw new Error("Provide a valid break start and end time, or leave both break fields empty.");
+    }
+};
+
 // ===================================================
 // Create Slot
 // ===================================================
 
 const createSlot = async (payload, adminId) => {
     assertValidRange(payload);
+    assertValidBreak(payload);
     const playground = await Playground.findOne({
         _id: payload.playground,
         isDeleted: false,
@@ -68,6 +76,8 @@ const createSlot = async (payload, adminId) => {
         startTime: payload.startTime,
         endTime: payload.endTime,
         durationMinutes: payload.durationMinutes || timeToMinutes(payload.endTime) - timeToMinutes(payload.startTime),
+        breakStartTime: payload.breakStartTime || null,
+        breakEndTime: payload.breakEndTime || null,
         price: payload.price ?? null,
         isActive: payload.isActive !== undefined ? payload.isActive : true,
     });
@@ -82,6 +92,7 @@ const createSlots = async (payload, adminId) => {
     const keys = new Set();
     for (const slot of payload.slots) {
         assertValidRange(slot);
+        assertValidBreak(slot);
         const key = `${slot.playground}:${slot.dayOfWeek}:${slot.startTime}:${slot.endTime}`;
         if (keys.has(key)) throw new Error("Your schedule contains duplicate slots.");
         keys.add(key);
@@ -120,6 +131,8 @@ const createSlots = async (payload, adminId) => {
         startTime: slot.startTime,
         endTime: slot.endTime,
         durationMinutes: slot.durationMinutes || timeToMinutes(slot.endTime) - timeToMinutes(slot.startTime),
+        breakStartTime: slot.breakStartTime || null,
+        breakEndTime: slot.breakEndTime || null,
         price: slot.price ?? null,
         isActive: slot.isActive !== undefined ? slot.isActive : true,
     })));
@@ -203,6 +216,10 @@ const updateSlot = async (slotId, payload, adminId) => {
         startTime: payload.startTime || slot.startTime,
         endTime: payload.endTime || slot.endTime,
         durationMinutes: payload.durationMinutes || slot.durationMinutes,
+    });
+    assertValidBreak({
+        breakStartTime: payload.breakStartTime ?? slot.breakStartTime,
+        breakEndTime: payload.breakEndTime ?? slot.breakEndTime,
     });
 
     const proposed = {

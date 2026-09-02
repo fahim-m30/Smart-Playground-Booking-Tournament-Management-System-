@@ -424,3 +424,4 @@ body {
 .topbar-back { display:inline-block; margin:0 0 13px; color:#095c2a; text-decoration:none; font-size:.8rem; font-weight:800; }
 .topbar-back:hover { color:#137a39; text-decoration:underline; }
 @media (max-width:560px) { .main-area { padding:0 14px 35px; }.top-bar { align-items:flex-start; padding:18px 0; }.topbar-back { min-height:0; padding:0; font-size:.72rem; } }
+.preview-times .preview-break { border-color:#f1cd84; background:#fff8e8; color:#8a5a08; }
