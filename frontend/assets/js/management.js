@@ -229,10 +229,19 @@ async function reports() {
     };
 }
 
+const reviewStatusHelp = {
+    Pending: "No decision has been made yet.",
+    "Under Review": "The issue is being checked. The reporter will see this update.",
+    Resolved: "The issue has been handled and the case will be closed.",
+    Dismissed: "No further action will be taken on this report.",
+};
+
 function adminReportCard(report) {
     const target = report.targetType === "User" ? (report.reportedUser?.name || "Customer account") : (report.playground?.name || "Account issue");
-    const note = report.adminNote ? '<div class="report-review"><div class="report-review-head"><strong>Review note</strong><span>' + E(report.reviewedBy?.name || "Admin") + "</span></div><p>" + E(report.adminNote) + "</p></div>" : "";
-    return '<article class="report-card" data-report-id="' + E(report._id) + '"><div class="report-card-top"><span class="report-status ' + statusClass(report.status) + '">' + E(report.status) + '</span><span class="report-severity ' + statusClass(report.severity) + '">' + E(report.severity) + "</span></div><h3>" + E(report.subject) + "</h3><p>" + E(report.message) + '</p><div class="report-meta"><span>' + E(report.category) + "</span><span>Reporter: " + E(report.reporter?.name || "Unknown") + "</span><span>" + E(target) + "</span><span>" + E(formatDate(report.createdAt)) + "</span></div>" + note + '<div class="report-actions"><select data-status aria-label="Report status"><option value="Pending">Pending</option><option value="Under Review">Under review</option><option value="Resolved">Resolved</option><option value="Dismissed">Dismissed</option></select><textarea data-note maxlength="1000" placeholder="Add a review note (optional)">' + E(report.adminNote || "") + '</textarea><button type="button" data-save>Save review</button></div></article>';
+    const note = report.adminNote ? '<div class="report-review"><div class="report-review-head"><strong>Latest review</strong><span>' + E(report.reviewedBy?.name || "Admin") + " · " + E(formatDate(report.reviewedAt)) + "</span></div><p>" + E(report.adminNote) + "</p></div>" : "";
+    const decision = '<label class="review-field"><span>Review decision</span><select data-status aria-label="Review decision"><option value="Pending">Pending — not started</option><option value="Under Review">Under review — investigating</option><option value="Resolved">Resolved — action completed</option><option value="Dismissed">Dismissed — no action needed</option></select><small data-status-help></small></label>';
+    const message = '<label class="review-field"><span>Message for reporter <em>Optional</em></span><textarea data-note maxlength="1000" placeholder="Explain the decision or next step for the reporter.">' + E(report.adminNote || "") + '</textarea><small>This message is included in the reporter’s notification.</small></label>';
+    return '<article class="report-card" data-report-id="' + E(report._id) + '"><div class="report-card-top"><span class="report-status ' + statusClass(report.status) + '">' + E(report.status) + '</span><span class="report-severity ' + statusClass(report.severity) + '">' + E(report.severity) + " priority</span></div><h3>" + E(report.subject) + "</h3><p>" + E(report.message) + '</p><div class="report-meta"><span>Category: ' + E(report.category) + "</span><span>From: " + E(report.reporter?.name || "Unknown") + "</span><span>Regarding: " + E(target) + "</span><span>Submitted: " + E(formatDate(report.createdAt)) + "</span></div>" + note + '<div class="report-actions">' + decision + message + '<button type="button" data-save>Save decision &amp; notify</button></div></article>';
 }
 
 function renderAdminReports(allReports) {
@@ -248,6 +257,10 @@ function renderAdminReports(allReports) {
         const select = card.querySelector("[data-status]");
         const report = allReports.find((item) => item._id === card.dataset.reportId);
         select.value = report.status;
+        const statusHelp = card.querySelector("[data-status-help]");
+        const refreshStatusHelp = () => { statusHelp.textContent = reviewStatusHelp[select.value] || ""; };
+        refreshStatusHelp();
+        select.onchange = refreshStatusHelp;
         card.querySelector("[data-save]").onclick = () => saveReport(card.dataset.reportId, select.value, card.querySelector("[data-note]").value);
     });
 }
@@ -265,7 +278,7 @@ async function adminReports() {
 async function saveReport(id, status, adminNote) {
     try {
         await R("/reports/" + id + "/status", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status, adminNote: adminNote.trim() }) });
-        say("Review saved and the reporter has been notified.");
+        say("Decision saved. The reporter has been notified.");
         await adminReports();
     } catch (error) {
         say(error.message, true);

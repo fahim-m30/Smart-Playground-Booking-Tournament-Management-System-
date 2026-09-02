@@ -148,6 +148,12 @@ const ownPlaygroundIds = async (adminId) => (await Playground.find({
 }).select("_id")).map((playground) => playground._id);
 
 const uniqueContacts = (contacts) => Array.from(new Map(contacts.map((contact) => [idOf(contact.id), contact])).values());
+const playgroundSummary = (playground) => playground ? {
+    id: playground._id,
+    name: playground.name,
+    sportType: playground.sportType,
+    address: playground.address,
+} : null;
 
 const getContacts = async (userId, userRole, search = "") => {
     const term = String(search).trim();
@@ -162,12 +168,24 @@ const getContacts = async (userId, userRole, search = "") => {
         query.$or = [{ name: new RegExp(escaped, "i") }, { email: new RegExp(escaped, "i") }];
     }
     const users = await User.find(query).select("name role email phone").sort({ name: 1 }).limit(50);
+    const adminIds = users.filter((contact) => contact.role === "playground-admin").map((contact) => contact._id);
+    const playgrounds = adminIds.length
+        ? await Playground.find({ playgroundAdmin: { $in: adminIds }, isDeleted: false })
+            .select("playgroundAdmin name sportType address")
+            .sort({ createdAt: 1 })
+        : [];
+    const playgroundByAdmin = new Map();
+    playgrounds.forEach((playground) => {
+        const adminId = idOf(playground.playgroundAdmin);
+        if (!playgroundByAdmin.has(adminId)) playgroundByAdmin.set(adminId, playgroundSummary(playground));
+    });
     return users.map((contact) => ({
         id: contact._id,
         name: contact.name,
         role: contact.role,
         email: contact.email,
         phone: contact.phone,
+        playground: playgroundByAdmin.get(idOf(contact._id)) || null,
         subtitle: contact.role.replace("-", " "),
     }));
 };
@@ -244,6 +262,7 @@ const getConversations = async (userId, userRole) => {
     const chats = await Chat.find({ participants: userId, isDeleted: false, sender: { $ne: null } })
         .populate("sender", "name role email phone")
         .populate("recipient", "name role email phone")
+        .populate("playground", "name sportType address")
         .sort({ createdAt: -1 });
     const conversations = new Map();
     for (const chat of chats) {
@@ -251,7 +270,18 @@ const getConversations = async (userId, userRole) => {
         const contact = idOf(chat.sender) === String(userId) ? chat.recipient : chat.sender;
         if (!contact || !canMessageRole(userRole, contact.role)) continue;
         if (!conversations.has(key)) {
-            conversations.set(key, { key, contact: { id: contact._id, name: contact.name, role: contact.role, email: contact.email, phone: contact.phone }, lastMessage: chat.message, lastMessageAt: chat.createdAt, unreadCount: 0 });
+            conversations.set(key, {
+                key,
+                contact: { id: contact._id, name: contact.name, role: contact.role, email: contact.email, phone: contact.phone },
+                playground: playgroundSummary(chat.playground),
+                lastMessage: chat.message,
+                lastMessageAt: chat.createdAt,
+                unreadCount: 0,
+            });
+        } else if (!conversations.get(key).playground && chat.playground) {
+            // Admin replies do not need to repeat the venue id; retain the
+            // most recent venue already attached to this conversation.
+            conversations.get(key).playground = playgroundSummary(chat.playground);
         }
         if (idOf(chat.recipient) === String(userId) && !chat.isRead) conversations.get(key).unreadCount += 1;
     }
@@ -266,9 +296,13 @@ const getMessages = async (userId, userRole, contactId) => {
         throw new Error("This contact is not available in your chat workspace.");
     }
     const key = conversationKey(userId, contactId);
-    const messages = await Chat.find({ conversationKey: key, participants: userId, isDeleted: false }).populate("sender", "name role").sort({ createdAt: 1 });
+    const messages = await Chat.find({ conversationKey: key, participants: userId, isDeleted: false })
+        .populate("sender", "name role")
+        .populate("playground", "name sportType address")
+        .sort({ createdAt: 1 });
     await Chat.updateMany({ conversationKey: key, recipient: userId, isRead: false }, { isRead: true });
-    return { contact, messages };
+    const latestPlayground = [...messages].reverse().find((message) => message.playground)?.playground;
+    return { contact: { ...contact.toObject(), playground: playgroundSummary(latestPlayground) }, messages };
 };
 
 module.exports = { sendMessage, getContacts, getConversations, getMessages, conciergeResponseFor };

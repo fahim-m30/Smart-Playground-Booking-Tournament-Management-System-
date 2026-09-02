@@ -48,3 +48,28 @@
         font-size: .64rem;
     }
 }
+
+/* Venue context keeps similarly named administrators distinguishable. */
+.conversation-copy .conversation-venue {
+    margin-top: 5px;
+    color: #176c39;
+    font-size: .66rem;
+    font-weight: 700;
+}
+
+.conversation-venue b {
+    margin-right: 5px;
+    color: #6b8272;
+    font-size: .58rem;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+}
+
+.conversation-copy .conversation-preview {
+    color: var(--muted);
+}
+
+@media (max-width: 720px) {
+    .conversation-copy .conversation-preview { display: none; }
+    .conversation-copy .conversation-venue { display: block; font-size: .58rem; }
+}

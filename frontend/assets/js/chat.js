@@ -9,6 +9,8 @@ const escapeHTML = (value) => String(value ?? "").replace(/[&<>'"]/g, (character
 const idOf = (value) => String(value?._id || value?.id || value || "");
 const initial = (value) => String(value || "T").trim().charAt(0).toUpperCase();
 const displayRole = (value) => String(value || "contact").replace("-", " ");
+const venueOf = (item) => item?.playground || contactOf(item)?.playground || null;
+const venueName = (item) => venueOf(item)?.name || "";
 const time = (value) => value ? new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit" }).format(new Date(value)) : "";
 const visibleContactRoles = {
     customer: ["playground-admin", "super-admin"],
@@ -52,7 +54,7 @@ function availableRecords() {
 function matchesSearch(item) {
     if (!searchTerm) return true;
     const contact = contactOf(item);
-    const haystack = [contact.name, contact.email, contact.subtitle, contact.playground?.name, contact.role, item.lastMessage]
+    const haystack = [contact.name, contact.email, contact.subtitle, venueName(item), contact.role, item.lastMessage]
         .filter(Boolean)
         .join(" ")
         .toLowerCase();
@@ -78,6 +80,7 @@ function renderConversations() {
         const contactId = contactIdOf(item);
         const selected = idOf(activeContact?.id) === contactId;
         const preview = item.lastMessage || contact.subtitle || ("New " + displayRole(contact.role) + " chat");
+        const venue = venueName(item);
         const meta = item.lastMessageAt ? time(item.lastMessageAt) : "New";
         const unread = item.unreadCount ? '<b class="unread">' + item.unreadCount + "</b>" : "";
         // The API already limits the contact list by role, so every displayed
@@ -86,7 +89,9 @@ function renderConversations() {
         const call = canCall ? '<a class="conversation-call" href="tel:' + escapeHTML(String(contact.phone).replace(/[^+\d]/g, "")) + '" title="Call ' + escapeHTML(contact.name) + '" aria-label="Call ' + escapeHTML(contact.name) + '">☎</a>' : "";
         return '<div class="conversation-row"><button class="conversation ' + (selected ? "active" : "") + '" type="button" data-contact-id="' + escapeHTML(contactId) + '">'
             + '<span class="conversation-avatar">' + escapeHTML(initial(contact.name)) + "</span>"
-            + '<span class="conversation-copy"><strong>' + escapeHTML(contact.name) + "</strong><span>" + escapeHTML(preview) + "</span></span>"
+            + '<span class="conversation-copy"><strong>' + escapeHTML(contact.name) + "</strong>"
+            + (venue ? '<span class="conversation-venue"><b>Venue</b>' + escapeHTML(venue) + "</span>" : "")
+            + '<span class="conversation-preview">' + escapeHTML(preview) + "</span></span>"
             + '<span class="conversation-meta">' + escapeHTML(meta) + unread + "</span></button>" + call + "</div>";
     }).join("");
     list.querySelectorAll("[data-contact-id]").forEach((button) => {
@@ -98,8 +103,9 @@ function renderThread(messages = activeMessages) {
     activeMessages = messages;
     const contact = activeContact;
     const title = contact?.name || "Select a conversation";
+    const venue = venueName(contact);
     const subtitle = contact
-        ? displayRole(contact.role) + " · " + (contact.email || contact.subtitle || "Direct messages")
+        ? (venue ? "Venue: " + venue + " · " : "") + displayRole(contact.role) + " · " + (contact.email || contact.subtitle || "Direct messages")
         : "Choose a contact from the list to start a chat.";
     $("#thread-header").innerHTML = '<div class="chat-avatar">' + escapeHTML(initial(title)) + '</div><div><strong>'
         + escapeHTML(title) + "</strong><span>" + escapeHTML(subtitle) + "</span></div>";
@@ -126,7 +132,7 @@ async function selectById(contactId, { keepThreadVisible = false } = {}) {
     const item = availableRecords().find((record) => contactIdOf(record) === String(contactId));
     if (!item) return;
     const selectedId = contactIdOf(item);
-    activeContact = { ...contactOf(item), id: selectedId };
+    activeContact = { ...contactOf(item), playground: venueOf(item), id: selectedId };
     renderConversations();
     if (!keepThreadVisible) {
         activeMessages = [];
@@ -139,7 +145,12 @@ async function selectById(contactId, { keepThreadVisible = false } = {}) {
     try {
         const result = await request("/chat/contacts/" + encodeURIComponent(selectedId) + "/messages", { signal: activeRequest.signal });
         if (idOf(activeContact?.id) !== selectedId) return;
-        activeContact = { ...activeContact, ...result.contact, id: selectedId };
+        activeContact = {
+            ...activeContact,
+            ...result.contact,
+            playground: result.contact?.playground || activeContact.playground || null,
+            id: selectedId,
+        };
         const conversation = conversations.find((record) => contactIdOf(record) === selectedId);
         if (conversation) conversation.unreadCount = 0;
         renderConversations();
