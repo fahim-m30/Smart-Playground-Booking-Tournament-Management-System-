@@ -251,31 +251,43 @@ const processUnderfilledTournaments = async () => {
             matchStatus: { $in: ["Scheduled", "Live"] },
         }, { $set: { matchStatus: "Cancelled" } });
         const payments = await Payment.find({ tournament: tournament._id, paymentStatus: "Paid", isDeleted: false });
-        await Promise.all(payments.map((payment) => Payment.updateOne({ _id: payment._id }, {
-            $set: { refundAmount: payment.amount, refundStatus: "Pending", refundReason: "Tournament cancelled because required teams were not registered." },
-        })));
+        const refundReason = "Tournament cancelled because required teams were not registered.";
+        // Demo payments are refunded immediately. The income report only counts
+        // Paid payments, so this removes every refunded registration from the
+        // playground admin's live tournament income at the same time.
+        await Promise.all([
+            ...payments.map((payment) => Payment.updateOne({ _id: payment._id }, {
+                $set: { paymentStatus: "Refunded", refundAmount: payment.amount, refundStatus: "Completed", refundReason },
+            })),
+            TournamentTeam.updateMany(
+                { _id: { $in: teams.map((team) => team._id) }, paymentStatus: "Paid", isDeleted: false },
+                { $set: { paymentStatus: "Refunded" } }
+            ),
+        ]);
+        const refundTotal = payments.reduce((total, payment) => total + (payment.amount || 0), 0);
         const playground = await Playground.findById(tournament.playground).select("playgroundAdmin");
         if (playground?.playgroundAdmin) {
             await createNotification({
                 recipient: playground.playgroundAdmin,
                 type: "TournamentCancelled",
                 title: "Tournament cancelled",
-                message: `${tournament.name} was cancelled because only ${teams.length} paid team(s) registered; at least 4 are required. Registered teams will be refunded.`,
+                message: `${tournament.name} was cancelled because only ${teams.length} paid team(s) registered; at least 4 are required. Demo refunds of BDT ${refundTotal} have been completed and the amount was removed from tournament income.`,
                 link: "tournament.html",
             });
         }
         await Promise.all(teams.filter((team) => team.registeredBy).map(async (team) => {
             const payment = payments.find((item) => String(item.tournamentTeam) === String(team._id));
-            const sms = `${tournament.name} was cancelled because fewer than 4 paid teams registered.${payment ? ` Your refund of BDT ${payment.amount} is being processed.` : ""}`;
+            const sms = `${tournament.name} was cancelled because fewer than 4 paid teams registered.${payment ? ` Your refund of BDT ${payment.amount} has been completed.` : ""}`;
             if (team.contactNumber) await sendSMS(team.contactNumber, sms);
             await createNotification({
                 recipient: team.registeredBy,
                 type: "TournamentCancelled",
                 title: "Tournament cancelled",
-                message: `${tournament.name} was cancelled because only ${teams.length} of ${tournament.totalTeams} required paid teams completed registration.${payment ? ` A refund of ৳${payment.amount} is being processed.` : ""}`,
+                message: `${tournament.name} was cancelled because only ${teams.length} of ${tournament.totalTeams} required paid teams completed registration.${payment ? ` A demo refund of ৳${payment.amount} has been completed.` : ""}`,
                 link: "tournament.html",
             });
         }));
+        emitDashboardUpdate({ type: "tournament-cancelled-refunded", tournamentId: tournament._id, refundTotal });
     }
 };
 

@@ -266,9 +266,8 @@ const cancelBooking = async (id, customerId) => {
     }
 
     const startAt = bookingStartsAt(booking.bookingDate, booking.startTime);
-    const cancellationDeadline = new Date(startAt.getTime() - 2 * 60 * 60 * 1000);
-    if (new Date() > cancellationDeadline) {
-        throw new Error("Bookings can only be cancelled at least 2 hours before the slot starts.");
+    if (new Date() >= startAt) {
+        throw new Error("A booking can be cancelled only before the slot starts.");
     }
 
     booking.bookingStatus = "Cancelled";
@@ -303,16 +302,36 @@ const cancelBooking = async (id, customerId) => {
     return booking;
 };
 
-const cancelBookingByAdmin = async (id, adminId) => {
+const cancelBookingByAdmin = async (id, adminId, reason) => {
     const booking = await Booking.findOne({ _id: id, isDeleted: false }).populate("playground", "name playgroundAdmin");
     if (!booking) throw new Error("Booking not found.");
     if (String(booking.playground?.playgroundAdmin) !== String(adminId)) throw new Error("You are not authorized to cancel this booking.");
     if (["Cancelled", "Completed"].includes(booking.bookingStatus)) throw new Error(`A ${booking.bookingStatus.toLowerCase()} booking cannot be cancelled.`);
+    const cancellationReason = String(reason || "").trim();
+    if (cancellationReason.length < 8) throw new Error("Please provide a clear cancellation reason of at least 8 characters.");
+    if (cancellationReason.length > 500) throw new Error("The cancellation reason cannot be longer than 500 characters.");
     booking.bookingStatus = "Cancelled";
     booking.cancelledAt = new Date();
-    await booking.save();
-    await createNotification({ recipient: booking.customer, type: "BookingCancelled", title: "Your booking was cancelled", message: `${booking.playground?.name || "The playground"} cancelled your ${new Date(booking.bookingDate).toLocaleDateString("en-GB")} slot (${booking.startTime}-${booking.endTime}). Please contact the venue about any refund.`, link: "my-bookings.html" });
-    emitDashboardUpdate({ type: "booking-cancelled", bookingId: booking._id });
+    booking.cancellationReason = cancellationReason;
+    const paidPayment = await Payment.findOne({ booking: booking._id, paymentStatus: "Paid", isDeleted: false });
+    const refundAmount = paidPayment?.amount || 0;
+    if (paidPayment) {
+        paidPayment.paymentStatus = "Refunded";
+        paidPayment.refundAmount = refundAmount;
+        paidPayment.refundStatus = "Completed";
+        paidPayment.refundReason = `Playground admin cancelled the slot: ${cancellationReason}`;
+        booking.paymentStatus = "Refunded";
+        booking.refundAmount = refundAmount;
+    } else {
+        await Payment.updateMany(
+            { booking: booking._id, paymentStatus: "Pending", isDeleted: false },
+            { $set: { paymentStatus: "Cancelled" } }
+        );
+    }
+    await Promise.all([booking.save(), paidPayment?.save()]);
+    const refundMessage = refundAmount ? ` A full demo refund of BDT ${refundAmount} has been completed to your original payment method.` : " No payment was captured, so no refund was needed.";
+    await createNotification({ recipient: booking.customer, type: "BookingCancelled", title: "Your booking was cancelled by the playground", message: `${booking.playground?.name || "The playground"} cancelled your ${new Date(booking.bookingDate).toLocaleDateString("en-GB")} slot (${booking.startTime}-${booking.endTime}). Reason: ${cancellationReason}.${refundMessage}`, link: "my-bookings.html" });
+    emitDashboardUpdate({ type: "playground-admin-booking-cancelled", bookingId: booking._id, refundAmount });
     return booking;
 };
 

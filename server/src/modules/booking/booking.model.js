@@ -169,6 +169,12 @@ const bookingSchema = new mongoose.Schema(
             default: null,
         },
 
+        cancellationReason: {
+            type: String,
+            default: null,
+            trim: true,
+        },
+
         refundAmount: {
             type: Number,
             default: 0,

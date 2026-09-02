@@ -53,7 +53,7 @@
                 Array.from(content.querySelectorAll(".card")).slice(0, activeSlots.length).forEach((card, index) => {
                     const booking = activeSlots[index];
                     const startAt = new Date(`${String(booking.bookingDate).slice(0, 10)}T${booking.startTime}:00+06:00`);
-                    if (startAt.getTime() - Date.now() < 2 * 60 * 60 * 1000) card.querySelector(".cancel")?.replaceWith(Object.assign(document.createElement("span"), { className: "meta", textContent: "Cancellation closes 2 hours before the slot." }));
+                    if (startAt.getTime() <= Date.now()) card.querySelector(".cancel")?.replaceWith(Object.assign(document.createElement("span"), { className: "meta", textContent: "The slot has already started, so it cannot be cancelled." }));
                 });
             }
             if (activeTeams.length) {
@@ -75,7 +75,7 @@
             content.querySelectorAll(".cancel").forEach((button) => button.addEventListener("click", () => {
                 const booking = list.find((item) => String(item._id) === String(button.dataset.id));
                 if (!booking) return;
-                openCancellationConfirmation({ title: "Cancel this slot booking?", summary: `${booking.playground?.name || "Playground"} - ${date(booking.bookingDate)}, ${booking.startTime}-${booking.endTime}`, policy: ["You can cancel only until 2 hours before the slot starts.", "Eligible paid bookings receive a full automatic refund to the original payment method.", "The venue income report is adjusted immediately after the refund."], onConfirm: async () => { const cancelled = await request(`/bookings/${button.dataset.id}/cancel`, { method: "PATCH" }); showNotice(cancelled.refundAmount ? `Booking cancelled. BDT ${cancelled.refundAmount} refund completed.` : "Booking cancelled successfully."); bookings(); } });
+                openCancellationConfirmation({ title: "Cancel this slot booking?", summary: `${booking.playground?.name || "Playground"} - ${date(booking.bookingDate)}, ${booking.startTime}-${booking.endTime}`, policy: ["You can cancel anytime before the slot starts.", "A paid booking receives a full refund to the original payment method.", "The venue income report is adjusted immediately after the refund."], onConfirm: async () => { const cancelled = await request(`/bookings/${button.dataset.id}/cancel`, { method: "PATCH" }); showNotice(cancelled.refundAmount ? `Booking cancelled. BDT ${cancelled.refundAmount} refund completed.` : "Booking cancelled successfully."); bookings(); } });
             }));
             content.querySelectorAll(".cancel-tournament").forEach((button) => button.addEventListener("click", () => {
                 const team = teams.find((item) => String(item._id) === String(button.dataset.teamId));

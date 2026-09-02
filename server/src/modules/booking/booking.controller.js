@@ -134,8 +134,8 @@ const cancelBookingController = async (req, res) => {
 
 const cancelBookingByAdminController = async (req, res) => {
     try {
-        const booking = await cancelBookingByAdmin(req.params.id, req.user.userId);
-        res.status(200).json({ success: true, message: "Booking cancelled and customer notified.", data: booking });
+        const booking = await cancelBookingByAdmin(req.params.id, req.user.userId, req.body.reason);
+        res.status(200).json({ success: true, message: "Booking cancelled, refunded and customer notified.", data: booking });
     } catch (error) {
         res.status(400).json({ success: false, message: error.message });
     }

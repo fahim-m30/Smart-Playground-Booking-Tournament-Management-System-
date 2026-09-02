@@ -328,8 +328,45 @@ async function bookings() {
     const grounds = await R("/playgrounds/my-playgrounds");
     const all = [];
     for (const ground of grounds) all.push(...(await R("/bookings/playground/" + ground._id)).map((booking) => ({ ...booking, ground: ground.name })));
-    $("#panel").innerHTML = all.length ? all.map((booking) => '<article class="card"><span class="badge">' + E(booking.bookingStatus) + " · " + E(booking.paymentStatus) + "</span><h3>" + E(booking.ground) + "</h3><p>" + E(booking.customer?.name || "Customer") + " · " + E(formatDate(booking.bookingDate)) + "<br>" + E(booking.startTime) + " – " + E(booking.endTime) + "</p></article>").join("") : '<div class="empty">No playground bookings.</div>';
+    $("#panel").innerHTML = all.length ? all.map((booking) => {
+        const canCancel = ["Pending", "Confirmed"].includes(booking.bookingStatus);
+        const reason = booking.cancellationReason ? '<p class="meta"><strong>Cancellation reason:</strong> ' + E(booking.cancellationReason) + "</p>" : "";
+        const action = canCancel ? '<div class="card-foot"><button class="alt" type="button" onclick="cancelBookingAsAdmin(\'' + E(booking._id) + '\')">Cancel booking</button></div>' : "";
+        return '<article class="card"><span class="badge">' + E(booking.bookingStatus) + " · " + E(booking.paymentStatus) + "</span><h3>" + E(booking.ground) + "</h3><p>" + E(booking.customer?.name || "Customer") + " · " + E(formatDate(booking.bookingDate)) + "<br>" + E(booking.startTime) + " – " + E(booking.endTime) + "</p>" + reason + action + "</article>";
+    }).join("") : '<div class="empty">No playground bookings.</div>';
 }
+
+window.cancelBookingAsAdmin = (bookingId) => {
+    const modal = document.createElement("div");
+    modal.className = "modal show";
+    modal.innerHTML = '<section class="modal-box cancellation-box" role="dialog" aria-modal="true" aria-labelledby="admin-cancel-title"><button class="close" type="button">Close</button><span class="eyebrow">VENUE ACTION</span><h2 id="admin-cancel-title">Cancel this booked slot?</h2><p class="meta">The customer will be notified immediately. Any paid amount will receive a full demo refund and be removed from your venue income.</p><form id="admin-cancel-form" class="form-grid"><label class="full">Reason for cancellation<textarea name="reason" minlength="8" maxlength="500" placeholder="Example: The field is unavailable due to urgent maintenance." required></textarea></label><p class="full cancellation-question">This action cannot be undone.</p><div class="full cancellation-actions"><button class="alt" type="button" data-close>Keep booking</button><button class="confirm-cancellation" type="submit">Cancel, refund &amp; notify</button></div><p class="full cancellation-error" hidden></p></form></section>';
+    document.body.append(modal);
+    const close = () => modal.remove();
+    modal.querySelector(".close").onclick = close;
+    modal.querySelector("[data-close]").onclick = close;
+    modal.onclick = (event) => { if (event.target === modal) close(); };
+    modal.querySelector("#admin-cancel-form").onsubmit = async (event) => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const button = form.querySelector(".confirm-cancellation");
+        const error = form.querySelector(".cancellation-error");
+        const reason = new FormData(form).get("reason").trim();
+        button.disabled = true;
+        button.textContent = "Cancelling…";
+        error.hidden = true;
+        try {
+            const cancelled = await R("/bookings/" + encodeURIComponent(bookingId) + "/admin-cancel", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reason }) });
+            close();
+            say(cancelled.refundAmount ? "Booking cancelled. BDT " + cancelled.refundAmount + " was refunded and the customer was notified." : "Booking cancelled and the customer was notified.");
+            bookings();
+        } catch (requestError) {
+            error.textContent = requestError.message;
+            error.hidden = false;
+            button.disabled = false;
+            button.textContent = "Cancel, refund & notify";
+        }
+    };
+};
 
 const localDateKey = (value) => {
     const date = new Date(value);

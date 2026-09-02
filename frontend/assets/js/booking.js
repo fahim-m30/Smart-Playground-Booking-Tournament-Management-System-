@@ -185,8 +185,8 @@
                 const [hour, minute] = String(booking.startTime || "00:00").split(":").map(Number);
                 const startAt = new Date(booking.bookingDate);
                 startAt.setHours(hour, minute, 0, 0);
-                const deadlinePassed = new Date() > new Date(startAt.getTime() - 2 * 60 * 60 * 1000);
-                const message = booking.bookingStatus === "Cancelled" ? "Already cancelled" : booking.bookingStatus === "Completed" ? "Completed bookings cannot be cancelled" : deadlinePassed ? "Cancellation period ended (2 hours before the slot)" : "";
+                const deadlinePassed = new Date() >= startAt;
+                const message = booking.bookingStatus === "Cancelled" ? "Already cancelled" : booking.bookingStatus === "Completed" ? "Completed bookings cannot be cancelled" : deadlinePassed ? "The slot has already started, so it cannot be cancelled." : "";
                 if (!message) return;
                 if (existingFooter) existingFooter.innerHTML = `<span class="meta">${message}</span>`;
                 else card.insertAdjacentHTML("beforeend", `<div class="card-foot"><span class="meta">${message}</span></div>`);
@@ -197,7 +197,7 @@
                 openCancellationConfirmation({
                     title: "Cancel this slot booking?",
                     summary: `${booking.playground?.name || "Playground"} - ${bookingDate(String(booking.bookingDate).slice(0, 10))}, ${booking.startTime}-${booking.endTime}`,
-                    policy: ["You can cancel only until 2 hours before the slot starts.", "Eligible paid bookings receive a full automatic refund to the original payment method.", "The venue income report is adjusted immediately after the refund."],
+                    policy: ["You can cancel anytime before the slot starts.", "A paid booking receives a full refund to the original payment method.", "The venue income report is adjusted immediately after the refund."],
                     onConfirm: async () => { const cancelled = await request(`/bookings/${button.dataset.bookingId}/cancel`, { method: "PATCH" }); showNotice(cancelled.refundAmount ? `Booking cancelled. BDT ${cancelled.refundAmount} refund completed.` : "Booking cancelled successfully."); await loadBookings(); loadAvailability(); },
                 });
             }));

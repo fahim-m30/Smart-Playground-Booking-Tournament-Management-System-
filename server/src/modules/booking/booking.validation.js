@@ -57,6 +57,8 @@ const updateBookingValidation = Joi.object({
 
     cancelledAt: Joi.date(),
 
+    cancellationReason: Joi.string().trim().max(500),
+
     refundAmount: Joi.number().min(0),
 });
 
