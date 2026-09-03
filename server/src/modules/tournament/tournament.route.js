@@ -66,6 +66,13 @@ router.post(
 
 // Update Match Result
 router.patch(
+    "/matches/:id/live-score",
+    verifyToken,
+    authorize("playground-admin"),
+    tournamentController.updateLiveMatchScore
+);
+
+router.patch(
     "/matches/:id/result",
     verifyToken,
     authorize("playground-admin"),

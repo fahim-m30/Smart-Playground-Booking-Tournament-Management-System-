@@ -1046,6 +1046,7 @@ const getTournamentMatches = async (tournamentId, stage, actor) => {
     }
 
     const matches = await TournamentMatch.find(filter)
+        .populate("tournament", "sportType")
         .populate("teamA", "teamName")
         .populate("teamB", "teamName")
         .populate("playground", "name address")
@@ -1119,6 +1120,33 @@ const advanceKnockoutBracket = async (completedMatch) => {
     await Promise.all(finalMatches);
 };
 
+// Live score updates do not affect points, standings or the knockout bracket.
+// Only the final-result endpoint completes a fixture.
+const updateLiveMatchScore = async (matchId, payload, actor) => {
+    const match = await TournamentMatch.findById(matchId);
+    if (!match) throw new Error("Match not found.");
+    if (match.matchStatus !== "Live") throw new Error("Only a Live match can receive a live score update.");
+    if (!Number.isInteger(payload.teamAScore) || !Number.isInteger(payload.teamBScore) || payload.teamAScore < 0 || payload.teamBScore < 0) {
+        throw new Error("Both live scores must be whole numbers of zero or more.");
+    }
+    for (const wicketField of ["teamAWickets", "teamBWickets"]) {
+        if (payload[wicketField] !== undefined && (!Number.isInteger(payload[wicketField]) || payload[wicketField] < 0 || payload[wicketField] > 10)) {
+            throw new Error("Cricket wickets must be a whole number from 0 to 10.");
+        }
+    }
+
+    const playground = await Playground.findOne({ _id: match.playground, playgroundAdmin: actor?.userId, isDeleted: false });
+    if (!playground) throw new Error("Only the tournament venue admin can update this live score.");
+
+    match.teamAScore = payload.teamAScore;
+    match.teamBScore = payload.teamBScore;
+    if (payload.teamAWickets !== undefined) match.teamAWickets = payload.teamAWickets;
+    if (payload.teamBWickets !== undefined) match.teamBWickets = payload.teamBWickets;
+    await match.save();
+    emitDashboardUpdate({ type: "match-live-score", matchId: match._id, tournamentId: match.tournament });
+    return match;
+};
+
 const updateMatchResult = async (matchId, payload, actor) => {
     const match = await TournamentMatch.findById(matchId);
 
@@ -1134,8 +1162,17 @@ const updateMatchResult = async (matchId, payload, actor) => {
         throw new Error("This match is cancelled. Publish its announced reschedule before recording a result.");
     }
 
+    if (match.matchStatus !== "Live") {
+        throw new Error("Set this fixture to Live before publishing its final result.");
+    }
+
     if (!Number.isInteger(payload.teamAScore) || !Number.isInteger(payload.teamBScore) || payload.teamAScore < 0 || payload.teamBScore < 0) {
         throw new Error("Both match scores must be whole numbers of zero or more.");
+    }
+    for (const wicketField of ["teamAWickets", "teamBWickets"]) {
+        if (payload[wicketField] !== undefined && (!Number.isInteger(payload[wicketField]) || payload[wicketField] < 0 || payload[wicketField] > 10)) {
+            throw new Error("Cricket wickets must be a whole number from 0 to 10.");
+        }
     }
 
     if (actor?.role !== "super-admin") {
@@ -1161,6 +1198,25 @@ const updateMatchResult = async (matchId, payload, actor) => {
     match.matchStatus = "Completed";
 
     await match.save();
+    const [resultTeams, resultTournament] = await Promise.all([
+        TournamentTeam.find({ _id: { $in: [match.teamA, match.teamB] } }).select("registeredBy teamName"),
+        Tournament.findById(match.tournament).select("sportType"),
+    ]);
+    const teamById = new Map(resultTeams.map((team) => [String(team._id), team]));
+    const teamAName = teamById.get(String(match.teamA))?.teamName || "Team A";
+    const teamBName = teamById.get(String(match.teamB))?.teamName || "Team B";
+    const isCricket = resultTournament?.sportType === "Cricket";
+    const teamAScorecard = `${match.teamAScore}${isCricket && Number.isFinite(match.teamAWickets) ? `/${match.teamAWickets}` : ""}`;
+    const teamBScorecard = `${match.teamBScore}${isCricket && Number.isFinite(match.teamBWickets) ? `/${match.teamBWickets}` : ""}`;
+    const resultMessage = `${teamAName} ${teamAScorecard} - ${teamBName} ${teamBScorecard}.`;
+    const notificationResults = await Promise.allSettled(resultTeams.filter((team) => team.registeredBy).map((team) => createNotification({
+        recipient: team.registeredBy,
+        type: "MatchResultPublished",
+        title: "Match result published",
+        message: `${resultMessage} The official ${match.stage.toLowerCase()} result is now available.`,
+        link: `tournament.html?fixture=${match.tournament}`,
+    })));
+    if (notificationResults.some((result) => result.status === "rejected")) console.error("Could not send every match-result notification.");
     emitDashboardUpdate({ type: "match-result", matchId: match._id, tournamentId: match.tournament });
 
     if (match.stage === "Group") {
@@ -1680,6 +1736,7 @@ module.exports = {
     conductTournamentDraw,
     resumeLiveTournamentDraws,
     getTournamentMatches,
+    updateLiveMatchScore,
     updateMatchResult,
     scheduleMatch,
     generateKnockoutStage,

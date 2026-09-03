@@ -22,6 +22,7 @@ const notificationSchema = new mongoose.Schema({
             "TournamentDrawCompleted",
             "MatchReminder",
             "MatchCancelled",
+            "MatchResultPublished",
             "ReportUpdate",
             "AccountSuspended",
             "VenueApproval",

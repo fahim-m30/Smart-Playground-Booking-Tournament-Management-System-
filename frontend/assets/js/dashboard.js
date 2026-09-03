@@ -147,22 +147,54 @@ function incomeDashboard(income) {
     return `<section class="income-dashboard"><div class="section-heading"><div><h2>Income overview</h2><p>Paid earnings from your own playgrounds.</p></div><a class="text-link" href="management.html?tab=Income">Full income report →</a></div><div class="income-stat-grid"><article>${slotIcon}<div><span>Slot income</span><strong>${money(income.slotTotal)}</strong></div></article><article>${tournamentIcon}<div><span>Tournament income</span><strong>${money(income.tournamentTotal)}</strong></div></article><article class="income-grand-total"><span>Total income</span><strong>${money(income.total)}</strong></article></div><section class="split-grid"><article class="panel income-panel slot-income-panel"><h2 class="panel-title">${slotIcon}<span>Slot booking income</span><small>Paid reservations</small></h2>${slotRows}</article><article class="panel income-panel tournament-income-panel"><h2 class="panel-title">${tournamentIcon}<span>Tournament income</span><small>Registration fees</small></h2>${tournamentRows}</article></section></section>`;
 }
 
+function hasMatchScore(match) {
+    return Number.isFinite(Number(match.teamAScore)) && Number.isFinite(Number(match.teamBScore));
+}
+
+function cricketScore(runs, wickets) {
+    return `${runs}${Number.isFinite(Number(wickets)) ? `/${wickets}` : ""}`;
+}
+
+function cricketResultSummary(match, teamA, teamB) {
+    if (!hasMatchScore(match)) return "Score update will appear here when play begins.";
+    if (Number(match.teamAScore) === Number(match.teamBScore)) return "Match tied";
+    if (Number(match.teamAScore) > Number(match.teamBScore)) {
+        const margin = Number(match.teamAScore) - Number(match.teamBScore);
+        return `${teamA} won by ${margin} run${margin === 1 ? "" : "s"}`;
+    }
+    if (Number.isFinite(Number(match.teamBWickets))) {
+        const margin = 10 - Number(match.teamBWickets);
+        return `${teamB} won by ${margin} wicket${margin === 1 ? "" : "s"}`;
+    }
+    return `${teamB} won`;
+}
+
 function matchResultCard(match) {
     const live = match.matchStatus === "Live";
     const completed = match.matchStatus === "Completed";
     const teamA = match.teamA?.teamName || "Team A";
     const teamB = match.teamB?.teamName || "Team B";
-    const score = completed ? `${match.teamAScore} – ${match.teamBScore}` : "vs";
-    return `<article class="match-result-card ${live ? "live" : ""}"><div class="match-result-meta"><span class="status ${live ? "live" : ""}">${live ? "LIVE" : "FULL TIME"}</span><span>${formatDate(match.matchDate)} · ${escapeHTML(match.startTime)}</span></div><div class="match-score"><strong>${escapeHTML(teamA)}</strong><b>${score}</b><strong>${escapeHTML(teamB)}</strong></div><p>${escapeHTML(match.playground?.name || "Tournament venue")} · ${escapeHTML(match.stage || "Match")}</p></article>`;
+    const cricket = match.tournament?.sportType === "Cricket";
+    const hasScore = (live || completed) && hasMatchScore(match);
+    const state = live ? "LIVE NOW" : completed ? "FULL TIME" : "UP NEXT";
+    const scorecard = cricket && hasScore
+        ? `<div class="match-scorecard"><div><strong>${escapeHTML(teamA)}</strong><b>${cricketScore(match.teamAScore, match.teamAWickets)}</b></div><div><strong>${escapeHTML(teamB)}</strong><b>${cricketScore(match.teamBScore, match.teamBWickets)}</b></div></div>`
+        : `<div class="match-score"><strong>${escapeHTML(teamA)}</strong><b>${hasScore ? `${match.teamAScore} – ${match.teamBScore}` : "VS"}</b><strong>${escapeHTML(teamB)}</strong></div>`;
+    const summary = completed && cricket ? `<p class="match-outcome">${escapeHTML(cricketResultSummary(match, teamA, teamB))}</p>` : "";
+    return `<article class="match-result-card ${live ? "live" : ""} ${completed ? "completed" : "scheduled"}"><div class="match-result-meta"><span class="status ${live ? "live" : ""}">${state}</span><span>${formatDate(match.matchDate)} · ${escapeHTML(match.startTime)}</span></div>${scorecard}${summary}<p>${escapeHTML(match.playground?.name || "Tournament venue")} · ${escapeHTML(match.stage || "Match")}</p></article>`;
 }
 
-function mountMatchResults(matches) {
-    const visible = matches.filter((match) => ["Live", "Completed"].includes(match.matchStatus)).sort((a, b) => new Date(b.matchDate) - new Date(a.matchDate)).slice(0, 6);
+function mountMatchResults(matches, { pinned = false } = {}) {
+    const liveMatches = matches.filter((match) => match.matchStatus === "Live");
+    const scheduledMatches = matches.filter((match) => match.matchStatus === "Scheduled").sort((a, b) => new Date(`${String(a.matchDate).slice(0, 10)}T${a.startTime || "00:00"}`) - new Date(`${String(b.matchDate).slice(0, 10)}T${b.startTime || "00:00"}`));
+    const completedMatches = matches.filter((match) => match.matchStatus === "Completed").sort((a, b) => new Date(b.matchDate) - new Date(a.matchDate));
+    const visible = [...liveMatches, ...scheduledMatches, ...completedMatches].slice(0, 6);
     if (!visible.length) return;
     const section = document.createElement("section");
-    section.className = "match-results-section";
-    section.innerHTML = `<div class="section-heading"><div><h2>Live scores & recent results</h2><p>Results published by the playground administrator appear here automatically.</p></div><a class="text-link" href="tournament.html">Open fixtures →</a></div><div class="match-results-grid">${visible.map(matchResultCard).join("")}</div>`;
-    $("#dashboard-body").append(section);
+    section.className = `match-results-section${pinned ? " match-results-section--pinned" : ""}`;
+    section.innerHTML = `<div class="section-heading"><div><span class="match-centre-kicker">${liveMatches.length ? "LIVE SCORES" : "MATCH UPDATES"}</span><h2>${pinned ? "Scores & fixtures" : "Live scores & recent results"}</h2><p>${pinned ? "Live games, next fixtures and official results — refreshed automatically." : "Results published by the playground administrator appear here automatically."}</p></div><a class="text-link" href="tournament.html">Open fixtures →</a></div><div class="match-results-grid">${visible.map(matchResultCard).join("")}</div>`;
+    const body = $("#dashboard-body");
+    if (pinned) body.querySelector(".stats")?.after(section); else body.append(section);
 }
 
 function enhanceActivityPanels() {
@@ -211,7 +243,7 @@ async function init() {
             const [bookings, tournaments] = await Promise.all([api("/bookings/my-bookings"), tournamentRequest]);
             $("#dashboard-body").innerHTML = customerView(bookings, tournaments);
             enhanceActivityPanels();
-            mountMatchResults(await getTournamentMatches(tournaments));
+            mountMatchResults(await getTournamentMatches(tournaments), { pinned: true });
             return;
         }
         const playgrounds = await api(role === "playground-admin" ? "/playgrounds/my-playgrounds" : "/playgrounds");

@@ -20,6 +20,7 @@ const {
     generateGroupMatches,
     conductTournamentDraw,
     getTournamentMatches,
+    updateLiveMatchScore,
     updateMatchResult,
     scheduleMatch,
     generateKnockoutStage,
@@ -268,6 +269,15 @@ const getTournamentMatchesController = async (req, res) => {
 // Update Match Result
 // ===================================================
 
+const updateLiveMatchScoreController = async (req, res) => {
+    try {
+        const match = await updateLiveMatchScore(req.params.id, req.body, req.user);
+        return res.status(200).json({ success: true, message: "Live score updated successfully.", data: match });
+    } catch (error) {
+        return res.status(400).json({ success: false, message: error.message });
+    }
+};
+
 const updateMatchResultController = async (req, res) => {
     try {
         const match = await updateMatchResult(req.params.id, req.body, req.user);
@@ -466,6 +476,7 @@ module.exports = {
     generateGroupMatches: generateGroupMatchesController,
     conductTournamentDraw: conductTournamentDrawController,
     getTournamentMatches: getTournamentMatchesController,
+    updateLiveMatchScore: updateLiveMatchScoreController,
     updateMatchResult: updateMatchResultController,
     scheduleMatch: scheduleMatchController,
     generateKnockoutStage: generateKnockoutStageController,
