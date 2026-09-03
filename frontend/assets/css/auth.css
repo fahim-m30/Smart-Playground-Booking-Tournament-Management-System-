@@ -349,6 +349,7 @@ body { background: radial-gradient(circle at top left, #dff8e8 0, transparent 28
     .auth-page { display: block; min-height: 100dvh; padding: 18px 14px 32px; overflow: visible; }
     .auth-page::before, .auth-page::after { width: 19rem; height: 19rem; }
     .auth-card, .auth-card--login, .auth-card--register, .auth-card--compact { width: min(100%, 560px); min-height: 0; margin: 0 auto; border-radius: 24px; box-shadow: 0 16px 42px rgba(18, 74, 40, .12); }
+    .auth-card--login, .auth-card--register { grid-template-columns: minmax(0, 1fr); }
     .auth-card--login .auth-card__visual, .auth-card--register .auth-card__visual { display: none; }
     .auth-form, .auth-card--compact .auth-form { padding: 30px 28px; gap: 19px; }
     .auth-mobile-brand { display: grid; grid-template-columns: 38px auto; column-gap: 10px; align-items: center; padding-bottom: 16px; border-bottom: 1px solid #e0eee3; color: #075a2a; }
