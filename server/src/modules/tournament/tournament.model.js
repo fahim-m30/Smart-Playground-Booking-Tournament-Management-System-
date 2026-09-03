@@ -174,7 +174,7 @@ const tournamentSchema = new mongoose.Schema(
         drawNotificationSent: { type: Boolean, default: false },
         drawStatus: {
             type: String,
-            enum: ["Scheduled", "Live", "Completed"],
+            enum: ["Scheduled", "Preparing", "Live", "Completed"],
             default: "Scheduled",
         },
         drawStartedAt: { type: Date, default: null },

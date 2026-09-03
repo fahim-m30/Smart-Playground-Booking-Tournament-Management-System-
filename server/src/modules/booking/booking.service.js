@@ -184,13 +184,11 @@ const otpExpiresAt = new Date(
 // ===================================================
 
 const getMyBookings = async (customerId) => {
-    const paidPayments = await Payment.find({ customer: customerId, booking: { $ne: null }, paymentStatus: "Paid", isDeleted: false }).select("booking");
-    if (paidPayments.length) await Booking.updateMany({ _id: { $in: paidPayments.map((payment) => payment.booking) }, bookingStatus: "Pending" }, { $set: { bookingStatus: "Confirmed", paymentStatus: "Paid" } });
     const bookings = await Booking.find({
         customer: customerId,
         isDeleted: false,
     })
-        .populate("playground")
+        .populate("playground", "name address playgroundAdmin")
         .sort({
             createdAt: -1,
         });

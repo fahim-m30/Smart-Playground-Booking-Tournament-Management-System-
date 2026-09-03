@@ -35,7 +35,7 @@
     async function bookings() {
         content.innerHTML = '<div class="empty">Loading your bookings...</div>';
         try {
-            const [list, teams, payments] = await Promise.all([request("/bookings/my-bookings"), request("/tournaments/my-registrations"), request("/payments/my-payments")]);
+            const [list, teams, payments] = await Promise.all([request("/bookings/my-bookings"), request("/tournaments/my-registrations"), request("/payments/my-payments?includeTickets=false")]);
             const pendingByBooking = new Map(payments.filter((payment) => payment.paymentStatus === "Pending" && payment.booking).map((payment) => [String(payment.booking?._id || payment.booking), payment]));
             const activeSlots = list.filter((booking) => !["Cancelled", "Completed"].includes(booking.bookingStatus) && new Date(`${String(booking.bookingDate).slice(0, 10)}T${booking.endTime}:00+06:00`) > new Date());
             const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Dhaka", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());

@@ -92,7 +92,9 @@ const cancelDemoCheckoutController = async (req, res) => {
 
 const getMyPaymentsController = async (req, res) => {
     try {
-        const result = await getMyPayments(req.user.userId);
+        const result = await getMyPayments(req.user.userId, {
+            includeTickets: req.query.includeTickets !== "false",
+        });
 
         return res.status(200).json({
             success: true,

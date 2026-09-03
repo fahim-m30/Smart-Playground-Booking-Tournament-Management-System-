@@ -371,19 +371,40 @@ const ensurePaymentTicketQR = async (payment) => {
 
     if (payment.booking) {
         const booking = payment.booking;
-        const expiresAt = booking.qrExpiresAt || bookingEndsAt(booking.bookingDate, booking.endTime);
-        booking.qrCode = await generateQR({ type: "SlotBooking", id: booking._id.toString(), expiresAt: new Date(expiresAt).toISOString() });
+        if (!booking.qrCode) {
+            const expiresAt = booking.qrExpiresAt || bookingEndsAt(booking.bookingDate, booking.endTime);
+            const qrCode = await generateQR({ type: "SlotBooking", id: booking._id.toString(), expiresAt: new Date(expiresAt).toISOString() });
+            booking.qrCode = qrCode;
+            await Booking.updateOne({ _id: booking._id }, { $set: { qrCode, qrExpiresAt: expiresAt } });
+        }
     } else if (payment.tournamentTeam) {
         const team = payment.tournamentTeam;
-        if (team.qrExpiresAt) {
-            team.qrCode = await generateQR({ type: "TournamentTicket", id: team._id.toString(), expiresAt: new Date(team.qrExpiresAt).toISOString() });
+        if (team.qrExpiresAt && !team.qrCode) {
+            const qrCode = await generateQR({ type: "TournamentTicket", id: team._id.toString(), expiresAt: new Date(team.qrExpiresAt).toISOString() });
+            team.qrCode = qrCode;
+            await TournamentTeam.updateOne({ _id: team._id }, { $set: { qrCode } });
         }
     }
 
     return payment;
 };
 
-const getMyPayments = async (customerId) => {
+const getMyPayments = async (customerId, { includeTickets = true } = {}) => {
+    // The bookings overview only needs to know whether a checkout is still
+    // pending. Do not populate every historical ticket or render QR images
+    // for that lightweight request.
+    if (!includeTickets) {
+        return Payment.find({
+            customer: customerId,
+            booking: { $ne: null },
+            paymentStatus: "Pending",
+            isDeleted: false,
+        })
+            .select("_id paymentStatus booking")
+            .sort({ createdAt: -1 })
+            .lean();
+    }
+
     const payments = await Payment.find({
         customer: customerId,
         isDeleted: false,
@@ -402,10 +423,9 @@ const getMyPayments = async (customerId) => {
                 select: "name sportType",
             },
         })
-        .populate("customer", "name email phone")
         .sort({ createdAt: -1 });
 
-    return Promise.all(payments.map(ensurePaymentTicketQR));
+    return includeTickets ? Promise.all(payments.map(ensurePaymentTicketQR)) : payments;
 };
 
 // ===================================================

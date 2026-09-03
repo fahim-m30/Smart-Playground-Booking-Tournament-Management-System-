@@ -32,7 +32,31 @@ const dateRangeFor = (value) => {
 const officialDrawTime = (startDate) => {
     const start = dateOnlyParts(startDate);
     const drawDay = new Date(Date.UTC(start.year, start.month - 1, start.day - 1));
-    return zonedDateTime({ year: drawDay.getUTCFullYear(), month: drawDay.getUTCMonth() + 1, day: drawDay.getUTCDate() }, "18:00");
+    return zonedDateTime({ year: drawDay.getUTCFullYear(), month: drawDay.getUTCMonth() + 1, day: drawDay.getUTCDate() }, "12:00");
+};
+
+// Move legacy, not-yet-started ceremonies from the former 6:00 PM default to
+// the new official noon schedule. New tournaments already receive this time.
+const rescheduleUpcomingDrawsToNoon = async () => {
+    const tournaments = await Tournament.find({
+        status: { $in: ["Pending Approval", "Upcoming"] },
+        drawStatus: "Scheduled",
+        isDeleted: false,
+        startDate: { $gte: new Date() },
+        drawScheduledAt: { $ne: null },
+    }).select("_id startDate drawScheduledAt").lean();
+
+    const updates = tournaments.map((tournament) => {
+        const scheduledAt = officialDrawTime(tournament.startDate);
+        if (new Date(tournament.drawScheduledAt).getTime() === scheduledAt.getTime()) return null;
+        return Tournament.updateOne(
+            { _id: tournament._id },
+            { $set: { drawScheduledAt: scheduledAt, drawNotificationSent: false } }
+        );
+    }).filter(Boolean);
+
+    if (updates.length) await Promise.all(updates);
+    return updates.length;
 };
 
 // The server owns the timing, so every registered team sees one official,
@@ -729,11 +753,15 @@ const finaliseTournamentDraw = async (tournamentId, audience) => {
         registeredBy: { $ne: null },
         isDeleted: false,
     }).populate("group", "name").select("registeredBy teamName group");
-    await Promise.all(registeredTeams.map((team) => createNotification({
+    const notificationResults = await Promise.allSettled(registeredTeams.map((team) => createNotification({
+        recipient: team.registeredBy,
+        type: "TournamentDrawCompleted",
         title: "Official lottery completed — fixture ready",
         message: `${team.teamName} was drawn into ${team.group?.name || "the official group"} for ${tournament.name}. Your final match fixture is now available.`,
         link: `tournament.html?fixture=${tournament._id}`,
     })));
+    const notificationFailures = notificationResults.filter((result) => result.status === "rejected");
+    if (notificationFailures.length) console.error(`Tournament draw completed with ${notificationFailures.length} notification failure(s).`);
 
     publishDrawEvent(audience, "tournament:draw:completed", {
         tournamentId: String(tournament._id),
@@ -772,8 +800,11 @@ const scheduleTournamentDraw = ({ tournament, teams, groups, adminId }) => {
                     group: { id: String(entry.group), name: group?.name || "Official group" },
                 });
                 if (index === tournament.drawSequence.length - 1) {
-                    await finaliseTournamentDraw(tournamentId, audience);
-                    activeDrawTimers.delete(tournamentId);
+                    try {
+                        await finaliseTournamentDraw(tournamentId, audience);
+                    } finally {
+                        activeDrawTimers.delete(tournamentId);
+                    }
                 }
             } catch (error) {
                 console.error("Unable to publish tournament draw reveal:", error.message);
@@ -788,6 +819,13 @@ const scheduleTournamentDraw = ({ tournament, teams, groups, adminId }) => {
 // scheduler resumes from the last persisted reveal; already announced teams
 // are never sent again.
 const resumeLiveTournamentDraws = async () => {
+    // Release a stale preparation lock if a process stopped before the live
+    // draw sequence could be persisted.
+    const stalePreparation = new Date(Date.now() - 5 * 60 * 1000);
+    await Tournament.updateMany(
+        { drawStatus: "Preparing", drawStartedAt: { $lte: stalePreparation }, isDeleted: false },
+        { $set: { drawStatus: "Scheduled", drawStartedAt: null, drawRevealIndex: 0 } }
+    );
     const liveTournaments = await Tournament.find({ drawStatus: "Live", isDeleted: false });
     await Promise.all(liveTournaments.map(async (tournament) => {
         const tournamentId = String(tournament._id);
@@ -925,6 +963,7 @@ const conductTournamentDraw = async (tournamentId, adminId) => {
     if (tournament.status !== "Upcoming") throw new Error("The official draw is available only before the tournament begins.");
     if (tournament.drawStatus === "Completed") throw new Error("This tournament's official lottery has already been completed.");
     if (tournament.drawStatus === "Live") throw new Error("The official lottery is already live. Wait for the final placement reveal.");
+    if (tournament.drawStatus === "Preparing") throw new Error("The official lottery is already being prepared. Please wait a moment.");
 
     const fixtureReleaseDay = dayRange(calendarDate(new Date(), 1));
     if (new Date(tournament.startDate).getTime() !== fixtureReleaseDay.start.getTime()) {
@@ -942,24 +981,42 @@ const conductTournamentDraw = async (tournamentId, adminId) => {
     }).sort({ createdAt: 1 });
     if (teams.length < 4) throw new Error("At least four paid teams are required to conduct the official draw.");
 
-    const { groups, drawSequence } = await prepareFixtureGroups(tournament, teams);
-    tournament.drawSequence = drawSequence;
-    tournament.drawStatus = "Live";
-    tournament.drawStartedAt = new Date();
-    tournament.drawRevealIndex = 0;
-    await tournament.save();
+    // Claim the draw before generating assignments. This database-level lock
+    // prevents double-clicks or parallel requests from creating two draws.
+    const lockedTournament = await Tournament.findOneAndUpdate(
+        { _id: tournament._id, status: "Upcoming", drawStatus: "Scheduled", isDeleted: false },
+        { $set: { drawStatus: "Preparing", drawStartedAt: new Date(), drawRevealIndex: 0 } },
+        { new: true }
+    );
+    if (!lockedTournament) throw new Error("This official lottery has already started or is being prepared.");
+
+    let groups;
+    let drawSequence;
+    try {
+        ({ groups, drawSequence } = await prepareFixtureGroups(lockedTournament, teams));
+        lockedTournament.drawSequence = drawSequence;
+        lockedTournament.drawStatus = "Live";
+        lockedTournament.drawRevealIndex = 0;
+        await lockedTournament.save();
+    } catch (error) {
+        await Tournament.updateOne(
+            { _id: tournament._id, drawStatus: "Preparing" },
+            { $set: { drawStatus: "Scheduled", drawStartedAt: null, drawRevealIndex: 0 } }
+        );
+        throw error;
+    }
 
     const audience = drawAudience(teams, adminId);
     publishDrawEvent(audience, "tournament:draw:started", {
-        tournamentId: String(tournament._id),
-        tournamentName: tournament.name,
+        tournamentId: String(lockedTournament._id),
+        tournamentName: lockedTournament.name,
         total: drawSequence.length,
-        startedAt: tournament.drawStartedAt,
+        startedAt: lockedTournament.drawStartedAt,
         revealIntervalMs: DRAW_REVEAL_INTERVAL_MS,
     });
-    scheduleTournamentDraw({ tournament, teams, groups, adminId });
-    emitDashboardUpdate({ type: "tournament-draw-started", tournamentId: tournament._id });
-    return { tournament, groups, totalDraws: drawSequence.length, revealIntervalMs: DRAW_REVEAL_INTERVAL_MS };
+    scheduleTournamentDraw({ tournament: lockedTournament, teams, groups, adminId });
+    emitDashboardUpdate({ type: "tournament-draw-started", tournamentId: lockedTournament._id });
+    return { tournament: lockedTournament, groups, totalDraws: drawSequence.length, revealIntervalMs: DRAW_REVEAL_INTERVAL_MS };
 
     /*
         recipient: team.registeredBy,
@@ -1608,6 +1665,7 @@ const deleteTournament = async (tournamentId, adminId) => {
 
 module.exports = {
     createTournament,
+    rescheduleUpcomingDrawsToNoon,
     respondToVenueApproval,
     respondToPlatformApproval,
     getAllTournaments,
