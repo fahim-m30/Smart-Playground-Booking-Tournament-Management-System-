@@ -424,6 +424,25 @@ async function superGrounds() {
         card.querySelector(".card-foot").prepend(button);
     });
 }
+async function superGroundsModern() {
+    const grounds = await R("/playgrounds/admin/all");
+    const pending = grounds.filter((ground) => !ground.isApproved).length;
+    const active = grounds.filter((ground) => ground.isApproved && ground.status === "Active").length;
+    const inactive = grounds.filter((ground) => ground.isApproved && ground.status !== "Active").length;
+    const initials = (value) => String(value || "V").trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
+    $("#panel").innerHTML = '<section class="super-venue-workspace"><header class="super-venue-hero"><div><span>VENUE GOVERNANCE</span><h2>Playground approval centre</h2><p>Review venue information, approve new listings and control public availability.</p></div><div class="super-venue-stats"><article><strong>' + pending + '</strong><span>Pending review</span></article><article><strong>' + active + '</strong><span>Live venues</span></article><article><strong>' + inactive + '</strong><span>Inactive venues</span></article></div></header><section class="super-venue-grid">' + (grounds.length ? grounds.map((ground) => {
+        const approved = Boolean(ground.isApproved);
+        const live = approved && ground.status === "Active";
+        const state = !approved ? "pending" : live ? "active" : "inactive";
+        const stateLabel = !approved ? "Pending review" : live ? "Approved · Live" : "Approved · Inactive";
+        const owner = ground.playgroundAdmin?.name || "Venue owner";
+        const location = [ground.area, ground.district].filter(Boolean).join(", ") || ground.address || "Address pending";
+        return '<article class="super-venue-card"><header><span class="venue-state ' + state + '"><i></i>' + stateLabel + '</span><span class="venue-sport">' + E(ground.sportType || "Sports") + '</span></header><div class="venue-card-main"><h3>' + E(ground.name) + '</h3><div class="venue-owner"><b>' + E(initials(owner)) + '</b><span><strong>' + E(owner) + '</strong><small>Playground administrator</small></span></div><p class="venue-location"><span>⌖</span>' + E(location) + '</p></div><footer class="venue-card-actions"><button type="button" class="venue-details" data-ground-details="' + ground._id + '">View details</button>' + (!approved ? '<button type="button" class="venue-primary" data-ground-action="approve" data-ground-id="' + ground._id + '">Approve venue</button>' : '') + '<button type="button" class="venue-toggle" data-ground-action="' + (live ? "deactivate" : "activate") + '" data-ground-id="' + ground._id + '">' + (live ? "Deactivate" : "Activate") + '</button></footer></article>';
+    }).join("") : '<div class="empty">No playgrounds are waiting for review.</div>') + '</section></section>';
+    $("#panel").querySelectorAll("[data-ground-details]").forEach((button) => { button.onclick = () => viewGround(button.dataset.groundDetails); });
+    $("#panel").querySelectorAll("[data-ground-action]").forEach((button) => { button.onclick = () => groundAction(button.dataset.groundId, button.dataset.groundAction); });
+}
+
 window.groundAction = async (id, action) => {
     try { await R("/playgrounds/" + id + "/" + action, { method: "PATCH" }); say("Playground " + action + "d."); superGrounds(); } catch (error) { say(error.message, true); }
 };
@@ -441,7 +460,7 @@ window.viewGround = async (id) => {
     } catch (error) { say(error.message, true); }
 };
 
-const loaders = { Profile: profile, Reports: role === "super-admin" ? adminReports : reports, Playgrounds: role === "super-admin" ? superGrounds : myGrounds, Slots: dailySlots, Bookings: bookings, Income: income, Users: users };
+const loaders = { Profile: profile, Reports: role === "super-admin" ? adminReports : reports, Playgrounds: role === "super-admin" ? superGroundsModern : myGrounds, Slots: dailySlots, Bookings: bookings, Income: income, Users: users };
 $("#tabs").onclick = (event) => {
     const tab = event.target.dataset.tab;
     if (!tab) return;

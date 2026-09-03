@@ -81,6 +81,13 @@ router.patch(
     tournamentController.scheduleMatch
 );
 
+router.patch(
+    "/:id/platform-approval",
+    verifyToken,
+    authorize("super-admin"),
+    tournamentController.respondToPlatformApproval
+);
+
 // The venue administrator runs the public group lottery one day before play.
 router.post(
     "/:id/conduct-draw",

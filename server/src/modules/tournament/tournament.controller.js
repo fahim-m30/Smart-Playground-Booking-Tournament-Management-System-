@@ -10,6 +10,7 @@
 const {
     createTournament,
     respondToVenueApproval,
+    respondToPlatformApproval,
     getAllTournaments,
     getSingleTournament,
     getTournamentGroups,
@@ -221,6 +222,15 @@ const generateGroupMatchesController = async (req, res) => {
             success: false,
             message: error.message,
         });
+    }
+};
+
+const respondToPlatformApprovalController = async (req, res) => {
+    try {
+        const tournament = await respondToPlatformApproval(req.params.id, req.user.userId, req.body.decision);
+        return res.status(200).json({ success: true, message: `Tournament ${req.body.decision}d successfully.`, data: tournament });
+    } catch (error) {
+        return res.status(400).json({ success: false, message: error.message });
     }
 };
 
@@ -446,6 +456,7 @@ const cancelRegistrationController = async (req, res) => {
 module.exports = {
     createTournament: createTournamentController,
     respondToVenueApproval: respondToVenueApprovalController,
+    respondToPlatformApproval: respondToPlatformApprovalController,
     getAllTournaments: getAllTournamentsController,
     getSingleTournament: getSingleTournamentController,
     getTournamentGroups: getTournamentGroupsController,

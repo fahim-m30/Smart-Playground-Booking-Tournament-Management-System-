@@ -311,6 +311,16 @@ tr:hover td { background: #f8fcf8; }
 .auth-form__actions { align-items: center; }
 .notification-menu { box-shadow: var(--ui-shadow-lg) !important; }
 
+/* Scanner controls keep a clear primary/secondary hierarchy even though the
+   shared component layer gives ordinary buttons the primary treatment. */
+.scanner-page .secondary {
+    background: #eef5f0 !important;
+    color: #31513d !important;
+    border: 1px solid #d6e6da !important;
+    box-shadow: none !important;
+}
+.scanner-page .secondary:hover { background: #e2f1e6 !important; }
+
 /* Device resilience: no page may demand more width than the viewport, while
    dense desktop layouts turn into deliberate, easy-to-tap mobile layouts. */
 @media (max-width: 1024px) {
@@ -355,4 +365,31 @@ tr:hover td { background: #f8fcf8; }
     .card, .panel, .admin-card, .dashboard-card-link, .auth-card, .receipt,
     .admin-header, .modal-box { border-radius: 15px !important; }
     .side-nav a { justify-content: flex-start; text-align: left !important; }
+
+    /* The dashboard uses its navigation as a compact two-column control on
+       phones. Keep its labels centered while other side navigation remains
+       left aligned for readability. */
+    .dashboard-shell .side-nav { scrollbar-width: none; }
+    .dashboard-shell .side-nav::-webkit-scrollbar { display: none; }
+    .dashboard-shell .side-nav a { justify-content: center; text-align: center !important; }
+    .dashboard-shell .topbar-tools { flex-wrap: wrap; justify-content: flex-end; }
+    .dashboard-shell .notification-menu { width: calc(100vw - 28px); }
+
+    .scanner-page .scanner-card-head, .scanner-page .result-heading { flex-wrap: wrap; }
+    .scanner-page .camera-controls { gap: 9px; }
+}
+
+/* On narrow phones, preserve enough room for a readable message thread while
+   still keeping the conversation list visible at a glance. */
+@media (max-width: 480px) {
+    .chat-shell { padding-left: 0; padding-right: 0; }
+    .chat-top { padding-left: 14px; padding-right: 14px; }
+    .chat-app { grid-template-columns: 108px minmax(0, 1fr); }
+    .conversation { grid-template-columns: 1fr; justify-items: center; gap: 5px; padding: 11px 6px; }
+    .conversation-avatar { width: 34px; height: 34px; }
+    .conversation-copy { width: 100%; }
+    .conversation-copy strong { font-size: .64rem; text-align: center; white-space: nowrap; }
+    .thread-header { padding: 13px 11px; }
+    .message-list { padding: 13px 11px; }
+    .composer { padding: 9px; }
 }

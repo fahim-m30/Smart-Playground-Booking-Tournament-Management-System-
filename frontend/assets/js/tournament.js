@@ -335,13 +335,20 @@ $("#create-form").onsubmit = async (event) => {
     if (duplicate) return setCreateFeedback(`Duplicate tournament detected: ${duplicate.name} is already scheduled here on ${dateLabel(duplicate.startDate)}.`);
     try {
         const result = await req("/tournaments", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-        const message = result.tournament?.venueApprovalStatus === "Pending" ? "Venue approval request sent to the playground admin." : "Tournament created successfully. The demo fixture is ready for organisers.";
-        setCreateFeedback(message, "ok");
-        say(message);
+        const message = result.tournament?.venueApprovalStatus === "Pending"
+            ? (result.tournament?.approvalRequiredBy === "super-admin" ? "Tournament submitted to the super admin for approval." : "Venue approval request sent to the playground admin.")
+            : "Tournament created successfully. The demo fixture is ready for organisers.";
+        setCreateFeedback();
+        $("#notice").style.display = "none";
         form.reset();
         applySportRules();
         updateCreatorPreview();
-        list();
+        list().catch(() => {});
+        await TurfDialog.alert({
+            title: result.tournament?.venueApprovalStatus === "Pending" ? "Tournament submitted" : "Tournament created successfully",
+            message,
+            confirmLabel: "Done",
+        });
     } catch (error) { setCreateFeedback(error.message); say(error.message, true); }
 };
 if (canCreateTournament) { $("#create-toggle").hidden = false; venues().catch((error) => say(error.message, true)); }
@@ -356,6 +363,32 @@ function decorateTournamentManagement() {
         controls.className = "admin-tournament-actions";
         controls.setAttribute("aria-label", "Tournament management actions");
         footer.before(controls);
+        if (user.role === "super-admin" && tournament.status === "Pending Approval" && tournament.approvalRequiredBy === "super-admin") {
+            const decide = async (decision) => {
+                const approved = await TurfDialog.confirm({
+                    title: decision === "approve" ? "Approve this tournament?" : "Decline this tournament?",
+                    message: decision === "approve" ? "The tournament will be published and customers can register." : "The tournament will be cancelled and the playground admin will be notified.",
+                    confirmLabel: decision === "approve" ? "Approve tournament" : "Decline tournament",
+                    destructive: decision === "reject",
+                });
+                if (!approved) return;
+                await req(`/tournaments/${tournament._id}/platform-approval`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ decision }) });
+                say(decision === "approve" ? "Tournament approved and published." : "Tournament request declined.");
+                await list();
+                decorateTournamentManagement();
+            };
+            const approveButton = document.createElement("button");
+            approveButton.type = "button";
+            approveButton.textContent = "Approve tournament";
+            approveButton.addEventListener("click", () => decide("approve").catch((error) => say(error.message, true)));
+            controls.append(approveButton);
+            const rejectButton = document.createElement("button");
+            rejectButton.type = "button";
+            rejectButton.className = "alt";
+            rejectButton.textContent = "Decline";
+            rejectButton.addEventListener("click", () => decide("reject").catch((error) => say(error.message, true)));
+            controls.append(rejectButton);
+        }
         if (user.role === "playground-admin") {
             const totalTeams = Number(tournament.totalTeams || 0);
             const progress = document.createElement("section");

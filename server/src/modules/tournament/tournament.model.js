@@ -83,6 +83,12 @@ const tournamentSchema = new mongoose.Schema(
         venueApprovalRequestedAt: { type: Date, default: null },
         venueApprovalRespondedAt: { type: Date, default: null },
 
+        approvalRequiredBy: {
+            type: String,
+            enum: ["none", "venue-admin", "super-admin"],
+            default: "none",
+        },
+
         totalTeams: {
             type: Number,
             required: true,
