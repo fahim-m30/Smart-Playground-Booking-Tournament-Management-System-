@@ -162,6 +162,7 @@ const knockoutDemo = (groups, lastGroupMatchDate, sport) => {
 };
 let tournaments = [], selected = null, tournamentSearch = new URLSearchParams(location.search).get("search") || "";
 const requestedFixtureId = new URLSearchParams(location.search).get("fixture");
+const requestedShuffleReview = new URLSearchParams(location.search).get("shuffle") === "1";
 const tournamentListPath = () => user.role === "playground-admin" ? "/tournaments/my-playgrounds/tournaments" : "/tournaments";
 
 async function list() {
@@ -353,6 +354,45 @@ $("#create-form").onsubmit = async (event) => {
 };
 if (canCreateTournament) { $("#create-toggle").hidden = false; venues().catch((error) => say(error.message, true)); }
 $("#logout").onclick = () => { localStorage.clear(); location = "login.html"; };
+
+const openTournamentCancellation = (tournament) => {
+    const modal = document.createElement("div");
+    modal.className = "modal show";
+    modal.innerHTML = `<form class="modal-box cancellation-box tournament-cancel-box"><button class="close" type="button">Close</button><span class="eyebrow">TOURNAMENT CANCELLATION</span><h2>Cancel ${esc(tournament.name)}?</h2><p class="meta">This will cancel the full tournament, lock its fixtures and issue full demo refunds to every paid team.</p><label>Official reason<select name="reason" required><option value="">Select a reason</option><option>Weather</option><option>Unsafe playing conditions</option><option>Venue issue</option><option>Power outage</option><option>Equipment issue</option><option>Security or emergency</option><option>Official decision</option><option>Other</option></select></label><label>Message for registered teams<textarea name="details" maxlength="500" required placeholder="Explain what happened and confirm that the tournament will not proceed."></textarea></label><ul class="tournament-cancel-policy"><li>Every paid team receives a full refund to the original payment method.</li><li>Customers receive the reason and refund confirmation immediately.</li><li>This action is available only before the tournament starts.</li></ul><div class="cancellation-actions"><button class="alt keep-booking" type="button">Keep tournament</button><button class="danger-action" type="submit">Cancel tournament & refund</button></div><p class="cancellation-error" hidden></p></form>`;
+    const close = () => modal.remove();
+    modal.querySelector(".close").onclick = close;
+    modal.querySelector(".keep-booking").onclick = close;
+    modal.onclick = (event) => { if (event.target === modal) close(); };
+    modal.querySelector("form").onsubmit = async (event) => {
+        event.preventDefault();
+        const payload = Object.fromEntries(new FormData(event.currentTarget));
+        const confirmed = await TurfDialog.confirm({
+            title: "Confirm tournament cancellation?",
+            message: "All paid teams will be refunded and every final fixture will be locked.",
+            confirmLabel: "Yes, cancel & refund",
+            destructive: true,
+        });
+        if (!confirmed) return;
+        const submit = event.currentTarget.querySelector('[type="submit"]');
+        submit.disabled = true;
+        submit.textContent = "Cancelling & refunding…";
+        try {
+            const result = await req(`/tournaments/${tournament._id}/cancel`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+            close();
+            say(`${tournament.name} cancelled. ৳${Number(result.refundTotal || 0).toLocaleString("en-BD")} refunded to ${result.refundedTeams || 0} paid team(s).`);
+            await list();
+            decorateTournamentManagement();
+        } catch (error) {
+            const errorBox = event.currentTarget.querySelector(".cancellation-error");
+            errorBox.textContent = error.message;
+            errorBox.hidden = false;
+            submit.disabled = false;
+            submit.textContent = "Cancel tournament & refund";
+        }
+    };
+    document.body.append(modal);
+};
+
 function decorateTournamentManagement() {
     if (!["super-admin", "playground-admin"].includes(user.role)) return;
     document.querySelectorAll("#content > .card").forEach((card, index) => {
@@ -422,6 +462,15 @@ function decorateTournamentManagement() {
                 conductLotteryDraw(tournament, drawButton);
             });
             controls.append(drawButton);
+        }
+        const cancellationWindowOpen = Date.now() < new Date(`${String(tournament.startDate).slice(0, 10)}T00:00:00+06:00`).getTime();
+        if (user.role === "playground-admin" && ["Upcoming", "Group Stage"].includes(tournament.status) && cancellationWindowOpen) {
+            const cancelButton = document.createElement("button");
+            cancelButton.type = "button";
+            cancelButton.className = "danger-action";
+            cancelButton.textContent = "Cancel tournament";
+            cancelButton.addEventListener("click", () => openTournamentCancellation(tournament));
+            controls.append(cancelButton);
         }
     });
 }
@@ -727,8 +776,9 @@ window.detail = async (id) => {
         const sport = tournament?.sportType || "Tournament";
         const groupName = (group) => group?.name || "Group stage";
         const draw = groups.map((group) => `<article class="group-card"><h3>${esc(group.name)}</h3><ol>${teams.filter((team) => String(team.group?._id || team.group) === String(group._id)).map((team) => `<li>${esc(team.teamName)}</li>`).join("") || "<li>Teams are being assigned</li>"}</ol></article>`).join("");
+        const isRequestedShuffleReview = user.role === "customer" && requestedShuffleReview && String(requestedFixtureId) === String(id);
         const officialDrawReplay = tournament?.drawStatus === "Completed" && Array.isArray(tournament?.drawSequence) && tournament.drawSequence.length
-            ? `<section class="official-draw-replay"><header><span>OFFICIAL LOTTERY REPLAY</span><strong>Random draw order</strong><small>Published group placement for every registered team.</small></header><ol>${tournament.drawSequence.map((entry, index) => { const team = teams.find((item) => String(item._id) === String(entry.team?._id || entry.team)); const group = groups.find((item) => String(item._id) === String(entry.group?._id || entry.group)); return `<li><b>${index + 1}</b><span>${esc(team?.teamName || "Team")}</span><em>${esc(group?.name || "Group")}</em></li>`; }).join("")}</ol></section>`
+            ? `<section class="official-draw-replay"><header><span>OFFICIAL LOTTERY REPLAY</span><strong>Random draw order</strong><small>Published group placement for every registered team.</small></header><ol>${tournament.drawSequence.map((entry, index) => { const team = teams.find((item) => String(item._id) === String(entry.team?._id || entry.team)); const group = groups.find((item) => String(item._id) === String(entry.group?._id || entry.group)); return `<li><b>${index + 1}</b><span>${esc(team?.teamName || "Team")}</span><em>${esc(group?.name || "Group")}</em></li>`; }).join("")}</ol>${isRequestedShuffleReview ? '<footer class="draw-review-action"><p>Review every placement above, then continue to your final fixture.</p><button type="button" data-acknowledge-draw>Continue to final fixture</button></footer>' : ""}</section>`
             : "";
         const groupSchedules = groups.map((group) => {
             const groupTeams = teams.filter((team) => String(team.group?._id || team.group) === String(group._id));
@@ -795,5 +845,20 @@ window.detail = async (id) => {
         modal.querySelector(".close").onclick = () => modal.remove();
         modal.querySelector(".fixture-pdf")?.addEventListener("click", () => downloadFixturePdf(tournament, matches));
         modal.querySelectorAll("[data-centre-tab]").forEach((button) => button.onclick = () => { modal.querySelectorAll("[data-centre-tab]").forEach((tab) => tab.classList.toggle("active", tab === button)); modal.querySelectorAll("[data-centre-panel]").forEach((panel) => { panel.hidden = panel.dataset.centrePanel !== button.dataset.centreTab; }); });
+        modal.querySelector("[data-acknowledge-draw]")?.addEventListener("click", async (event) => {
+            const button = event.currentTarget;
+            button.disabled = true;
+            button.textContent = "Opening final fixture…";
+            try {
+                await req(`/tournaments/${id}/acknowledge-draw`, { method: "PATCH" });
+                history.replaceState({}, "", `tournament.html?fixture=${encodeURIComponent(id)}`);
+                modal.querySelector('[data-centre-tab="fixtures"]')?.click();
+                say("Official shuffle reviewed. Your final fixture is now ready anytime.");
+            } catch (error) {
+                button.disabled = false;
+                button.textContent = "Continue to final fixture";
+                say(error.message, true);
+            }
+        });
     } catch (error) { say(error.message, true); }
 };

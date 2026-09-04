@@ -30,6 +30,8 @@ const {
     updateTournamentTeamCounts,
     deleteTournament,
     getMyRegistrations,
+    acknowledgeTournamentDraw,
+    cancelTournamentByVenueAdmin,
     cancelRegistration,
 } = require("./tournament.service");
 
@@ -450,6 +452,24 @@ const getMyRegistrationsController = async (req, res) => {
     }
 };
 
+const acknowledgeTournamentDrawController = async (req, res) => {
+    try {
+        const result = await acknowledgeTournamentDraw(req.params.id, req.user.userId);
+        return res.status(200).json({ success: true, message: "Official shuffle reviewed. Your final fixture remains available.", data: result });
+    } catch (error) {
+        return res.status(400).json({ success: false, message: error.message });
+    }
+};
+
+const cancelTournamentByVenueAdminController = async (req, res) => {
+    try {
+        const result = await cancelTournamentByVenueAdmin(req.params.id, req.body, req.user.userId);
+        return res.status(200).json({ success: true, message: "Tournament cancelled and refunds completed.", data: result });
+    } catch (error) {
+        return res.status(400).json({ success: false, message: error.message });
+    }
+};
+
 const cancelRegistrationController = async (req, res) => {
     try {
         const result = await cancelRegistration(req.params.teamId, req.user.userId);
@@ -486,5 +506,7 @@ module.exports = {
     updateTournamentTeamCounts: updateTournamentTeamCountsController,
     deleteTournament: deleteTournamentController,
     getMyRegistrations: getMyRegistrationsController,
+    acknowledgeTournamentDraw: acknowledgeTournamentDrawController,
+    cancelTournamentByVenueAdmin: cancelTournamentByVenueAdminController,
     cancelRegistration: cancelRegistrationController,
 };

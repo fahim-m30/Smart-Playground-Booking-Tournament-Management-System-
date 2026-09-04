@@ -411,7 +411,89 @@ const getAllTournaments = async (actor = {}) => {
 const getMyRegistrations = async (customerId) => TournamentTeam.find({
     registeredBy: customerId,
     isDeleted: false,
-}).populate("tournament", "name startDate endDate status registrationFee").sort({ createdAt: -1 });
+}).populate("tournament", "name startDate endDate status registrationFee drawStatus drawCompletedAt fixturesPublishedAt sportType playground").sort({ createdAt: -1 });
+
+const acknowledgeTournamentDraw = async (tournamentId, customerId) => {
+    const [tournament, team] = await Promise.all([
+        Tournament.findOne({ _id: tournamentId, isDeleted: false }).select("drawStatus fixturesPublishedAt"),
+        TournamentTeam.findOne({ tournament: tournamentId, registeredBy: customerId, paymentStatus: "Paid", isDeleted: false }),
+    ]);
+
+    if (!tournament) throw new Error("Tournament not found.");
+    if (!team) throw new Error("Only a paid registered team can review this official shuffle.");
+    if (tournament.drawStatus !== "Completed" || !tournament.fixturesPublishedAt) {
+        throw new Error("The official shuffle and final fixture are not published yet.");
+    }
+
+    if (!team.drawViewedAt) {
+        team.drawViewedAt = new Date();
+        await team.save();
+    }
+    return { tournamentId: String(tournament._id), drawViewedAt: team.drawViewedAt };
+};
+
+const cancelTournamentByVenueAdmin = async (tournamentId, payload, adminId) => {
+    const reason = String(payload?.reason || "").trim();
+    const details = String(payload?.details || "").trim();
+    const allowedReasons = ["Weather", "Unsafe playing conditions", "Venue issue", "Power outage", "Equipment issue", "Security or emergency", "Official decision", "Other"];
+    if (!allowedReasons.includes(reason)) throw new Error("Select an official cancellation reason.");
+    if (!details) throw new Error("Provide a clear cancellation notice for registered teams.");
+    if (details.length > 500) throw new Error("The cancellation notice must be 500 characters or fewer.");
+
+    const tournament = await Tournament.findOne({ _id: tournamentId, isDeleted: false });
+    if (!tournament) throw new Error("Tournament not found.");
+    const venue = await Playground.findOne({ _id: tournament.playground, playgroundAdmin: adminId, isDeleted: false });
+    if (!venue) throw new Error("Only this tournament's playground admin can cancel it.");
+    if (!["Upcoming", "Group Stage"].includes(tournament.status)) throw new Error("This tournament can no longer be cancelled as a whole. Use match rescheduling after play has started.");
+    if (new Date() >= dateRangeFor(tournament.startDate).start) throw new Error("This tournament has started and can no longer be cancelled as a whole.");
+
+    const paidTeams = await TournamentTeam.find({ tournament: tournament._id, paymentStatus: "Paid", isDeleted: false }).select("_id registeredBy teamName contactNumber");
+    const payments = await Payment.find({ tournament: tournament._id, paymentStatus: "Paid", isDeleted: false });
+    const refundTotal = payments.reduce((total, payment) => total + Number(payment.amount || 0), 0);
+    const cancelledAt = new Date();
+
+    tournament.status = "Cancelled";
+    tournament.cancellationProcessed = true;
+    tournament.cancelledAt = cancelledAt;
+    tournament.cancellation = { reason, details, cancelledBy: adminId, refundTotal };
+
+    await Promise.all([
+        tournament.save(),
+        TournamentMatch.updateMany(
+            { tournament: tournament._id, matchStatus: { $in: ["Scheduled", "Live"] } },
+            { $set: { matchStatus: "Cancelled", cancellation: { reason, details, announcedAt: cancelledAt, announcedBy: adminId } } }
+        ),
+        ...payments.map((payment) => Payment.updateOne({ _id: payment._id }, {
+            $set: { paymentStatus: "Refunded", refundAmount: payment.amount, refundStatus: "Completed", refundReason: `Tournament cancelled by venue admin: ${reason}.` },
+        })),
+        TournamentTeam.updateMany(
+            { _id: { $in: paidTeams.map((team) => team._id) }, paymentStatus: "Paid", isDeleted: false },
+            { $set: { paymentStatus: "Refunded" } }
+        ),
+    ]);
+
+    const paymentByTeam = new Map(payments.map((payment) => [String(payment.tournamentTeam), payment]));
+    const notificationResults = await Promise.allSettled(paidTeams.filter((team) => team.registeredBy).map((team) => {
+        const refund = Number(paymentByTeam.get(String(team._id))?.amount || 0);
+        return createNotification({
+            recipient: team.registeredBy,
+            type: "TournamentCancelled",
+            title: "Tournament cancelled — refund completed",
+            message: `${tournament.name} was cancelled: ${reason}. ${details} Your full demo refund of ৳${refund.toLocaleString("en-BD")} has been completed.`,
+            link: "my-bookings.html",
+        });
+    }));
+    if (notificationResults.some((result) => result.status === "rejected")) console.error("Could not notify every refunded tournament team.");
+    await createNotification({
+        recipient: adminId,
+        type: "TournamentCancelled",
+        title: "Tournament cancelled and refunds completed",
+        message: `${tournament.name} was cancelled. ${paidTeams.length} paid team(s) received total demo refunds of ৳${refundTotal.toLocaleString("en-BD")}.`,
+        link: "tournament.html",
+    });
+    emitDashboardUpdate({ type: "tournament-cancelled-by-venue", tournamentId: tournament._id, refundTotal });
+    return { tournament, refundTotal, refundedTeams: paidTeams.length };
+};
 
 const cancelRegistration = async (teamId, customerId) => {
     const team = await TournamentTeam.findOne({ _id: teamId, registeredBy: customerId, isDeleted: false }).populate("tournament", "status startDate name");
@@ -1726,6 +1808,8 @@ module.exports = {
     respondToPlatformApproval,
     getAllTournaments,
     getMyRegistrations,
+    acknowledgeTournamentDraw,
+    cancelTournamentByVenueAdmin,
     cancelRegistration,
     getSingleTournament,
     getTournamentGroups,

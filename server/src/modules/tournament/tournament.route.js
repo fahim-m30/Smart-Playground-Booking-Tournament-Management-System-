@@ -117,6 +117,8 @@ router.get(
 );
 
 router.get("/my-registrations", verifyToken, authorize("customer"), tournamentController.getMyRegistrations);
+router.patch("/:id/acknowledge-draw", verifyToken, authorize("customer"), tournamentController.acknowledgeTournamentDraw);
+router.patch("/:id/cancel", verifyToken, authorize("playground-admin"), tournamentController.cancelTournamentByVenueAdmin);
 router.patch("/teams/:teamId/cancel", verifyToken, authorize("customer"), tournamentController.cancelRegistration);
 
 // Get All Tournaments

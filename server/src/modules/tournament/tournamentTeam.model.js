@@ -177,6 +177,14 @@ const tournamentTeamSchema = new mongoose.Schema(
             default: false,
         },
 
+        // Recorded only after the registered customer has opened the official
+        // completed draw from their dashboard. This keeps the one-time draw
+        // prompt consistent across browsers and devices.
+        drawViewedAt: {
+            type: Date,
+            default: null,
+        },
+
         isDeleted: {
             type: Boolean,
             default: false,

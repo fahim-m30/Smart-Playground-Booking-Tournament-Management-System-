@@ -194,7 +194,22 @@ function mountMatchResults(matches, { pinned = false } = {}) {
     section.className = `match-results-section${pinned ? " match-results-section--pinned" : ""}`;
     section.innerHTML = `<div class="section-heading"><div><span class="match-centre-kicker">${liveMatches.length ? "LIVE SCORES" : "MATCH UPDATES"}</span><h2>${pinned ? "Scores & fixtures" : "Live scores & recent results"}</h2><p>${pinned ? "Live games, next fixtures and official results — refreshed automatically." : "Results published by the playground administrator appear here automatically."}</p></div><a class="text-link" href="tournament.html">Open fixtures →</a></div><div class="match-results-grid">${visible.map(matchResultCard).join("")}</div>`;
     const body = $("#dashboard-body");
-    if (pinned) body.querySelector(".stats")?.after(section); else body.append(section);
+    if (pinned) (body.querySelector(".official-shuffle-prompts") || body.querySelector(".stats"))?.after(section); else body.append(section);
+}
+
+function mountOfficialShufflePrompts(registrations) {
+    const awaitingReview = registrations.filter((team) => team.paymentStatus === "Paid" && team.tournament?.drawStatus === "Completed" && !team.drawViewedAt);
+    if (!awaitingReview.length) return;
+
+    const section = document.createElement("section");
+    section.className = "official-shuffle-prompts";
+    section.innerHTML = `<div class="section-heading"><div><span class="match-centre-kicker">OFFICIAL UPDATE</span><h2>Review your completed shuffle</h2><p>Your group placement is ready. Review it once, then your final fixture stays available in Tournament Centre.</p></div></div><div class="shuffle-prompt-grid">${awaitingReview.map((team) => `<article class="shuffle-prompt-card"><div><span class="shuffle-prompt-status">DRAW COMPLETE</span><h3>${escapeHTML(team.tournament?.name || "Tournament")}</h3><p><strong>${escapeHTML(team.teamName)}</strong> has been placed in the official group draw.</p></div><button type="button" data-shuffle-tournament="${escapeHTML(team.tournament?._id)}">Review official shuffle</button></article>`).join("")}</div>`;
+    $("#dashboard-body").querySelector(".stats")?.after(section);
+    section.querySelectorAll("[data-shuffle-tournament]").forEach((button) => {
+        button.addEventListener("click", () => {
+            location.href = `tournament.html?fixture=${encodeURIComponent(button.dataset.shuffleTournament)}&shuffle=1`;
+        });
+    });
 }
 
 function enhanceActivityPanels() {
@@ -240,9 +255,10 @@ async function init() {
     try {
         const tournamentRequest = api("/tournaments");
         if (role === "customer") {
-            const [bookings, tournaments] = await Promise.all([api("/bookings/my-bookings"), tournamentRequest]);
+            const [bookings, tournaments, registrations] = await Promise.all([api("/bookings/my-bookings"), tournamentRequest, api("/tournaments/my-registrations")]);
             $("#dashboard-body").innerHTML = customerView(bookings, tournaments);
             enhanceActivityPanels();
+            mountOfficialShufflePrompts(registrations);
             mountMatchResults(await getTournamentMatches(tournaments), { pinned: true });
             return;
         }

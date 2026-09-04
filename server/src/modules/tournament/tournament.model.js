@@ -194,6 +194,17 @@ const tournamentSchema = new mongoose.Schema(
             default: false,
         },
 
+        cancellation: {
+            reason: {
+                type: String,
+                enum: ["Weather", "Unsafe playing conditions", "Venue issue", "Power outage", "Equipment issue", "Security or emergency", "Official decision", "Other"],
+                default: null,
+            },
+            details: { type: String, trim: true, maxlength: 500, default: null },
+            cancelledBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+            refundTotal: { type: Number, default: 0, min: 0 },
+        },
+
         // Starts the fixed retention period before a cancelled tournament is
         // permanently removed with its tournament-only records.
         cancelledAt: {
