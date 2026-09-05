@@ -198,16 +198,30 @@ function mountMatchResults(matches, { pinned = false } = {}) {
 }
 
 function mountOfficialShufflePrompts(registrations) {
+    // A paid team's update becomes pinned as soon as the venue starts the
+    // official shuffle.  Once the draw finishes, keep the existing review
+    // prompt pinned until that customer has seen their placement.
+    const liveDraws = registrations.filter((team) => team.paymentStatus === "Paid" && team.tournament?.drawStatus === "Live");
     const awaitingReview = registrations.filter((team) => team.paymentStatus === "Paid" && team.tournament?.drawStatus === "Completed" && !team.drawViewedAt);
-    if (!awaitingReview.length) return;
+    const pinnedUpdates = [
+        ...liveDraws.map((team) => ({ ...team, shuffleState: "live" })),
+        ...awaitingReview.map((team) => ({ ...team, shuffleState: "completed" })),
+    ];
+    if (!pinnedUpdates.length) return;
 
     const section = document.createElement("section");
     section.className = "official-shuffle-prompts";
-    section.innerHTML = `<div class="section-heading"><div><span class="match-centre-kicker">OFFICIAL UPDATE</span><h2>Review your completed shuffle</h2><p>Your group placement is ready. Review it once, then your final fixture stays available in Tournament Centre.</p></div></div><div class="shuffle-prompt-grid">${awaitingReview.map((team) => `<article class="shuffle-prompt-card"><div><span class="shuffle-prompt-status">DRAW COMPLETE</span><h3>${escapeHTML(team.tournament?.name || "Tournament")}</h3><p><strong>${escapeHTML(team.teamName)}</strong> has been placed in the official group draw.</p></div><button type="button" data-shuffle-tournament="${escapeHTML(team.tournament?._id)}">Review official shuffle</button></article>`).join("")}</div>`;
+    const hasLiveDraw = liveDraws.length > 0;
+    section.innerHTML = `<div class="section-heading"><div><span class="match-centre-kicker">OFFICIAL UPDATE</span><h2>${hasLiveDraw ? "Your official shuffle is live" : "Review your completed shuffle"}</h2><p>${hasLiveDraw ? "This update is pinned from the moment the venue starts the shuffle. Follow your team's live group draw below." : "Your group placement is ready. Review it once, then your final fixture stays available in Tournament Centre."}</p></div></div><div class="shuffle-prompt-grid">${pinnedUpdates.map((team) => {
+        const live = team.shuffleState === "live";
+        return `<article class="shuffle-prompt-card${live ? " is-live" : ""}"><div><span class="shuffle-prompt-status${live ? " is-live" : ""}">${live ? "LIVE SHUFFLE" : "DRAW COMPLETE"}</span><h3>${escapeHTML(team.tournament?.name || "Tournament")}</h3><p>${live ? `<strong>${escapeHTML(team.teamName)}</strong> is being placed in the official group draw now.` : `<strong>${escapeHTML(team.teamName)}</strong> has been placed in the official group draw.`}</p></div><button type="button" data-shuffle-tournament="${escapeHTML(team.tournament?._id)}" data-shuffle-state="${team.shuffleState}">${live ? "View live shuffle" : "Review official shuffle"}</button></article>`;
+    }).join("")}</div>`;
     $("#dashboard-body").querySelector(".stats")?.after(section);
     section.querySelectorAll("[data-shuffle-tournament]").forEach((button) => {
         button.addEventListener("click", () => {
-            location.href = `tournament.html?fixture=${encodeURIComponent(button.dataset.shuffleTournament)}&shuffle=1`;
+            const params = new URLSearchParams({ fixture: button.dataset.shuffleTournament });
+            if (button.dataset.shuffleState === "completed") params.set("shuffle", "1");
+            location.href = `tournament.html?${params}`;
         });
     });
 }

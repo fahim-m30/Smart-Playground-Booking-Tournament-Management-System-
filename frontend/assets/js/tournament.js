@@ -835,7 +835,9 @@ window.detail = async (id) => {
         lotteryStatus.className = `lottery-status ${tournament?.drawStatus === "Completed" ? "is-complete" : ""}`;
         lotteryStatus.textContent = tournament?.drawStatus === "Completed"
             ? "Official lottery complete — final groups and fixtures are published."
-            : `Official group lottery: ${tournament?.drawScheduledAt ? `${dateLabel(tournament.drawScheduledAt)} at ${new Date(tournament.drawScheduledAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}` : "scheduled one day before play"}. Teams remain unassigned until the live draw.`;
+            : tournament?.drawStatus === "Live"
+                ? "Official shuffle is live — the venue is revealing group placements now."
+                : `Official group lottery: ${tournament?.drawScheduledAt ? `${dateLabel(tournament.drawScheduledAt)} at ${new Date(tournament.drawScheduledAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}` : "scheduled one day before play"}. Teams remain unassigned until the live draw.`;
         modal.querySelector(".centre-head")?.append(lotteryStatus);
         modal.querySelector('[data-centre-panel="fixtures"] .fixtures-list').innerHTML = cancellationFixtureRows;
         const rule = document.createElement("span");
