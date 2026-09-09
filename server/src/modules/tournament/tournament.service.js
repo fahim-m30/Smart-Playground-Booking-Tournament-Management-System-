@@ -17,6 +17,7 @@ const Payment = require("../payment/payment.model");
 const Slot = require("../slot/slot.model");
 const { randomInt } = require("crypto");
 const { createNotification } = require("../notification/notification.service");
+const { sendOfficeRefundSMS } = require("../../utils/notificationService");
 const { emitDashboardUpdate, emitToUser } = require("../../config/socket");
 const { calendarDate, dateOnlyParts, dayRange, tournamentRegistrationClosesAt, zonedDateTime } = require("../../utils/scheduleTime");
 
@@ -464,7 +465,7 @@ const cancelTournamentByVenueAdmin = async (tournamentId, payload, adminId) => {
             { $set: { matchStatus: "Cancelled", cancellation: { reason, details, announcedAt: cancelledAt, announcedBy: adminId } } }
         ),
         ...payments.map((payment) => Payment.updateOne({ _id: payment._id }, {
-            $set: { paymentStatus: "Refunded", refundAmount: payment.amount, refundStatus: "Completed", refundReason: `Tournament cancelled by venue admin: ${reason}.` },
+            $set: { paymentStatus: "Refunded", refundAmount: payment.amount, refundStatus: "Pending", refundMethod: "OfficeCollection", refundReason: `Tournament cancelled by venue admin: ${reason}.` },
         })),
         TournamentTeam.updateMany(
             { _id: { $in: paidTeams.map((team) => team._id) }, paymentStatus: "Paid", isDeleted: false },
@@ -473,22 +474,29 @@ const cancelTournamentByVenueAdmin = async (tournamentId, payload, adminId) => {
     ]);
 
     const paymentByTeam = new Map(payments.map((payment) => [String(payment.tournamentTeam), payment]));
-    const notificationResults = await Promise.allSettled(paidTeams.filter((team) => team.registeredBy).map((team) => {
+    const notificationResults = await Promise.allSettled(paidTeams.filter((team) => team.registeredBy).map(async (team) => {
         const refund = Number(paymentByTeam.get(String(team._id))?.amount || 0);
-        return createNotification({
+        await createNotification({
             recipient: team.registeredBy,
             type: "TournamentCancelled",
-            title: "Tournament cancelled — refund completed",
-            message: `${tournament.name} was cancelled: ${reason}. ${details} Your full demo refund of ৳${refund.toLocaleString("en-BD")} has been completed.`,
+            title: "Tournament cancelled — refund collection",
+            message: `${tournament.name} was cancelled: ${reason}. ${details} Your refund of BDT ${refund.toLocaleString("en-BD")} is approved for collection from the venue office. Please bring your registration confirmation and registered phone number.`,
             link: "my-bookings.html",
+        });
+        if (refund) await sendOfficeRefundSMS({
+            phone: team.contactNumber,
+            customerName: team.captain?.name || team.teamName,
+            amount: refund,
+            venueName: venue.name,
+            reference: `${tournament.name} registration`,
         });
     }));
     if (notificationResults.some((result) => result.status === "rejected")) console.error("Could not notify every refunded tournament team.");
     await createNotification({
         recipient: adminId,
         type: "TournamentCancelled",
-        title: "Tournament cancelled and refunds completed",
-        message: `${tournament.name} was cancelled. ${paidTeams.length} paid team(s) received total demo refunds of ৳${refundTotal.toLocaleString("en-BD")}.`,
+        title: "Tournament cancelled — refunds ready for office collection",
+        message: `${tournament.name} was cancelled. BDT ${refundTotal.toLocaleString("en-BD")} is pending office collection for ${paidTeams.length} paid team(s).`,
         link: "tournament.html",
     });
     emitDashboardUpdate({ type: "tournament-cancelled-by-venue", tournamentId: tournament._id, refundTotal });
@@ -508,7 +516,8 @@ const cancelRegistration = async (teamId, customerId) => {
     if (paidPayment) {
         paidPayment.paymentStatus = "Refunded";
         paidPayment.refundAmount = refundAmount;
-        paidPayment.refundStatus = "Completed";
+        paidPayment.refundStatus = "Pending";
+        paidPayment.refundMethod = "OfficeCollection";
         paidPayment.refundReason = "Customer cancelled an eligible tournament registration.";
         team.paymentStatus = "Refunded";
     }
@@ -520,13 +529,20 @@ const cancelRegistration = async (teamId, customerId) => {
             { $set: { paymentStatus: "Cancelled" } }
         ),
     ]);
-    const refundMessage = refundAmount ? ` A full refund of BDT ${refundAmount} has been completed to your original payment method.` : " No payment was captured, so no refund was needed.";
+    const refundMessage = refundAmount ? ` Your refund of BDT ${refundAmount} is approved for collection from the tournament venue office. Please bring your registration confirmation and registered phone number.` : " No payment was captured, so no refund was needed.";
     await createNotification({
         recipient: customerId,
         type: "TournamentRegistrationCancelled",
         title: "Tournament registration cancelled",
         message: `Your ${team.teamName} registration for ${team.tournament.name} has been cancelled.${refundMessage}`,
         link: "tournament.html",
+    });
+    if (refundAmount) await sendOfficeRefundSMS({
+        phone: team.contactNumber,
+        customerName: team.captain?.name || team.teamName,
+        amount: refundAmount,
+        venueName: team.tournament.name,
+        reference: `${team.tournament.name} registration`,
     });
     emitDashboardUpdate({ type: "customer-tournament-registration-cancelled", tournamentId: team.tournament._id, teamId: team._id, refundAmount });
     return { team, refundAmount };
@@ -1287,10 +1303,11 @@ const updateMatchResult = async (matchId, payload, actor) => {
     const teamById = new Map(resultTeams.map((team) => [String(team._id), team]));
     const teamAName = teamById.get(String(match.teamA))?.teamName || "Team A";
     const teamBName = teamById.get(String(match.teamB))?.teamName || "Team B";
+    const winnerName = winnerId ? (String(winnerId) === String(match.teamA) ? teamAName : teamBName) : null;
     const isCricket = resultTournament?.sportType === "Cricket";
     const teamAScorecard = `${match.teamAScore}${isCricket && Number.isFinite(match.teamAWickets) ? `/${match.teamAWickets}` : ""}`;
     const teamBScorecard = `${match.teamBScore}${isCricket && Number.isFinite(match.teamBWickets) ? `/${match.teamBWickets}` : ""}`;
-    const resultMessage = `${teamAName} ${teamAScorecard} - ${teamBName} ${teamBScorecard}.`;
+    const resultMessage = `${teamAName} ${teamAScorecard} - ${teamBName} ${teamBScorecard}. ${winnerName ? `${winnerName} won the match.` : "Match drawn."}`;
     const notificationResults = await Promise.allSettled(resultTeams.filter((team) => team.registeredBy).map((team) => createNotification({
         recipient: team.registeredBy,
         type: "MatchResultPublished",

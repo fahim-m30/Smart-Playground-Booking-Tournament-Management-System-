@@ -15,7 +15,7 @@ const TournamentMatch = require("../modules/tournament/tournamentMatch.model");
 const Payment = require("../modules/payment/payment.model");
 const Playground = require("../modules/playground/playground.model");
 const { createNotification } = require("../modules/notification/notification.service");
-const { sendBookingReminder, sendSMS, sendTournamentNotification } = require("../utils/notificationService");
+const { sendBookingReminder, sendSMS, sendOfficeRefundSMS, sendTournamentNotification } = require("../utils/notificationService");
 const { generateGroupMatches, resumeLiveTournamentDraws } = require("../modules/tournament/tournament.service");
 const { bookingStartsAt, calendarDate, dayRange } = require("../utils/scheduleTime");
 const { emitDashboardUpdate } = require("../config/socket");
@@ -257,7 +257,7 @@ const processUnderfilledTournaments = async () => {
         // playground admin's live tournament income at the same time.
         await Promise.all([
             ...payments.map((payment) => Payment.updateOne({ _id: payment._id }, {
-                $set: { paymentStatus: "Refunded", refundAmount: payment.amount, refundStatus: "Completed", refundReason },
+                $set: { paymentStatus: "Refunded", refundAmount: payment.amount, refundStatus: "Pending", refundMethod: "OfficeCollection", refundReason },
             })),
             TournamentTeam.updateMany(
                 { _id: { $in: teams.map((team) => team._id) }, paymentStatus: "Paid", isDeleted: false },
@@ -265,25 +265,30 @@ const processUnderfilledTournaments = async () => {
             ),
         ]);
         const refundTotal = payments.reduce((total, payment) => total + (payment.amount || 0), 0);
-        const playground = await Playground.findById(tournament.playground).select("playgroundAdmin");
+        const playground = await Playground.findById(tournament.playground).select("playgroundAdmin name");
         if (playground?.playgroundAdmin) {
             await createNotification({
                 recipient: playground.playgroundAdmin,
                 type: "TournamentCancelled",
                 title: "Tournament cancelled",
-                message: `${tournament.name} was cancelled because only ${teams.length} paid team(s) registered; at least 4 are required. Demo refunds of BDT ${refundTotal} have been completed and the amount was removed from tournament income.`,
+                message: `${tournament.name} was cancelled because only ${teams.length} paid team(s) registered; at least 4 are required. BDT ${refundTotal} is pending office collection for paid teams.`,
                 link: "tournament.html",
             });
         }
         await Promise.all(teams.filter((team) => team.registeredBy).map(async (team) => {
             const payment = payments.find((item) => String(item.tournamentTeam) === String(team._id));
-            const sms = `${tournament.name} was cancelled because fewer than 4 paid teams registered.${payment ? ` Your refund of BDT ${payment.amount} has been completed.` : ""}`;
-            if (team.contactNumber) await sendSMS(team.contactNumber, sms);
+            if (payment) await sendOfficeRefundSMS({
+                phone: team.contactNumber,
+                customerName: team.captain?.name || team.teamName,
+                amount: payment.amount,
+                venueName: playground?.name || tournament.name,
+                reference: `${tournament.name} registration`,
+            });
             await createNotification({
                 recipient: team.registeredBy,
                 type: "TournamentCancelled",
                 title: "Tournament cancelled",
-                message: `${tournament.name} was cancelled because only ${teams.length} of ${tournament.totalTeams} required paid teams completed registration.${payment ? ` A demo refund of ৳${payment.amount} has been completed.` : ""}`,
+                message: `${tournament.name} was cancelled because only ${teams.length} of ${tournament.totalTeams} required paid teams completed registration.${payment ? ` Your refund of BDT ${payment.amount} is approved for collection from the venue office. Please bring your registration confirmation and registered phone number.` : ""}`,
                 link: "tournament.html",
             });
         }));

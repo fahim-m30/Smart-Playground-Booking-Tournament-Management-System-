@@ -17,7 +17,7 @@ const Playground = require("../playground/playground.model");
 const { bookingEndsAt, calendarDate, dateOnlyParts, tournamentRegistrationClosesAt, zonedDateTime } = require("../../utils/scheduleTime");
 
 const { generateQR, verifyQR: baseVerifyQR } = require("../../utils/generateQR");
-const { sendBookingConfirmation, sendTournamentNotification, sendSMS } = require("../../utils/notificationService");
+const { sendBookingConfirmation, sendTournamentNotification, sendSMS, sendOfficeRefundSMS } = require("../../utils/notificationService");
 const { createNotification } = require("../notification/notification.service");
 const { emitToUser, emitDashboardUpdate } = require("../../config/socket");
 
@@ -617,7 +617,7 @@ const verifyQR = async (qrDataString, adminId) => {
 // ===================================================
 
 const refundPayment = async (paymentId, refundAmount, reason) => {
-    const payment = await Payment.findById(paymentId);
+    const payment = await Payment.findById(paymentId).populate("customer", "name phone");
 
     if (!payment) {
         throw new Error("Payment not found.");
@@ -629,23 +629,78 @@ const refundPayment = async (paymentId, refundAmount, reason) => {
 
     payment.paymentStatus = "Refunded";
     payment.refundAmount = refundAmount;
-    payment.refundStatus = "Completed";
+    payment.refundStatus = "Pending";
+    payment.refundMethod = "OfficeCollection";
     payment.refundReason = reason;
 
     await payment.save();
 
+    let venueName = "TURF";
+    let reference = "your payment";
     if (payment.booking) {
+        const booking = await Booking.findById(payment.booking).populate("playground", "name");
+        venueName = booking?.playground?.name || venueName;
+        reference = "your slot booking";
         await Booking.findByIdAndUpdate(payment.booking, {
             paymentStatus: "Refunded",
             bookingStatus: "Cancelled",
             refundAmount,
         });
     } else if (payment.tournamentTeam) {
+        const team = await TournamentTeam.findById(payment.tournamentTeam).populate("tournament", "name");
+        venueName = team?.tournament?.name || venueName;
+        reference = `${team?.tournament?.name || "tournament"} registration`;
         await TournamentTeam.findByIdAndUpdate(payment.tournamentTeam, {
             paymentStatus: "Refunded",
         });
     }
 
+    await createNotification({
+        recipient: payment.customer?._id,
+        type: "RefundReady",
+        title: "Refund ready for office collection",
+        message: `Your refund of BDT ${Number(refundAmount).toLocaleString("en-BD")} is approved. Please collect it from the ${venueName} office during office hours with your confirmation and registered phone number.`,
+        link: "my-bookings.html",
+    });
+    await sendOfficeRefundSMS({ phone: payment.customer?.phone, customerName: payment.customer?.name, amount: refundAmount, venueName, reference });
+
+    return payment;
+};
+
+const completeOfficeRefund = async (paymentId, actor) => {
+    const payment = await Payment.findById(paymentId).populate("customer", "name phone");
+    if (!payment) throw new Error("Refund payment not found.");
+    if (payment.paymentStatus !== "Refunded" || payment.refundMethod !== "OfficeCollection") {
+        throw new Error("This payment is not an office-collection refund.");
+    }
+    if (payment.refundStatus === "Completed") throw new Error("This refund has already been completed.");
+    if (payment.refundStatus !== "Pending") throw new Error("This refund is not ready for collection yet.");
+
+    let venueName = "TURF";
+    let venueAdminId = null;
+    let reference = "your refund";
+    if (payment.booking) {
+        const booking = await Booking.findById(payment.booking).populate("playground", "name playgroundAdmin");
+        venueName = booking?.playground?.name || venueName;
+        venueAdminId = booking?.playground?.playgroundAdmin || null;
+        reference = "your cancelled slot booking";
+    } else {
+        const tournament = await Tournament.findById(payment.tournament).populate("playground", "name playgroundAdmin");
+        venueName = tournament?.playground?.name || tournament?.name || venueName;
+        venueAdminId = tournament?.playground?.playgroundAdmin || null;
+        reference = `${tournament?.name || "tournament"} registration`;
+    }
+    if (actor?.role !== "super-admin" && String(venueAdminId) !== String(actor?.userId)) {
+        throw new Error("Only the venue office can complete this refund.");
+    }
+
+    payment.refundStatus = "Completed";
+    payment.refundCollectedAt = new Date();
+    await payment.save();
+    const amount = Number(payment.refundAmount || payment.amount || 0);
+    const message = `Your refund of BDT ${amount.toLocaleString("en-BD")} has been successfully collected from the ${venueName} office. Thank you for choosing TURF.`;
+    await createNotification({ recipient: payment.customer?._id, type: "RefundCompleted", title: "Refund successful", message, link: "my-bookings.html" });
+    emitDashboardUpdate({ type: "refund-completed", paymentId: payment._id, customerId: payment.customer?._id });
     return payment;
 };
 
@@ -653,9 +708,14 @@ const getPlaygroundAdminIncome = async (adminId) => {
     const grounds = await Playground.find({ playgroundAdmin: adminId, isDeleted: false }).select("_id name");
     const groundIds = grounds.map((ground) => ground._id);
     const paid = { paymentStatus: "Paid", isDeleted: false };
-    const [slotPayments, tournamentPayments] = await Promise.all([
+    const [slotPayments, tournamentPayments, officeRefunds] = await Promise.all([
         Payment.find({ ...paid, paymentType: "SlotBooking" }).populate({ path: "booking", select: "playground bookingDate startTime endTime" }),
         Payment.find({ ...paid, paymentType: "Tournament" }).populate({ path: "tournament", select: "playground name startDate" }).populate("tournamentTeam", "teamName"),
+        Payment.find({ paymentStatus: "Refunded", refundStatus: "Pending", refundMethod: "OfficeCollection", isDeleted: false })
+            .populate("customer", "name phone")
+            .populate({ path: "booking", select: "playground bookingDate startTime endTime", populate: { path: "playground", select: "name" } })
+            .populate({ path: "tournament", select: "playground name", populate: { path: "playground", select: "name" } })
+            .populate("tournamentTeam", "teamName"),
     ]);
     const ownsGround = (id) => groundIds.some((groundId) => String(groundId) === String(id));
     const slots = slotPayments.filter((payment) => payment.booking && ownsGround(payment.booking.playground)).map((payment) => ({
@@ -670,7 +730,14 @@ const getPlaygroundAdminIncome = async (adminId) => {
     }));
     const slotTotal = slots.reduce((total, payment) => total + payment.amount, 0);
     const tournamentTotal = tournaments.reduce((total, payment) => total + payment.amount, 0);
-    return { slotTotal, tournamentTotal, total: slotTotal + tournamentTotal, slots, tournaments };
+    const pendingRefunds = officeRefunds.map((payment) => {
+        const playgroundId = payment.booking?.playground?._id || payment.tournament?.playground?._id;
+        if (!ownsGround(playgroundId)) return null;
+        const venue = payment.booking?.playground?.name || payment.tournament?.playground?.name || "Venue";
+        const reference = payment.booking ? `${new Date(payment.booking.bookingDate).toLocaleDateString("en-GB")} · ${payment.booking.startTime}-${payment.booking.endTime}` : payment.tournamentTeam?.teamName || "Tournament registration";
+        return { paymentId: payment._id, amount: payment.refundAmount || payment.amount, customer: payment.customer?.name || "Customer", phone: payment.customer?.phone || "", playground: venue, reference };
+    }).filter(Boolean);
+    return { slotTotal, tournamentTotal, total: slotTotal + tournamentTotal, slots, tournaments, pendingRefunds };
 };
 
 // ===================================================
@@ -688,5 +755,6 @@ module.exports = {
     confirmPayment,
     verifyQR,
     refundPayment,
+    completeOfficeRefund,
     getPlaygroundAdminIncome,
 };

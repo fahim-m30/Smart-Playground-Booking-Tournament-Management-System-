@@ -12,6 +12,7 @@ const Playground = require("../playground/playground.model");
 const Slot = require("../slot/slot.model");
 const { createNotification } = require("../notification/notification.service");
 const Payment = require("../payment/payment.model");
+const { sendOfficeRefundSMS } = require("../../utils/notificationService");
 const { emitDashboardUpdate } = require("../../config/socket");
 const { bookingStartsAt, calendarDate, dayRange } = require("../../utils/scheduleTime");
 
@@ -253,7 +254,7 @@ const cancelBooking = async (id, customerId) => {
         _id: id,
         customer: customerId,
         isDeleted: false,
-    }).populate("playground", "name");
+    }).populate("playground", "name").populate("customer", "name phone");
 
     if (!booking) {
         throw new Error("Booking not found.");
@@ -276,7 +277,8 @@ const cancelBooking = async (id, customerId) => {
     if (paidPayment) {
         paidPayment.paymentStatus = "Refunded";
         paidPayment.refundAmount = refundAmount;
-        paidPayment.refundStatus = "Completed";
+        paidPayment.refundStatus = "Pending";
+        paidPayment.refundMethod = "OfficeCollection";
         paidPayment.refundReason = "Customer cancelled an eligible slot booking.";
         booking.paymentStatus = "Refunded";
         booking.refundAmount = refundAmount;
@@ -288,13 +290,20 @@ const cancelBooking = async (id, customerId) => {
     }
 
     await Promise.all([booking.save(), paidPayment?.save()]);
-    const refundMessage = refundAmount ? ` A full refund of BDT ${refundAmount} has been completed to your original payment method.` : " No payment was captured, so no refund was needed.";
+    const refundMessage = refundAmount ? ` A refund of BDT ${refundAmount} has been approved for collection from the ${booking.playground?.name || "playground"} office. Please bring your booking confirmation and registered phone number.` : " No payment was captured, so no refund was needed.";
     await createNotification({
-        recipient: customerId,
+        recipient: booking.customer?._id || customerId,
         type: "BookingCancelled",
         title: "Slot booking cancelled",
         message: `Your ${booking.playground?.name || "playground"} slot on ${new Date(booking.bookingDate).toLocaleDateString("en-GB")} (${booking.startTime}-${booking.endTime}) has been cancelled.${refundMessage}`,
         link: "my-bookings.html",
+    });
+    if (refundAmount) await sendOfficeRefundSMS({
+        phone: booking.customer?.phone,
+        customerName: booking.customer?.name,
+        amount: refundAmount,
+        venueName: booking.playground?.name,
+        reference: "your cancelled slot booking",
     });
     emitDashboardUpdate({ type: "customer-booking-cancelled", bookingId: booking._id, refundAmount });
 
@@ -302,7 +311,7 @@ const cancelBooking = async (id, customerId) => {
 };
 
 const cancelBookingByAdmin = async (id, adminId, reason) => {
-    const booking = await Booking.findOne({ _id: id, isDeleted: false }).populate("playground", "name playgroundAdmin");
+    const booking = await Booking.findOne({ _id: id, isDeleted: false }).populate("playground", "name playgroundAdmin").populate("customer", "name phone");
     if (!booking) throw new Error("Booking not found.");
     if (String(booking.playground?.playgroundAdmin) !== String(adminId)) throw new Error("You are not authorized to cancel this booking.");
     if (["Cancelled", "Completed"].includes(booking.bookingStatus)) throw new Error(`A ${booking.bookingStatus.toLowerCase()} booking cannot be cancelled.`);
@@ -317,7 +326,8 @@ const cancelBookingByAdmin = async (id, adminId, reason) => {
     if (paidPayment) {
         paidPayment.paymentStatus = "Refunded";
         paidPayment.refundAmount = refundAmount;
-        paidPayment.refundStatus = "Completed";
+        paidPayment.refundStatus = "Pending";
+        paidPayment.refundMethod = "OfficeCollection";
         paidPayment.refundReason = `Playground admin cancelled the slot: ${cancellationReason}`;
         booking.paymentStatus = "Refunded";
         booking.refundAmount = refundAmount;
@@ -328,8 +338,15 @@ const cancelBookingByAdmin = async (id, adminId, reason) => {
         );
     }
     await Promise.all([booking.save(), paidPayment?.save()]);
-    const refundMessage = refundAmount ? ` A full demo refund of BDT ${refundAmount} has been completed to your original payment method.` : " No payment was captured, so no refund was needed.";
-    await createNotification({ recipient: booking.customer, type: "BookingCancelled", title: "Your booking was cancelled by the playground", message: `${booking.playground?.name || "The playground"} cancelled your ${new Date(booking.bookingDate).toLocaleDateString("en-GB")} slot (${booking.startTime}-${booking.endTime}). Reason: ${cancellationReason}.${refundMessage}`, link: "my-bookings.html" });
+    const refundMessage = refundAmount ? ` Your refund of BDT ${refundAmount} is approved for collection from the ${booking.playground?.name || "playground"} office. Please bring your booking confirmation and registered phone number.` : " No payment was captured, so no refund was needed.";
+    await createNotification({ recipient: booking.customer?._id, type: "BookingCancelled", title: "Your booking was cancelled by the playground", message: `${booking.playground?.name || "The playground"} cancelled your ${new Date(booking.bookingDate).toLocaleDateString("en-GB")} slot (${booking.startTime}-${booking.endTime}). Reason: ${cancellationReason}.${refundMessage}`, link: "my-bookings.html" });
+    if (refundAmount) await sendOfficeRefundSMS({
+        phone: booking.customer?.phone,
+        customerName: booking.customer?.name,
+        amount: refundAmount,
+        venueName: booking.playground?.name,
+        reference: "your cancelled slot booking",
+    });
     emitDashboardUpdate({ type: "playground-admin-booking-cancelled", bookingId: booking._id, refundAmount });
     return booking;
 };

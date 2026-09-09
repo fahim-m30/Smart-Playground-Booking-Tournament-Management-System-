@@ -41,6 +41,19 @@ const sendSMS = async (phone, message) => {
 };
 
 // ===================================================
+// Refund collection SMS
+// ===================================================
+
+const sendOfficeRefundSMS = async ({ phone, customerName, amount, venueName, reference }) => {
+    if (!phone || !amount) return;
+    const recipient = String(customerName || "Customer").trim();
+    const venue = String(venueName || "TURF").trim();
+    const refundReference = String(reference || "your cancelled booking").trim();
+    const message = `Dear ${recipient}, your BDT ${Number(amount).toLocaleString("en-BD")} refund for ${refundReference} has been approved. Please collect it from the ${venue} office during office hours. Bring your confirmation and registered phone number. - TURF`;
+    await sendSMS(phone, message);
+};
+
+// ===================================================
 // Booking Confirmation SMS
 // ===================================================
 
@@ -150,6 +163,7 @@ const sendTournamentNotification = async (tournamentId, type, openingMatch = nul
 
 module.exports = {
     sendSMS,
+    sendOfficeRefundSMS,
     sendBookingConfirmation,
     sendBookingReminder,
     sendTournamentNotification,

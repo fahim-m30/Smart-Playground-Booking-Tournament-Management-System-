@@ -407,6 +407,26 @@ async function income() {
     const money = (value) => "৳" + new Intl.NumberFormat("en-BD").format(value || 0);
     const row = (item, type) => '<article class="income-row"><div><span>' + E(type) + '</span><strong>' + E(type === "Slot" ? item.playground : item.tournament) + '</strong><small>' + E(type === "Slot" ? `${formatDate(item.date)} · ${item.startTime}–${item.endTime}` : `${item.team} · ${item.playground}`) + '</small></div><b>' + money(item.amount) + '</b></article>';
     $("#panel").innerHTML = '<section class="income-summary"><article><span>Slot income</span><strong>' + money(data.slotTotal) + '</strong></article><article><span>Tournament income</span><strong>' + money(data.tournamentTotal) + '</strong></article><article class="income-total"><span>Total income</span><strong>' + money(data.total) + '</strong></article></section><section class="income-section"><h2>Slot booking income</h2><div>' + (data.slots.length ? data.slots.map((item) => row(item, "Slot")).join("") : '<p class="empty">No paid slot bookings yet.</p>') + '</div></section><section class="income-section"><h2>Tournament income</h2><div>' + (data.tournaments.length ? data.tournaments.map((item) => row(item, "Tournament")).join("") : '<p class="empty">No paid tournament registrations yet.</p>') + '</div></section>';
+    const pendingRefunds = data.pendingRefunds || [];
+    const refunds = document.createElement("section");
+    refunds.className = "income-section pending-refund-section";
+    refunds.innerHTML = '<h2>Refund collection desk</h2><p class="meta">Confirm only after the customer has received the cash at the venue office. A “Refund successful” notification appears in the customer dashboard immediately.</p><div>' + (pendingRefunds.length ? pendingRefunds.map((item) => '<article class="income-row"><div><span>OFFICE REFUND · PENDING</span><strong>' + E(item.customer) + ' · ' + money(item.amount) + '</strong><small>' + E(item.playground) + ' · ' + E(item.reference) + '</small></div><button type="button" data-complete-refund="' + E(item.paymentId) + '">Mark refund successful</button></article>').join("") : '<p class="empty">No refunds are waiting for office collection.</p>') + '</div>';
+    $("#panel").append(refunds);
+    refunds.querySelectorAll("[data-complete-refund]").forEach((button) => button.addEventListener("click", async () => {
+        const confirmed = await TurfDialog.confirm({ title: "Confirm refund collection?", message: "Mark this refund as successfully paid to the customer. The customer will receive an in-app notification.", confirmLabel: "Confirm refund" });
+        if (!confirmed) return;
+        button.disabled = true;
+        button.textContent = "Confirming…";
+        try {
+            await R("/payments/refund/" + encodeURIComponent(button.dataset.completeRefund) + "/complete", { method: "PATCH" });
+            say("Refund completed successfully. Customer notification sent.");
+            income();
+        } catch (error) {
+            say(error.message, true);
+            button.disabled = false;
+            button.textContent = "Mark refund successful";
+        }
+    }));
 }
 window.block = async (id, blocked) => {
     try { await R("/users/" + (blocked ? "unblock/" : "block/") + id, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: "{}" }); say(blocked ? "User unblocked." : "User blocked."); users(); } catch (error) { say(error.message, true); }

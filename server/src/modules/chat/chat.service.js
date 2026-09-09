@@ -81,8 +81,8 @@ const legacyConciergeResponseFor = (rawMessage, serviceName) => {
     const tournament = has("tournament", "team registration", "tournament registration", "lottery", "draw", "fixture", "group stage");
     const slot = has("slot", "booking", "book", "reservation", "field", "মাঠ");
 
-    if (cancellation && tournament) return "Tournament registration may be cancelled until 2 days before the tournament starts. Eligible paid registrations receive an automatic refund to the original payment method, followed by a confirmation notification.";
-    if (cancellation && slot) return "A slot booking may be cancelled at least 2 hours before its start time. Eligible paid bookings receive a full refund and a confirmation notification.";
+    if (cancellation && tournament) return "Tournament registration may be cancelled until 2 days before the tournament starts. Eligible paid registrations can collect their approved refund from the venue office, and SMS collection instructions are sent to the registered number.";
+    if (cancellation && slot) return "A slot booking may be cancelled at least 2 hours before its start time. Eligible paid bookings can collect their approved refund from the venue office, and SMS collection instructions are sent to the registered number.";
     if (has("lottery", "draw", "shuffle", "group stage")) return "Registered teams remain unassigned until the official live lottery. The playground administrator conducts the draw one day before play; each placement is revealed live, then the final fixture is published.";
     if (has("rain", "weather", "bristi", "বৃষ্টি", "unsafe", "power", "match cancel", "match cencel")) return "If a match cannot be played, the playground administrator records the official reason and announces the replay date and time. The next stage remains locked until the required match is completed.";
     if (has("fixture", "schedule", "semi", "final", "quarter", "knockout")) return "The final fixture is available after the official group draw. Knockout rounds follow the competition order: group stage, quarter-final where applicable, semi-final, then final; a later round cannot begin early.";
@@ -134,8 +134,8 @@ const conciergeResponseFor = async (rawMessage, playground) => {
     const tournament = botHas(message, "tournament", "team registration", "tournament registration", "lottery", "draw", "fixture", "group stage", "টুর্নামেন্ট", "ফিক্সচার");
     const slot = botHas(message, "slot", "booking", "book", "reservation", "availability", "price", "cost", "rate", "time", "স্লট", "বুকিং", "দাম");
     const venue = botHas(message, "venue", "playground", "location", "address", "facility", "facilities", "ground", "মাঠ", "ভেন্যু", "ঠিকানা", "সুবিধা");
-    if (cancellation && tournament) return "Tournament registration may be cancelled until 2 days before the tournament starts. Eligible paid registrations receive an automatic refund to the original payment method, followed by a confirmation notification.";
-    if (cancellation && slot) return "A slot booking may be cancelled at least 2 hours before its start time. Eligible paid bookings receive a full refund and a confirmation notification.";
+    if (cancellation && tournament) return "Tournament registration may be cancelled until 2 days before the tournament starts. Eligible paid registrations can collect their approved refund from the venue office, and SMS collection instructions are sent to the registered number.";
+    if (cancellation && slot) return "A slot booking may be cancelled at least 2 hours before its start time. Eligible paid bookings can collect their approved refund from the venue office, and SMS collection instructions are sent to the registered number.";
     if (tournament) return tournamentInformation(playground);
     if (slot) return slotInformation(playground);
     if (venue) return venueInformation(playground);

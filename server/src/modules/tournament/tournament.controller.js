@@ -464,7 +464,7 @@ const acknowledgeTournamentDrawController = async (req, res) => {
 const cancelTournamentByVenueAdminController = async (req, res) => {
     try {
         const result = await cancelTournamentByVenueAdmin(req.params.id, req.body, req.user.userId);
-        return res.status(200).json({ success: true, message: "Tournament cancelled and refunds completed.", data: result });
+        return res.status(200).json({ success: true, message: "Tournament cancelled; refunds are ready for office collection.", data: result });
     } catch (error) {
         return res.status(400).json({ success: false, message: error.message });
     }
@@ -473,7 +473,7 @@ const cancelTournamentByVenueAdminController = async (req, res) => {
 const cancelRegistrationController = async (req, res) => {
     try {
         const result = await cancelRegistration(req.params.teamId, req.user.userId);
-        return res.status(200).json({ success: true, message: "Tournament registration cancelled and refund completed.", data: result });
+        return res.status(200).json({ success: true, message: "Tournament registration cancelled; refund is ready for office collection.", data: result });
     } catch (error) {
         return res.status(400).json({ success: false, message: error.message });
     }

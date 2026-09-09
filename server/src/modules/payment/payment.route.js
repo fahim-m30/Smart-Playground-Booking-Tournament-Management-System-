@@ -68,6 +68,16 @@ router.post(
 // ======================================================
 
 router.patch(
+    "/refund/:id/complete",
+    verifyToken,
+    authorize(
+        "super-admin",
+        "playground-admin"
+    ),
+    paymentController.completeOfficeRefund
+);
+
+router.patch(
     "/refund/:id",
     verifyToken,
     authorize(

@@ -61,7 +61,7 @@
     const openCancellationConfirmation = ({ title, summary, onConfirm }) => {
         const modal = document.createElement("div");
         modal.className = "modal show cancellation-confirmation";
-        modal.innerHTML = `<section class="modal-box cancellation-box" role="dialog" aria-modal="true" aria-labelledby="cancellation-title"><button class="close" type="button" aria-label="Close">Close</button><span class="eyebrow">CANCELLATION CONFIRMATION</span><h2 id="cancellation-title">${escapeHtml(title)}</h2><p class="meta">${escapeHtml(summary)}</p><p class="cancellation-question">Are you sure you want to cancel this booking? This action cannot be undone.</p><div class="cancellation-actions"><button class="alt keep-booking" type="button">Keep booking</button><button class="confirm-cancellation" type="button">Yes, cancel & refund</button></div><p class="cancellation-error" hidden></p></section>`;
+        modal.innerHTML = `<section class="modal-box cancellation-box" role="dialog" aria-modal="true" aria-labelledby="cancellation-title"><button class="close" type="button" aria-label="Close">Close</button><span class="eyebrow">CANCELLATION CONFIRMATION</span><h2 id="cancellation-title">${escapeHtml(title)}</h2><p class="meta">${escapeHtml(summary)}</p><p class="cancellation-question">Are you sure you want to cancel this booking? This action cannot be undone.</p><div class="cancellation-actions"><button class="alt keep-booking" type="button">Keep booking</button><button class="confirm-cancellation" type="button">Yes, cancel & request refund</button></div><p class="cancellation-error" hidden></p></section>`;
         const close = () => modal.remove();
         modal.querySelector(".close").onclick = close;
         modal.querySelector(".keep-booking").onclick = close;
@@ -71,7 +71,7 @@
             confirmButton.disabled = true;
             confirmButton.textContent = "Cancelling…";
             try { await onConfirm(); close(); }
-            catch (error) { modal.querySelector(".cancellation-error").textContent = error.message; modal.querySelector(".cancellation-error").hidden = false; confirmButton.disabled = false; confirmButton.textContent = "Yes, cancel & refund"; }
+            catch (error) { modal.querySelector(".cancellation-error").textContent = error.message; modal.querySelector(".cancellation-error").hidden = false; confirmButton.disabled = false; confirmButton.textContent = "Yes, cancel & request refund"; }
         };
         document.body.append(modal);
     };
@@ -200,8 +200,8 @@
                 openCancellationConfirmation({
                     title: "Cancel this slot booking?",
                     summary: `${booking.playground?.name || "Playground"} - ${bookingDate(String(booking.bookingDate).slice(0, 10))}, ${booking.startTime}-${booking.endTime}`,
-                    policy: ["You can cancel only until 2 hours before the slot starts.", "A paid booking receives a full refund to the original payment method.", "The venue income report is adjusted immediately after the refund."],
-                    onConfirm: async () => { const cancelled = await request(`/bookings/${button.dataset.bookingId}/cancel`, { method: "PATCH" }); showNotice(cancelled.refundAmount ? `Booking cancelled. BDT ${cancelled.refundAmount} refund completed.` : "Booking cancelled successfully."); await loadBookings(); loadAvailability(); },
+                    policy: ["You can cancel only until 2 hours before the slot starts.", "For a paid booking, the refund is collected from the venue office.", "We send an SMS with the collection instructions to your registered number."],
+                    onConfirm: async () => { const cancelled = await request(`/bookings/${button.dataset.bookingId}/cancel`, { method: "PATCH" }); showNotice(cancelled.refundAmount ? `Booking cancelled. Collect BDT ${cancelled.refundAmount} from the venue office; SMS instructions have been sent.` : "Booking cancelled successfully."); await loadBookings(); loadAvailability(); },
                 });
             }));
             content.querySelectorAll(".cancellation-info").forEach((button) => button.addEventListener("click", () => {

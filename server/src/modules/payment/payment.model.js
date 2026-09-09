@@ -128,6 +128,17 @@ const paymentSchema = new mongoose.Schema(
             default: "None",
         },
 
+        refundMethod: {
+            type: String,
+            enum: ["OfficeCollection", "OriginalPaymentMethod"],
+            default: null,
+        },
+
+        refundCollectedAt: {
+            type: Date,
+            default: null,
+        },
+
         refundReason: {
             type: String,
             default: null,

@@ -10,6 +10,8 @@ const notificationSchema = new mongoose.Schema({
             "BookingConfirmed",
             "BookingReminder",
             "BookingCancelled",
+            "RefundReady",
+            "RefundCompleted",
             "TournamentRegistrationConfirmed",
             "TournamentRegistrationCancelled",
             "TournamentPublished",

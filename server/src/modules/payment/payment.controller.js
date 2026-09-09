@@ -13,6 +13,7 @@ const {
     getSinglePayment,
     verifyQR,
     refundPayment,
+    completeOfficeRefund,
     startDemoCheckout,
     getDemoCheckout,
     completeDemoCheckout,
@@ -174,7 +175,7 @@ const refundPaymentController = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            message: "Refund completed successfully.",
+            message: "Refund approved for office collection; SMS instructions sent.",
             data: result,
         });
     } catch (error) {
@@ -182,6 +183,19 @@ const refundPaymentController = async (req, res) => {
             success: false,
             message: error.message,
         });
+    }
+};
+
+const completeOfficeRefundController = async (req, res) => {
+    try {
+        const result = await completeOfficeRefund(req.params.id, req.user);
+        return res.status(200).json({
+            success: true,
+            message: "Refund completed successfully. Customer notification sent.",
+            data: result,
+        });
+    } catch (error) {
+        return res.status(400).json({ success: false, message: error.message });
     }
 };
 
@@ -212,5 +226,6 @@ module.exports = {
     getSinglePayment: getSinglePaymentController,
     verifyQR: verifyQRController,
     refundPayment: refundPaymentController,
+    completeOfficeRefund: completeOfficeRefundController,
     getPlaygroundAdminIncome: getPlaygroundAdminIncomeController,
 };
