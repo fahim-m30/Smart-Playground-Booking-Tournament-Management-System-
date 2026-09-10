@@ -145,8 +145,13 @@ const createTournament = async (payload, createdBy) => {
         throw new Error(`This ${groupCount}-group format needs at least ${requiredFixtureDays} calendar day(s): ${groupFixtures} group fixtures plus the complete knockout route. Extend the tournament dates before creating it.`);
     }
 
+    // A venue owner is already authorised to publish events at their own
+    // approved playground. Requiring a second platform approval left every
+    // newly-created venue tournament hidden from customers until a super
+    // admin acted on it. A platform admin still needs the venue owner's
+    // approval when proposing an event at somebody else's playground.
     const requiresVenueApproval = creator.role === "super-admin" && playground.playgroundAdmin.toString() !== String(createdBy);
-    const requiresPlatformApproval = creator.role === "playground-admin";
+    const requiresPlatformApproval = false;
     const requiresApproval = requiresVenueApproval || requiresPlatformApproval;
     const approvalRequiredBy = requiresPlatformApproval ? "super-admin" : requiresVenueApproval ? "venue-admin" : "none";
 
@@ -197,7 +202,10 @@ const createTournament = async (payload, createdBy) => {
             link: `tournament.html?review=${tournament._id}`,
         });
     }
-    if (requiresApproval) emitDashboardUpdate({ type: "tournament:approval-requested", tournamentId: String(tournament._id) });
+    emitDashboardUpdate({
+        type: requiresApproval ? "tournament:approval-requested" : "tournament:published",
+        tournamentId: String(tournament._id),
+    });
 
     return { tournament, groups };
 };
