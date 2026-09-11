@@ -5,7 +5,32 @@ const $ = (selector) => document.querySelector(selector);
 const esc = (value) => String(value ?? "").replace(/[&<>'"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[c]));
 if (!token) location = "login.html";
 const req = async (path, options = {}) => { const response = await fetch(API + path, { ...options, cache: "no-store", headers: { Authorization: `Bearer ${token}`, ...(options.headers || {}) } }); const body = await response.json(); if (!response.ok) throw new Error(body.message || "Request failed"); return body.data; };
-const say = (message, bad = false) => { const notice = $("#notice"); notice.textContent = message; notice.className = `notice${bad ? " error" : ""}`; notice.style.display = "block"; };
+let feedbackTimer;
+const say = (message, bad = false) => {
+    const notice = $("#notice");
+    notice.textContent = message;
+    notice.className = `notice${bad ? " error" : ""}`;
+    notice.style.display = "block";
+
+    let feedback = document.querySelector("#action-feedback");
+    if (!feedback) {
+        feedback = document.createElement("aside");
+        feedback.id = "action-feedback";
+        feedback.className = "action-feedback";
+        feedback.setAttribute("role", "status");
+        feedback.setAttribute("aria-live", "polite");
+        feedback.innerHTML = '<span class="action-feedback__icon" aria-hidden="true"></span><div><strong></strong><p></p></div><button type="button" aria-label="Dismiss notification">×</button>';
+        feedback.querySelector("button").onclick = () => feedback.classList.remove("show");
+        document.body.append(feedback);
+    }
+    feedback.classList.toggle("error", bad);
+    feedback.querySelector("strong").textContent = bad ? "Could not save changes" : "Update saved";
+    feedback.querySelector("p").textContent = message;
+    feedback.classList.remove("show");
+    requestAnimationFrame(() => feedback.classList.add("show"));
+    clearTimeout(feedbackTimer);
+    feedbackTimer = setTimeout(() => feedback.classList.remove("show"), bad ? 6500 : 5000);
+};
 const realtime = window.io && token ? window.io(API.replace(/\/api\/v1$/, ""), { auth: { token } }) : null;
 const liveDrawStates = new Map();
 
@@ -766,7 +791,7 @@ async function loadMyTournamentRegistrations() {
 }
 loadMyTournamentRegistrations();
 
-document.head.insertAdjacentHTML("beforeend", '<link rel="stylesheet" href="assets/css/tournament-centre.css?v=20260911-replay-polish"><link rel="stylesheet" href="assets/css/tournament-admin.css?v=20260901contrast5">');
+document.head.insertAdjacentHTML("beforeend", '<link rel="stylesheet" href="assets/css/tournament-centre.css?v=20260912-success-feedback"><link rel="stylesheet" href="assets/css/tournament-admin.css?v=20260901contrast5">');
 
 function downloadFixturePdf(tournament, matches) {
     if (!matches.length) return say("Fixtures are not published yet.", true);
