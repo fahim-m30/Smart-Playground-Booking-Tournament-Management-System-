@@ -146,14 +146,12 @@ const createTournament = async (payload, createdBy) => {
     }
 
     // A venue owner is already authorised to publish events at their own
-    // approved playground. Requiring a second platform approval left every
-    // newly-created venue tournament hidden from customers until a super
-    // admin acted on it. A platform admin still needs the venue owner's
-    // approval when proposing an event at somebody else's playground.
+    // approved playground. Platform approval is never needed for a tournament.
+    // A platform admin still needs the venue owner's approval when proposing
+    // an event at somebody else's playground.
     const requiresVenueApproval = creator.role === "super-admin" && playground.playgroundAdmin.toString() !== String(createdBy);
-    const requiresPlatformApproval = false;
-    const requiresApproval = requiresVenueApproval || requiresPlatformApproval;
-    const approvalRequiredBy = requiresPlatformApproval ? "super-admin" : requiresVenueApproval ? "venue-admin" : "none";
+    const requiresApproval = requiresVenueApproval;
+    const approvalRequiredBy = requiresVenueApproval ? "venue-admin" : "none";
 
     let tournament;
     try {
@@ -184,16 +182,7 @@ const createTournament = async (payload, createdBy) => {
     const groups = requiresApproval ? [] : await createTournamentGroups(tournament);
     if (!requiresApproval) await Playground.findByIdAndUpdate(playground._id, { $inc: { tournamentCount: 1 } });
 
-    if (requiresPlatformApproval) {
-        const superAdmins = await User.find({ role: "super-admin", isDeleted: false, isBlocked: false }).select("_id");
-        await Promise.all(superAdmins.map((admin) => createNotification({
-            recipient: admin._id,
-            type: "TournamentApprovalRequired",
-            title: "Tournament approval required",
-            message: `${creator.name || "A playground admin"} submitted ${tournament.name} for ${playground.name}. Review and approve it before it is published.`,
-            link: `tournament.html?review=${tournament._id}`,
-        })));
-    } else if (requiresVenueApproval) {
+    if (requiresVenueApproval) {
         await createNotification({
             recipient: playground.playgroundAdmin,
             type: "VenueApprovalRequired",
@@ -311,6 +300,28 @@ const respondToVenueApproval = async (tournamentId, adminId, decision) => {
 // even if a missed scheduler run meant its fixtures were not generated.
 const refreshTournamentStatuses = async () => {
     const today = dayRange(calendarDate()).start;
+
+    // Platform approval has been retired. Publish legacy tournaments that
+    // were previously waiting only for a super admin, and
+    // create their groups exactly once so they are ready to accept teams.
+    const legacyPlatformRequests = await Tournament.find({
+        isDeleted: false,
+        status: "Pending Approval",
+        venueApprovalStatus: "Pending",
+        approvalRequiredBy: "super-admin",
+    });
+    for (const tournament of legacyPlatformRequests) {
+        const hasGroups = await TournamentGroup.exists({ tournament: tournament._id });
+        tournament.status = "Upcoming";
+        tournament.venueApprovalStatus = "Not Required";
+        tournament.approvalRequiredBy = "none";
+        tournament.venueApprovalRespondedAt = new Date();
+        await tournament.save();
+        if (!hasGroups) {
+            await createTournamentGroups(tournament);
+            await Playground.findByIdAndUpdate(tournament.playground, { $inc: { tournamentCount: 1 } });
+        }
+    }
 
     // Older scheduler runs may have cancelled an event before its actual
     // registration deadline. Re-open only those records; a tournament that
@@ -579,32 +590,6 @@ const getSingleTournament = async (id) => {
         safeTournament.drawSequence = [];
         return safeTournament;
     }
-    return tournament;
-};
-
-const respondToPlatformApproval = async (tournamentId, superAdminId, decision) => {
-    if (!["approve", "reject"].includes(decision)) throw new Error("Choose approve or reject for this tournament.");
-    const tournament = await Tournament.findOne({ _id: tournamentId, isDeleted: false });
-    if (!tournament) throw new Error("Tournament not found.");
-    if (tournament.venueApprovalStatus !== "Pending" || tournament.approvalRequiredBy !== "super-admin") throw new Error("This tournament does not have a pending platform approval.");
-
-    tournament.venueApprovalStatus = decision === "approve" ? "Approved" : "Rejected";
-    tournament.venueApprovalRespondedAt = new Date();
-    tournament.status = decision === "approve" ? "Upcoming" : "Cancelled";
-    tournament.cancelledAt = decision === "approve" ? null : new Date();
-    await tournament.save();
-    if (decision === "approve") {
-        await createTournamentGroups(tournament);
-        await Playground.findByIdAndUpdate(tournament.playground, { $inc: { tournamentCount: 1 } });
-    }
-    await createNotification({
-        recipient: tournament.createdBy,
-        type: "TournamentPlatformApproval",
-        title: decision === "approve" ? "Tournament approved by super admin" : "Tournament request declined",
-        message: `${tournament.name} was ${decision === "approve" ? "approved and published" : "declined"} by the platform administrator.`,
-        link: "tournament.html",
-    });
-    emitDashboardUpdate({ type: "tournament:approval-resolved", tournamentId: String(tournament._id), actorId: String(superAdminId) });
     return tournament;
 };
 
@@ -1830,7 +1815,6 @@ module.exports = {
     createTournament,
     rescheduleUpcomingDrawsToNoon,
     respondToVenueApproval,
-    respondToPlatformApproval,
     getAllTournaments,
     getMyRegistrations,
     acknowledgeTournamentDraw,
