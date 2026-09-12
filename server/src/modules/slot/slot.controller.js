@@ -13,6 +13,7 @@ const {
     getSlotsByPlayground,
     getAvailability,
     updateSlot,
+    setSlotDateAvailability,
     deleteSlot,
 } = require("./slot.service");
 
@@ -97,6 +98,15 @@ const updateSlotController = async (req, res) => {
     }
 };
 
+const setSlotDateAvailabilityController = async (req, res) => {
+    try {
+        const slot = await setSlotDateAvailability(req.params.id, req.body, req.user.userId);
+        return res.status(200).json({ success: true, message: req.body.available ? "Slot reopened for the selected date." : "Slot closed for the selected date.", data: slot });
+    } catch (error) {
+        return res.status(400).json({ success: false, message: error.message });
+    }
+};
+
 // ===================================================
 // Delete Slot
 // ===================================================
@@ -127,5 +137,6 @@ module.exports = {
     getSlotsByPlayground: getSlotsByPlaygroundController,
     getAvailability: getAvailabilityController,
     updateSlot: updateSlotController,
+    setSlotDateAvailability: setSlotDateAvailabilityController,
     deleteSlot: deleteSlotController,
 };

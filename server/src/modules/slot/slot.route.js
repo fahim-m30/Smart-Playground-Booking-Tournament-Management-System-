@@ -16,7 +16,7 @@ const slotController = require("./slot.controller");
 const verifyToken = require("../../middlewares/verifyToken");
 const authorize = require("../../middlewares/authorize");
 const validate = require("../../middlewares/validate");
-const { createSlotValidation, createSlotsValidation, updateSlotValidation } = require("./slot.validation");
+const { createSlotValidation, createSlotsValidation, updateSlotValidation, slotDateAvailabilityValidation } = require("./slot.validation");
 
 // Availability is deliberately readable without an admin token so a customer
 // can see the green/white slot board before attempting a booking.
@@ -47,6 +47,14 @@ router.get(
     verifyToken,
     authorize("playground-admin"),
     slotController.getSlotsByPlayground
+);
+
+router.patch(
+    "/:id/date-availability",
+    verifyToken,
+    authorize("playground-admin"),
+    validate(slotDateAvailabilityValidation),
+    slotController.setSlotDateAvailability
 );
 
 router.patch(

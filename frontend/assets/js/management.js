@@ -26,6 +26,8 @@ document.head.insertAdjacentHTML("beforeend", '<link rel="stylesheet" href="asse
 document.head.insertAdjacentHTML("beforeend", '<link rel="stylesheet" href="assets/css/profile-sections.css">');
 document.head.insertAdjacentHTML("beforeend", '<link rel="stylesheet" href="assets/css/slot-schedules.css">');
 document.head.insertAdjacentHTML("beforeend", '<link rel="stylesheet" href="assets/css/income.css">');
+document.head.insertAdjacentHTML("beforeend", '<link rel="stylesheet" href="assets/css/playground-editor.css?v=20260912">');
+document.head.insertAdjacentHTML("beforeend", '<link rel="stylesheet" href="assets/css/slot-date-blocks.css?v=20260912">');
 document.head.insertAdjacentHTML("beforeend", '<style>.ground-detail-images{display:flex;gap:8px;overflow:auto;margin:16px 0}.ground-detail-images img{width:160px;height:105px;object-fit:cover;border-radius:10px}.ground-detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:10px 0 18px}.ground-detail-grid div{padding:11px;border:1px solid #d9e9de;border-radius:9px;background:#f9fcfa}.ground-detail-grid b,.ground-detail-grid span{display:block}.ground-detail-grid b{font-size:.72rem;color:#68766d;margin-bottom:4px}.ground-detail-grid span{font-size:.84rem;line-height:1.45}</style>');
 
 if (!token || !role) location.replace("login.html");
@@ -291,9 +293,45 @@ async function myGrounds() {
 }
 window.editGround = async (id) => {
     const ground = (await R("/playgrounds/my-playgrounds")).find((item) => item._id === id);
-    const name = await TurfDialog.prompt({ title: "Edit playground name", message: "Use the public name customers will recognise.", label: "Playground name", value: ground.name, placeholder: "Enter playground name", confirmLabel: "Save changes" });
-    if (!name) return;
-    try { await R("/playgrounds/" + id, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) }); say("Playground updated."); myGrounds(); } catch (error) { say(error.message, true); }
+    if (!ground) return say("Playground not found.", true);
+    const sports = ["Football", "Cricket", "Badminton"];
+    const sportOptions = sports.map((sport) => `<option value="${sport}" ${ground.sportType === sport ? "selected" : ""}>${sport}</option>`).join("");
+    const facilities = Array.isArray(ground.facilities) ? ground.facilities.join(", ") : "";
+    const modal = document.createElement("div");
+    modal.className = "modal show playground-editor-modal";
+    modal.innerHTML = `<form class="modal-box playground-editor" aria-labelledby="playground-editor-title"><button class="close" type="button">Close</button><header class="playground-editor__head"><span>PLAYGROUND SETTINGS</span><h2 id="playground-editor-title">Edit ${E(ground.name)}</h2><p>Keep your venue information, prices and customer contact details up to date.</p></header><section class="playground-editor__section"><h3>Venue details</h3><div class="form-grid"><label class="full">Playground name<input name="name" value="${E(ground.name)}" required></label><label>Sport type<select name="sportType" required>${sportOptions}</select></label><label>Maximum players<input name="maxPlayers" type="number" min="1" value="${Number(ground.maxPlayers) || 1}" required></label><label class="full">Description<textarea name="description" required>${E(ground.description)}</textarea></label></div></section><section class="playground-editor__section"><h3>Contact &amp; location</h3><div class="form-grid"><label>Phone number<input name="phone" type="tel" value="${E(ground.phone)}" required></label><label>Email address<input name="email" type="email" value="${E(ground.email)}" required></label><label class="full">Street address<input name="address" value="${E(ground.address)}" required></label><label>Division<input name="division" value="${E(ground.division)}" required></label><label>District<input name="district" value="${E(ground.district)}" required></label><label>Area<input name="area" value="${E(ground.area)}" required></label><label>Google Maps link <small>(optional)</small><input name="googleMapLocation" type="url" value="${E(ground.googleMapLocation)}" placeholder="https://maps.google.com/..."></label></div></section><section class="playground-editor__section"><h3>Hours &amp; pricing</h3><div class="form-grid"><label>Opening time<input name="openingTime" type="time" value="${E(ground.openingTime)}" required></label><label>Closing time<input name="closingTime" type="time" value="${E(ground.closingTime)}" required></label><label>Morning price (BDT)<input name="morningPrice" type="number" min="0" value="${Number(ground.pricing?.morning) || 0}" required></label><label>Day price (BDT)<input name="dayPrice" type="number" min="0" value="${Number(ground.pricing?.day) || 0}" required></label><label>Evening price (BDT)<input name="eveningPrice" type="number" min="0" value="${Number(ground.pricing?.evening) || 0}" required></label><label>Weekend price (BDT)<input name="weekendPrice" type="number" min="0" value="${Number(ground.pricing?.weekend) || 0}" required></label></div></section><section class="playground-editor__section"><h3>Facilities</h3><label>Available facilities <small>Separate each item with a comma</small><input name="facilities" value="${E(facilities)}" placeholder="Changing room, Parking, Washroom, Floodlights"></label></section><p class="playground-editor__error" hidden></p><footer class="playground-editor__actions"><button class="alt" type="button" data-cancel>Cancel</button><button type="submit">Save all changes</button></footer></form>`;
+    const close = () => modal.remove();
+    modal.querySelector(".close").onclick = close;
+    modal.querySelector("[data-cancel]").onclick = close;
+    modal.onclick = (event) => { if (event.target === modal) close(); };
+    modal.querySelector("form").onsubmit = async (event) => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const raw = Object.fromEntries(new FormData(form));
+        const payload = {
+            name: raw.name.trim(), sportType: raw.sportType, description: raw.description.trim(), phone: raw.phone.trim(), email: raw.email.trim(),
+            address: raw.address.trim(), division: raw.division.trim(), district: raw.district.trim(), area: raw.area.trim(),
+            googleMapLocation: raw.googleMapLocation.trim(), openingTime: raw.openingTime, closingTime: raw.closingTime,
+            maxPlayers: Number(raw.maxPlayers), pricing: { morning: Number(raw.morningPrice), day: Number(raw.dayPrice), evening: Number(raw.eveningPrice), weekend: Number(raw.weekendPrice) },
+            facilities: raw.facilities.split(",").map((item) => item.trim()).filter(Boolean),
+        };
+        const submit = form.querySelector('[type="submit"]');
+        const errorBox = form.querySelector(".playground-editor__error");
+        submit.disabled = true;
+        submit.textContent = "Saving changes…";
+        try {
+            await R("/playgrounds/" + id, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+            close();
+            say("Playground details saved successfully.");
+            await myGrounds();
+        } catch (error) {
+            errorBox.textContent = error.message;
+            errorBox.hidden = false;
+            submit.disabled = false;
+            submit.textContent = "Save all changes";
+        }
+    };
+    document.body.append(modal);
 };
 window.removeGround = async (id) => {
     const approved = await TurfDialog.confirm({ title: "Delete this playground?", message: "This will permanently remove the playground and its public listing.", confirmLabel: "Delete playground" });
@@ -375,7 +413,7 @@ const localDateKey = (value) => {
     return Number.isNaN(date.getTime()) ? "" : `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 };
 
-async function dailySlots(dateValue = localDateKey(new Date())) {
+async function legacyDailySlots(dateValue = localDateKey(new Date())) {
     const grounds = await R("/playgrounds/my-playgrounds");
     const selectedDate = new Date(dateValue + "T12:00:00");
     const dayOfWeek = selectedDate.getDay();
@@ -395,6 +433,48 @@ async function dailySlots(dateValue = localDateKey(new Date())) {
     }).join("") : '<div class="empty">No playground has been added yet.</div>';
     $("#panel").innerHTML = header + content;
     $("#slot-schedule-date").onchange = (event) => dailySlots(event.target.value);
+}
+
+async function dailySlots(dateValue = localDateKey(new Date())) {
+    const grounds = await R("/playgrounds/my-playgrounds");
+    const selectedDate = new Date(dateValue + "T12:00:00");
+    const dayOfWeek = selectedDate.getDay();
+    const groups = await Promise.all(grounds.map(async (ground) => {
+        const [venueSlots, venueBookings] = await Promise.all([R("/slots/playground/" + ground._id), R("/bookings/playground/" + ground._id)]);
+        const bookingsForDay = venueBookings.filter((booking) => localDateKey(booking.bookingDate) === dateValue && ["Pending", "Confirmed"].includes(booking.bookingStatus));
+        return { ground, venueSlots: venueSlots.filter((slot) => slot.dayOfWeek === dayOfWeek && slot.isActive), bookingsForDay };
+    }));
+    const header = `<header class="management-toolbar daily-schedule-toolbar"><div><h2>Daily slot availability</h2><p>Choose a date to review availability or close one recurring slot for that date only.</p></div><label>Schedule date<input id="slot-schedule-date" type="date" value="${E(dateValue)}" min="${E(localDateKey(new Date()))}"></label></header>`;
+    const content = groups.length ? groups.map(({ ground, venueSlots, bookingsForDay }) => {
+        const cards = venueSlots.length ? venueSlots.map((slot) => {
+            const booking = bookingsForDay.find((item) => item.startTime === slot.startTime && item.endTime === slot.endTime);
+            const unavailable = (slot.unavailableDates || []).includes(dateValue);
+            if (booking) return `<article class="daily-slot booked"><div><span>BOOKED</span><strong>${E(slot.startTime)} - ${E(slot.endTime)}</strong><small>${E(booking.customer?.name || "Customer")} · ${E(booking.paymentStatus || booking.bookingStatus)}</small></div><b>Reserved</b></article>`;
+            if (unavailable) return `<article class="daily-slot unavailable"><div><span>UNAVAILABLE</span><strong>${E(slot.startTime)} - ${E(slot.endTime)}</strong><small>Closed only for this date</small></div><button class="alt" type="button" data-slot-date-availability="${E(slot._id)}" data-available="true">Make available</button></article>`;
+            return `<article class="daily-slot available"><div><span>AVAILABLE</span><strong>${E(slot.startTime)} - ${E(slot.endTime)}</strong><small>${slot.price ? `BDT ${E(slot.price)}` : "Open for booking"}</small></div><button class="alt" type="button" data-slot-date-availability="${E(slot._id)}" data-available="false">Block this date</button></article>`;
+        }).join("") : '<p class="empty">No active slots are scheduled for this day.</p>';
+        return `<section class="daily-venue"><header><div><span>PLAYGROUND</span><h2>${E(ground.name)}</h2><p>${E(ground.address || "Address pending")}</p></div><strong>${bookingsForDay.length} booked</strong></header><div class="daily-slot-grid">${cards}</div></section>`;
+    }).join("") : '<div class="empty">No playground has been added yet.</div>';
+    $("#panel").innerHTML = header + content;
+    $("#slot-schedule-date").onchange = (event) => dailySlots(event.target.value);
+    $("#panel").querySelectorAll("[data-slot-date-availability]").forEach((button) => button.addEventListener("click", async () => {
+        const available = button.dataset.available === "true";
+        const confirmed = await TurfDialog.confirm({
+            title: available ? "Make this slot available?" : "Block this slot for one day?",
+            message: available ? `Customers will be able to book this slot on ${dateValue}.` : `Customers will not be able to book this slot on ${dateValue}. The weekly schedule will stay unchanged.`,
+            confirmLabel: available ? "Make available" : "Block this date",
+        });
+        if (!confirmed) return;
+        button.disabled = true;
+        try {
+            await R("/slots/" + encodeURIComponent(button.dataset.slotDateAvailability) + "/date-availability", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ date: dateValue, available }) });
+            say(available ? "Slot is available again for this date." : "Slot blocked for this date. Customers cannot book it.");
+            await dailySlots(dateValue);
+        } catch (error) {
+            say(error.message, true);
+            button.disabled = false;
+        }
+    }));
 }
 
 async function users() {

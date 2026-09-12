@@ -47,6 +47,11 @@ const updateSlotValidation = Joi.object({
     isActive: Joi.boolean(),
 });
 
+const slotDateAvailabilityValidation = Joi.object({
+    date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
+    available: Joi.boolean().required(),
+});
+
 const createSlotsValidation = Joi.object({
     slots: Joi.array().items(createSlotValidation).min(1).max(168).required(),
 });
@@ -55,4 +60,5 @@ module.exports = {
     createSlotValidation,
     createSlotsValidation,
     updateSlotValidation,
+    slotDateAvailabilityValidation,
 };

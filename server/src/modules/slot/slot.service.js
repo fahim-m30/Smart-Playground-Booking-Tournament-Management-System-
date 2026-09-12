@@ -40,6 +40,13 @@ const assertValidBreak = ({ breakStartTime, breakEndTime }) => {
     }
 };
 
+const slotDate = (value) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value))) throw new Error("Choose a valid calendar date.");
+    const date = new Date(`${value}T00:00:00.000Z`);
+    if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value) throw new Error("Choose a valid calendar date.");
+    return date;
+};
+
 // ===================================================
 // Create Slot
 // ===================================================
@@ -246,6 +253,42 @@ const updateSlot = async (slotId, payload, adminId) => {
     return updatedSlot;
 };
 
+// Close or reopen one occurrence of a recurring weekly slot. A booked slot
+// must be cancelled through the booking flow, so customer reservations are
+// never silently invalidated by a schedule edit.
+const setSlotDateAvailability = async (slotId, payload, adminId) => {
+    const slot = await Slot.findOne({ _id: slotId, isDeleted: false });
+    if (!slot) throw new Error("Slot not found.");
+
+    const playground = await Playground.findOne({ _id: slot.playground, isDeleted: false });
+    if (!playground || String(playground.playgroundAdmin) !== String(adminId)) {
+        throw new Error("You are not authorized to update this slot.");
+    }
+
+    const date = slotDate(payload.date);
+    if (date < dayRange(calendarDate()).start) throw new Error("Past dates cannot be changed.");
+    if (date.getUTCDay() !== slot.dayOfWeek) throw new Error("Choose a date that matches this slot's scheduled day.");
+
+    if (!payload.available) {
+        const nextDay = new Date(date);
+        nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+        const existingBooking = await Booking.findOne({
+            playground: slot.playground,
+            bookingDate: { $gte: date, $lt: nextDay },
+            bookingStatus: { $in: ["Pending", "Confirmed"] },
+            isDeleted: false,
+            startTime: { $lt: slot.endTime },
+            endTime: { $gt: slot.startTime },
+        });
+        if (existingBooking) throw new Error("This slot is already booked for the selected date. Cancel the booking first if the venue must close.");
+    }
+
+    const update = payload.available
+        ? { $pull: { unavailableDates: payload.date } }
+        : { $addToSet: { unavailableDates: payload.date } };
+    return Slot.findByIdAndUpdate(slotId, update, { new: true });
+};
+
 // Customer facing availability.  It returns every configured slot for the
 // requested calendar day and marks it booked if any active booking overlaps.
 const getAvailability = async (playgroundId, dateValue) => {
@@ -257,7 +300,8 @@ const getAvailability = async (playgroundId, dateValue) => {
     const playground = await Playground.findOne({ _id: playgroundId, isDeleted: false, isApproved: true, status: "Active" });
     if (!playground) throw new Error("Playground not found or unavailable.");
 
-    const slots = await Slot.find({ playground: playgroundId, dayOfWeek: date.getUTCDay(), isActive: true, isDeleted: false }).sort({ startTime: 1 });
+    const configuredSlots = await Slot.find({ playground: playgroundId, dayOfWeek: date.getUTCDay(), isActive: true, isDeleted: false }).sort({ startTime: 1 });
+    const slots = configuredSlots.filter((slot) => !(slot.unavailableDates || []).includes(dateValue));
     const dayEnd = new Date(date);
     dayEnd.setDate(dayEnd.getDate() + 1);
     const bookings = await Booking.find({
@@ -327,5 +371,6 @@ module.exports = {
     getSlotsByPlayground,
     getAvailability,
     updateSlot,
+    setSlotDateAvailability,
     deleteSlot,
 };

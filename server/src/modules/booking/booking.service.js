@@ -80,6 +80,9 @@ const createBooking = async (payload, customerId) => {
     if (!selectedSlot) {
         throw new Error("Select one of the published slots shown for this date.");
     }
+    if ((selectedSlot.unavailableDates || []).includes(bookingDate.toISOString().slice(0, 10))) {
+        throw new Error("This slot is unavailable for the selected date.");
+    }
 
     // A same-day slot is no longer bookable as soon as its start time passes.
     const slotStartAt = bookingStartsAt(bookingDate, payload.startTime);

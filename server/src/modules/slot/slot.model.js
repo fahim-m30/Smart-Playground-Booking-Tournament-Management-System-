@@ -67,6 +67,13 @@ const slotSchema = new mongoose.Schema(
             default: true,
         },
 
+        // A recurring weekly slot can be closed for individual calendar
+        // dates without disabling or deleting the regular schedule.
+        unavailableDates: {
+            type: [String],
+            default: [],
+        },
+
         isDeleted: {
             type: Boolean,
             default: false,
