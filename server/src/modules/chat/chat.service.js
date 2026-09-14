@@ -451,52 +451,10 @@ const sendMessage = async (payload, senderId, senderRole) => {
         link: "chat.html",
     });
 
-    // If the assistant cannot answer a customer or super-admin question, copy
-    // the request and its handoff reply into the responsible venue admin's
-    // conversation. This lets that admin read the complete support request.
-    const handoffAdminId = idOf(playground?.playgroundAdmin);
-    let handoffChat = null;
-    let handoffBotReply = null;
-    if (botReply?.needsHumanHandoff && handoffAdminId && handoffAdminId !== idOf(recipient)) {
-        const handoffKey = conversationKey(senderId, handoffAdminId);
-        handoffChat = await Chat.create({
-            playground: playground._id,
-            customer,
-            admin: handoffAdminId,
-            sender: senderId,
-            recipient: handoffAdminId,
-            participants: [senderId, handoffAdminId],
-            conversationKey: handoffKey,
-            message,
-            senderRole,
-        });
-        handoffBotReply = await Chat.create({
-            playground: playground._id,
-            customer,
-            admin: handoffAdminId,
-            recipient: handoffAdminId,
-            participants: [senderId, handoffAdminId],
-            conversationKey: handoffKey,
-            message: botReply.message,
-            senderRole: "system",
-            isRead: false,
-        });
-        await createNotification({
-            recipient: handoffAdminId,
-            type: "ChatHandoff",
-            title: "New venue support request",
-            message: `${sender.name} needs assistance at ${playground.name}: ${message.slice(0, 180)}`,
-            link: "chat.html?contact=" + encodeURIComponent(String(senderId)),
-        });
-    }
     const chatEvent = { conversationKey: chat.conversationKey, message: realtimeChatMessage(chat) };
     emitToUser(recipient._id.toString(), "chat:message", chatEvent);
     // A sender can have the same account open in another tab; update it too.
     emitToUser(senderId.toString(), "chat:message", chatEvent);
-    if (handoffChat) {
-        emitToUser(handoffAdminId, "chat:message", { conversationKey: handoffChat.conversationKey, message: realtimeChatMessage(handoffChat) });
-        emitToUser(handoffAdminId, "chat:message", { conversationKey: handoffChat.conversationKey, message: realtimeChatMessage(handoffBotReply) });
-    }
     if (botReply) {
         const botEvent = {
             conversationKey: chat.conversationKey,
