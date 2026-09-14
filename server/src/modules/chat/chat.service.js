@@ -36,7 +36,10 @@ const messageableRoles = {
 const canMessageRole = (senderRole, recipientRole) =>
     Boolean(messageableRoles[senderRole]?.includes(recipientRole));
 
-const conciergeFlow = (senderRole) => ["customer", "super-admin"].includes(senderRole);
+const conciergeFlow = (senderRole, recipientRole) =>
+    senderRole === "customer"
+    || senderRole === "super-admin"
+    || (senderRole === "playground-admin" && recipientRole === "super-admin");
 
 // Use Bangladesh calendar days rather than a rolling 24-hour window.
 const bangladeshDayBounds = (now = new Date()) => {
@@ -128,7 +131,7 @@ const tournamentInformation = async (playground) => {
     return `Tournament information for ${playground.name}: ${details}. Open Tournament Centre for registration and official fixtures.`;
 };
 
-const conciergeResponseFor = async (rawMessage, playground) => {
+const legacyDataConciergeResponse = async (rawMessage, playground) => {
     const message = String(rawMessage || "").toLowerCase();
     const cancellation = botHas(message, "cancel", "cencel", "cancellation", "refund", "বাতিল", "ফেরত");
     const tournament = botHas(message, "tournament", "team registration", "tournament registration", "lottery", "draw", "fixture", "group stage", "টুর্নামেন্ট", "ফিক্সচার");
@@ -144,9 +147,126 @@ const conciergeResponseFor = async (rawMessage, playground) => {
     return handoffResponse;
 };
 
+// Data-aware answers are intentionally generated here, on the server, so a
+// browser cannot invent venue availability or administrative statistics.
+const assistantQuestion = (value) => String(value || "")
+    .toLowerCase()
+    .normalize("NFKC")
+    .replace(/[০-৯]/g, (digit) => "০১২৩৪৫৬৭৮৯".indexOf(digit))
+    .replace(/[^\p{L}\p{N}/-]+/gu, " ")
+    .trim();
+const includesAny = (value, terms) => terms.some((term) => value.includes(term));
+const assistantMoney = (value) => `BDT ${Number(value || 0).toLocaleString("en-BD")}`;
+const assistantDate = (value) => value
+    ? new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" }).format(new Date(value))
+    : "date to be confirmed";
+const assistantDateKey = (date) => new Date(date).toISOString().slice(0, 10);
+
+const dateAskedIn = (rawMessage) => {
+    const message = assistantQuestion(rawMessage);
+    if (message.includes("today") || message.includes("আজ")) return assistantDateKey(new Date());
+    if (message.includes("tomorrow") || message.includes("কাল")) return assistantDateKey(new Date(Date.now() + 86400000));
+    const iso = message.match(/\b(20\d{2})-(\d{1,2})-(\d{1,2})\b/);
+    if (iso) return `${iso[1]}-${iso[2].padStart(2, "0")}-${iso[3].padStart(2, "0")}`;
+    const local = message.match(/\b(\d{1,2})[/-](\d{1,2})[/-](20\d{2})\b/);
+    return local ? `${local[3]}-${local[2].padStart(2, "0")}-${local[1].padStart(2, "0")}` : null;
+};
+
+const detailedVenueAnswer = (playground) => {
+    if (!playground) return "Please select a playground or message its administrator so I can provide venue information.";
+    const location = [playground.address, playground.area, playground.district, playground.division].filter(Boolean).join(", ") || "not listed";
+    const hours = playground.openingTime && playground.closingTime ? `${playground.openingTime}–${playground.closingTime}` : "to be confirmed";
+    const facilities = (playground.facilities || []).slice(0, 8).join(", ") || "not listed";
+    const priceList = Object.entries(playground.pricing || {})
+        .filter(([, price]) => price !== null && price !== undefined)
+        .map(([period, price]) => `${period}: ${assistantMoney(price)}`).join(", ");
+    return `${playground.name} is a ${playground.sportType || "sports"} venue. Location: ${location}. Opening hours: ${hours}. Capacity: ${playground.maxPlayers || "not listed"} players. Facilities: ${facilities}.${priceList ? ` Standard pricing: ${priceList}.` : ""} Contact: ${playground.phone || "not listed"}.`;
+};
+
+const detailedSlotAnswer = async (playground, rawMessage) => {
+    if (!playground) return "Please select a playground first so I can check its slots.";
+    const date = dateAskedIn(rawMessage);
+    const query = { playground: playground._id, isActive: true, isDeleted: false };
+    if (date) query.dayOfWeek = new Date(`${date}T00:00:00.000Z`).getUTCDay();
+    const schedules = await Slot.find(query)
+        .select("startTime endTime durationMinutes price unavailableDates")
+        .sort({ startTime: 1, endTime: 1 });
+    const published = schedules.filter((slot) => !date || !(slot.unavailableDates || []).includes(date));
+    const slots = Array.from(new Map(published.map((slot) => [`${slot.startTime}-${slot.endTime}-${slot.price}`, slot])).values()).slice(0, 8);
+    if (!slots.length) return `${playground.name} has no active slot schedule published for this${date ? " date" : " venue"}.`;
+    if (!date) {
+        const listing = slots.map((slot) => `${slot.startTime}–${slot.endTime} (${slot.durationMinutes || 60} min, ${assistantMoney(slot.price)})`).join(" · ");
+        return `${playground.name} slot schedule and price: ${listing}. Send a date in YYYY-MM-DD format to check which slots are available.`;
+    }
+    const start = new Date(`${date}T00:00:00.000Z`);
+    const end = new Date(start.getTime() + 86400000);
+    const bookings = await Booking.find({
+        playground: playground._id,
+        bookingDate: { $gte: start, $lt: end },
+        bookingStatus: { $in: ["Pending", "Confirmed"] },
+        isDeleted: false,
+    }).select("startTime endTime");
+    const reserved = new Set(bookings.map((booking) => `${booking.startTime}-${booking.endTime}`));
+    const open = slots.filter((slot) => !reserved.has(`${slot.startTime}-${slot.endTime}`));
+    if (!open.length) return `All published slots at ${playground.name} are booked for ${assistantDate(start)}. Send another date and I will check it.`;
+    return `Available slots at ${playground.name} for ${assistantDate(start)}: ${open.map((slot) => `${slot.startTime}–${slot.endTime} (${assistantMoney(slot.price)})`).join(" · ")}. Availability is checked again when the booking is submitted.`;
+};
+
+const detailedTournamentAnswer = async (playground) => {
+    if (!playground) return "Please select a playground first so I can provide tournament information.";
+    const tournaments = await Tournament.find({
+        playground: playground._id,
+        isDeleted: false,
+        status: { $nin: ["Cancelled", "Completed"] },
+    }).select("name sportType startDate endDate registrationFee totalTeams playingMembers extraMembers status")
+        .sort({ startDate: 1 }).limit(3);
+    if (!tournaments.length) {
+        return `No active or upcoming tournament has been announced at ${playground.name}. If a tournament is announced, a TURF representative will let you know.`;
+    }
+    const listing = tournaments.map((tournament) => `${tournament.name}: ${tournament.sportType}; ${assistantDate(tournament.startDate)} to ${assistantDate(tournament.endDate)}; entry fee ${assistantMoney(tournament.registrationFee)}; ${tournament.totalTeams} teams; ${tournament.playingMembers} playing member(s)${tournament.extraMembers ? ` + ${tournament.extraMembers} extra member(s)` : ""}; ${tournament.status}`).join(" · ");
+    return `Tournament information for ${playground.name}: ${listing}.`;
+};
+
+const platformAnswer = async (message) => {
+    const asksSuspension = includesAny(message, ["suspend", "suspended", "block", "blocked", "ban", "suspension", "সাসপেন্ড", "ব্যান"]);
+    const asksCounts = includesAny(message, ["user", "users", "playground", "playgrounds", "ইউজার", "প্লেগ্রাউন্ড"])
+        && includesAny(message, ["count", "total", "how many", "number", "কতজন", "কয়জন", "কতগুলো", "কত"]);
+    if (!asksSuspension && !asksCounts) return null;
+    const [users, customers, admins, suspended, playgrounds, activePlaygrounds] = await Promise.all([
+        User.countDocuments({ isDeleted: false }),
+        User.countDocuments({ role: "customer", isDeleted: false }),
+        User.countDocuments({ role: "playground-admin", isDeleted: false }),
+        User.countDocuments({ isBlocked: true, isDeleted: false }),
+        Playground.countDocuments({ isDeleted: false }),
+        Playground.countDocuments({ isDeleted: false, isApproved: true, status: "Active" }),
+    ]);
+    if (asksSuspension && !asksCounts) {
+        return `There are currently ${suspended} suspended account(s). Accounts may be suspended for platform-rule or safety violations, or repeated resolved reports. A representative will confirm any individual case detail.`;
+    }
+    return `Platform summary: ${users} total user(s) (${customers} customer(s), ${admins} playground admin(s)); ${playgrounds} playground(s), including ${activePlaygrounds} active approved venue(s); ${suspended} suspended account(s).${asksSuspension ? " Suspensions can result from platform-rule or safety violations, or repeated resolved reports; individual details are confirmed by a representative." : ""}`;
+};
+
+const conciergeResponseFor = async (rawMessage, playground, senderRole) => {
+    const message = assistantQuestion(rawMessage);
+    const tournament = includesAny(message, ["tournament", "fixture", "draw", "registration", "team", "টুর্নামেন্ট", "ফিক্সচার", "রেজিস্ট্রেশন"]);
+    const slot = includesAny(message, ["slot", "booking", "availability", "available", "price", "cost", "rate", "খালি", "ফাঁকা", "স্লট", "বুকিং", "দাম", "মূল্য"]);
+    const venue = includesAny(message, ["venue", "playground", "location", "address", "facility", "ground", "location", "মাঠ", "ভেন্যু", "ঠিকানা", "লোকেশন", "সুবিধা"]);
+    const adminReply = senderRole === "playground-admin" || senderRole === "super-admin"
+        ? await platformAnswer(message)
+        : null;
+    if (adminReply) return adminReply;
+    if (tournament) return detailedTournamentAnswer(playground);
+    if (slot) return detailedSlotAnswer(playground, rawMessage);
+    if (venue) return detailedVenueAnswer(playground);
+    if (includesAny(message, ["hello", "hi", "assalam", "help", "support", "salam", "হ্যালো", "হাই", "সাহায্য"])) {
+        return "I can provide playground location and facilities, slot schedules, prices and date-based availability, plus tournament dates, fees and player requirements.";
+    }
+    return handoffResponse;
+};
+
 const createProfessionalConciergeReply = async ({ senderId, senderRole, recipient, key, playground, customerMessage }) => {
-    if (!conciergeFlow(senderRole)) return null;
-    const response = await conciergeResponseFor(customerMessage, playground);
+    if (!conciergeFlow(senderRole, recipient.role)) return null;
+    const response = await conciergeResponseFor(customerMessage, playground, senderRole);
     const { start, end } = bangladeshDayBounds();
     const welcomedToday = await Chat.exists({
         conversationKey: key,
@@ -273,7 +393,7 @@ const assertRecipientAllowed = async (senderId, senderRole, recipient) => {
         : (senderRole === "playground-admin" ? senderId : null);
     if (adminId) {
         return Playground.findOne({ playgroundAdmin: adminId, isDeleted: false })
-            .select("playgroundAdmin name sportType address area district openingTime closingTime maxPlayers facilities googleMapLocation")
+            .select("playgroundAdmin name sportType phone address area district division openingTime closingTime pricing maxPlayers facilities googleMapLocation")
             .sort({ createdAt: 1 });
     }
 
@@ -283,7 +403,7 @@ const assertRecipientAllowed = async (senderId, senderRole, recipient) => {
     if (!customerId) return null;
     const booking = await Booking.findOne({ customer: customerId, isDeleted: false })
         .sort({ bookingDate: -1, createdAt: -1 })
-        .populate("playground", "playgroundAdmin name sportType address area district openingTime closingTime maxPlayers facilities googleMapLocation");
+        .populate("playground", "playgroundAdmin name sportType phone address area district division openingTime closingTime pricing maxPlayers facilities googleMapLocation");
     return booking?.playground || null;
 };
 
