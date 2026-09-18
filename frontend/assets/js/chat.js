@@ -104,16 +104,12 @@ function renderConversations() {
         const context = contactContext(item);
         const meta = item.lastMessageAt ? time(item.lastMessageAt) : "New";
         const unread = item.unreadCount ? '<b class="unread">' + item.unreadCount + "</b>" : "";
-        // The API already limits the contact list by role, so every displayed
-        // contact is a valid business contact for the current account.
-        const canCall = Boolean(contact.phone);
-        const call = canCall ? '<a class="conversation-call" href="tel:' + escapeHTML(String(contact.phone).replace(/[^+\d]/g, "")) + '" title="Call ' + escapeHTML(contact.name) + '" aria-label="Call ' + escapeHTML(contact.name) + '">☎</a>' : "";
         return '<div class="conversation-row"><button class="conversation ' + (selected ? "active" : "") + '" type="button" data-contact-id="' + escapeHTML(contactId) + '">'
             + '<span class="conversation-avatar">' + escapeHTML(initial(contact.name)) + "</span>"
             + '<span class="conversation-copy"><strong>' + escapeHTML(contact.name) + "</strong>"
             + '<span class="conversation-venue"><b>' + escapeHTML(context.label) + "</b>" + escapeHTML(context.value) + "</span>"
             + '<span class="conversation-preview">' + escapeHTML(preview) + "</span></span>"
-            + '<span class="conversation-meta">' + escapeHTML(meta) + unread + "</span></button>" + call + "</div>";
+            + '<span class="conversation-meta">' + escapeHTML(meta) + unread + "</span></button></div>";
     }).join("");
     list.querySelectorAll("[data-contact-id]").forEach((button) => {
         button.onclick = () => selectById(button.dataset.contactId);
