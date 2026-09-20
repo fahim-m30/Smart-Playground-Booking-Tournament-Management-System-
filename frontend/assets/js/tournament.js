@@ -765,7 +765,7 @@ async function loadMyTournamentRegistrations() {
 }
 loadMyTournamentRegistrations();
 
-document.head.insertAdjacentHTML("beforeend", '<link rel="stylesheet" href="assets/css/tournament-centre.css?v=20260912-success-feedback"><link rel="stylesheet" href="assets/css/tournament-admin.css?v=20260901contrast5">');
+document.head.insertAdjacentHTML("beforeend", '<link rel="stylesheet" href="assets/css/tournament-centre.css?v=20260921-scrollable-final"><link rel="stylesheet" href="assets/css/tournament-admin.css?v=20260901contrast5">');
 
 function downloadFixturePdf(tournament, matches) {
     if (!matches.length) return say("Fixtures are not published yet.", true);
