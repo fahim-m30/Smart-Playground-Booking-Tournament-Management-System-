@@ -383,6 +383,14 @@ const withoutLegacyDuplicates = (tournaments) => {
 const getAllTournaments = async (actor = {}) => {
     await refreshTournamentStatuses();
     const filters = { isDeleted: false };
+    // The customer discovery page is for active competitions only. Finished
+    // and cancelled events remain in the database for organisers, reports
+    // and a customer's registration history, but must not appear as new
+    // tournaments to browse or join.
+    if (actor.role === "customer") {
+        filters.status = { $in: ["Upcoming", "Group Stage", "Knockout Stage"] };
+        filters.endDate = { $gte: dayRange(calendarDate()).start };
+    }
     if (actor.role !== "super-admin") {
         filters.$or = [
             { venueApprovalStatus: { $in: ["Approved", "Not Required"] } },
