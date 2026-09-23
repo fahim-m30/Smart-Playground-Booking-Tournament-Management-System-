@@ -825,10 +825,14 @@ function downloadFixturePdf(tournament, matches) {
 
 window.detail = async (id) => {
     try {
-        const [groups, teams, matches, standings] = await Promise.all([
+        // A completed tournament is intentionally absent from the customer
+        // browse list, but a paid team may still open its one-time official
+        // shuffle review from the dashboard. Load this tournament directly
+        // instead of depending on the visible-list cache.
+        const [tournament, groups, teams, matches, standings] = await Promise.all([
+            req(`/tournaments/${id}`),
             req(`/tournaments/${id}/groups`), req(`/tournaments/${id}/teams`), req(`/tournaments/${id}/matches`), req(`/tournaments/${id}/standings`),
         ]);
-        const tournament = tournaments.find((item) => item._id === id);
         const sport = tournament?.sportType || "Tournament";
         const groupName = (group) => group?.name || "Group stage";
         const draw = groups.map((group) => `<article class="group-card"><h3>${esc(group.name)}</h3><ol>${teams.filter((team) => String(team.group?._id || team.group) === String(group._id)).map((team) => `<li>${esc(team.teamName)}</li>`).join("") || "<li>Teams are being assigned</li>"}</ol></article>`).join("");
