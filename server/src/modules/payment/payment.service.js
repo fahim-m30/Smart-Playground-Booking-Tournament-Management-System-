@@ -266,6 +266,29 @@ const startDemoCheckout = async (payload, customerId) => {
         throw new Error("Choose a supported payment method.");
     }
 
+    // Starting checkout is safe to repeat. If the customer has already
+    // registered a tournament team and left its payment unfinished, return
+    // that checkout instead of creating a second pending payment.
+    if (payload.tournamentTeam) {
+        const existingPayment = await Payment.findOne({
+            tournamentTeam: payload.tournamentTeam,
+            customer: customerId,
+            paymentStatus: "Pending",
+            isDeleted: false,
+        });
+        if (existingPayment) {
+            return {
+                payment: existingPayment,
+                checkout: {
+                    provider: existingPayment.paymentMethod,
+                    reference: `TURF-${existingPayment._id.toString().slice(-8).toUpperCase()}`,
+                    amount: existingPayment.amount,
+                    currency: "BDT",
+                },
+            };
+        }
+    }
+
     const payment = await preparePayment(payload, customerId);
 
     return {

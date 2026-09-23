@@ -186,6 +186,7 @@ const knockoutDemo = (groups, lastGroupMatchDate, sport) => {
     ];
 };
 let tournaments = [], selected = null, tournamentSearch = new URLSearchParams(location.search).get("search") || "";
+let myRegistrations = [];
 const requestedFixtureId = new URLSearchParams(location.search).get("fixture");
 const requestedShuffleReview = new URLSearchParams(location.search).get("shuffle") === "1";
 const tournamentListPath = () => user.role === "playground-admin" ? "/tournaments/my-playgrounds/tournaments" : "/tournaments";
@@ -210,6 +211,37 @@ window.join = async (id) => { try { selected = await req(`/tournaments/${id}`); 
 
 const openJoinModal = window.join;
 window.join = async (id) => {
+    // A customer can only register one team in a tournament. Check their
+    // existing team before opening the roster form so a second click never
+    // creates a confusing duplicate-registration error after payment.
+    if (user.role === "customer") {
+        try {
+            myRegistrations = await req("/tournaments/my-registrations");
+            const existingTeam = myRegistrations.find((team) => String(team.tournament?._id || team.tournament) === String(id));
+            if (existingTeam) {
+                if (existingTeam.paymentStatus === "Paid") {
+                    say(`${existingTeam.teamName} is already registered and payment is complete.`);
+                    document.querySelector("#my-tournament-registrations")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    return;
+                }
+
+                const payments = await req("/payments/my-payments");
+                const pendingPayment = payments.find((payment) => payment.paymentStatus === "Pending" && String(payment.tournamentTeam?._id || payment.tournamentTeam) === String(existingTeam._id));
+                if (pendingPayment) {
+                    location.href = `demo-payment.html?payment=${encodeURIComponent(pendingPayment._id)}`;
+                    return;
+                }
+
+                // The registration exists but no checkout has been started
+                // (or an earlier one was cancelled), so ask for a method.
+                openTournamentPayment(existingTeam._id);
+                return;
+            }
+        } catch (error) {
+            say(error.message || "Could not check your registration status.", true);
+            return;
+        }
+    }
     await openJoinModal(id);
     if (selected) {
         $("#join-info").textContent = `৳${selected.registrationFee} · ${selected.playingMembers} playing member(s), up to ${selected.extraMembers} extra player(s). Match rule: ${matchRuleLabel(selected)}. ${sportProfile(selected.sportType).format}. One account can register one team in this tournament. Registration closes at the start of ${dateLabel(registrationDeadline(selected))}.`;
@@ -671,12 +703,24 @@ function updateTournamentOverview() {
 
 list = async function () {
     tournaments = await req(tournamentListPath());
+    if (user.role === "customer") {
+        myRegistrations = await req("/tournaments/my-registrations");
+    }
     updateTournamentOverview();
     const term = tournamentSearch.trim().toLowerCase();
     const visibleTournaments = term ? tournaments.filter((tournament) => [tournament.name, tournament.sportType, tournament.playground?.name, tournament.playgrounds?.[0]?.name].filter(Boolean).join(" ").toLowerCase().includes(term)) : tournaments;
     $("#content").innerHTML = visibleTournaments.length ? visibleTournaments.map((tournament) => {
         const canRegister = user.role === "customer" && registrationOpen(tournament);
-        const action = canRegister ? `<button onclick="join('${tournament._id}')">Join tournament</button>` : `<button class="alt" onclick="detail('${tournament._id}')">View competition</button>`;
+        const myTeam = user.role === "customer"
+            ? myRegistrations.find((team) => String(team.tournament?._id || team.tournament) === String(tournament._id))
+            : null;
+        const action = myTeam?.paymentStatus === "Paid"
+            ? `<button class="alt" onclick="detail('${tournament._id}')">Registered ✓</button>`
+            : myTeam
+                ? `<button onclick="join('${tournament._id}')">Complete payment</button>`
+                : canRegister
+                    ? `<button onclick="join('${tournament._id}')">Join tournament</button>`
+                    : `<button class="alt" onclick="detail('${tournament._id}')">View competition</button>`;
         const profile = sportProfile(tournament.sportType);
         const registrationNote = user.role === "customer" && tournament.status === "Upcoming" ? (canRegister ? `<br><small>Register by ${dateLabel(registrationDeadline(tournament))}.</small>` : '<br><small>Registration is closed for this tournament.</small>') : "";
         return `<article class="card"><span class="badge">${esc(tournamentStatusLabel(tournament))}</span><h3>${esc(tournament.name)}</h3><p><b>${esc(profile.icon)}</b> · ${esc(tournament.sportType)}<br>${dateLabel(tournament.startDate)} – ${dateLabel(tournament.endDate)}<br>${esc(tournament.playground?.name || tournament.playgrounds?.[0]?.name || "Venue TBA")}${registrationNote}</p><div class="card-foot"><strong>৳${Number(tournament.registrationFee || 0).toLocaleString()}</strong>${action}</div></article>`;
