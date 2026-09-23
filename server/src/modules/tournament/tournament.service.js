@@ -301,6 +301,15 @@ const respondToVenueApproval = async (tournamentId, adminId, decision) => {
 const refreshTournamentStatuses = async () => {
     const today = dayRange(calendarDate()).start;
 
+    // Repair older cancellation records before calculating calendar-based
+    // completion. A tournament with a cancellation timestamp was explicitly
+    // stopped by an admin and must never be presented as "Completed".
+    await Tournament.updateMany({
+        isDeleted: false,
+        status: { $ne: "Cancelled" },
+        cancelledAt: { $ne: null },
+    }, { $set: { status: "Cancelled", cancellationProcessed: true } });
+
     // Platform approval has been retired. Publish legacy tournaments that
     // were previously waiting only for a super admin, and
     // create their groups exactly once so they are ready to accept teams.
@@ -349,6 +358,32 @@ const refreshTournamentStatuses = async () => {
         startDate: { $lte: today },
         endDate: { $gte: today },
     }, { $set: { status: "Group Stage" } });
+
+    // A tournament needs at least four active teams for its group and knockout
+    // format. Once registration closes, automatically cancel any underfilled
+    // event (including older records already marked complete). The shared
+    // cancellation flow also refunds paid teams and notifies every captain.
+    const underfilledTournamentCandidates = await Tournament.find({
+        isDeleted: false,
+        status: { $in: ["Upcoming", "Group Stage", "Knockout Stage", "Completed"] },
+    }).select("_id startDate playground");
+    for (const tournament of underfilledTournamentCandidates) {
+        if (new Date() < tournamentRegistrationClosesAt(tournament.startDate)) continue;
+        const registeredTeamCount = await TournamentTeam.countDocuments({ tournament: tournament._id, isDeleted: false });
+        if (registeredTeamCount >= 4) continue;
+
+        const venue = await Playground.findOne({ _id: tournament.playground, isDeleted: false }).select("playgroundAdmin");
+        if (!venue?.playgroundAdmin) continue;
+        await cancelTournamentByVenueAdmin(
+            tournament._id.toString(),
+            {
+                reason: "Official decision",
+                details: `Automatically cancelled because only ${registeredTeamCount} team(s) registered; at least 4 teams are required.`,
+            },
+            venue.playgroundAdmin.toString(),
+            { systemCancellation: true },
+        );
+    }
 };
 
 const tournamentVenueFilter = (playgroundIds) => ({
@@ -460,7 +495,7 @@ const acknowledgeTournamentDraw = async (tournamentId, customerId) => {
     return { tournamentId: String(tournament._id), drawViewedAt: team.drawViewedAt };
 };
 
-const cancelTournamentByVenueAdmin = async (tournamentId, payload, adminId) => {
+const cancelTournamentByVenueAdmin = async (tournamentId, payload, adminId, { systemCancellation = false } = {}) => {
     const reason = String(payload?.reason || "").trim();
     const details = String(payload?.details || "").trim();
     const allowedReasons = ["Weather", "Unsafe playing conditions", "Venue issue", "Power outage", "Equipment issue", "Security or emergency", "Official decision", "Other"];
@@ -472,8 +507,8 @@ const cancelTournamentByVenueAdmin = async (tournamentId, payload, adminId) => {
     if (!tournament) throw new Error("Tournament not found.");
     const venue = await Playground.findOne({ _id: tournament.playground, playgroundAdmin: adminId, isDeleted: false });
     if (!venue) throw new Error("Only this tournament's playground admin can cancel it.");
-    if (!["Upcoming", "Group Stage"].includes(tournament.status)) throw new Error("This tournament can no longer be cancelled as a whole. Use match rescheduling after play has started.");
-    if (new Date() >= dateRangeFor(tournament.startDate).start) throw new Error("This tournament has started and can no longer be cancelled as a whole.");
+    if (!systemCancellation && !["Upcoming", "Group Stage"].includes(tournament.status)) throw new Error("This tournament can no longer be cancelled as a whole. Use match rescheduling after play has started.");
+    if (!systemCancellation && new Date() >= dateRangeFor(tournament.startDate).start) throw new Error("This tournament has started and can no longer be cancelled as a whole.");
 
     const paidTeams = await TournamentTeam.find({ tournament: tournament._id, paymentStatus: "Paid", isDeleted: false }).select("_id registeredBy teamName contactNumber");
     const payments = await Payment.find({ tournament: tournament._id, paymentStatus: "Paid", isDeleted: false });
@@ -1676,14 +1711,24 @@ const getTournamentStandings = async (tournamentId, actor) => {
 // ===================================================
 
 const getMyPlaygroundTournaments = async (adminId) => {
+    await refreshTournamentStatuses();
     const playgrounds = await Playground.find({
         playgroundAdmin: adminId,
         isDeleted: false,
     }).select("_id");
 
     const playgroundIds = playgrounds.map((p) => p._id);
+    const today = dayRange(calendarDate()).start;
 
-    const tournaments = await Tournament.find({ isDeleted: false, ...tournamentVenueFilter(playgroundIds) })
+    // Finished and cancelled events remain in MongoDB for reporting, but the
+    // venue management board should contain only competitions that can still
+    // be operated today.
+    const tournaments = await Tournament.find({
+        isDeleted: false,
+        status: { $in: ["Upcoming", "Group Stage", "Knockout Stage"] },
+        endDate: { $gte: today },
+        ...tournamentVenueFilter(playgroundIds),
+    })
         .populate("playground", "name address sportType")
         .populate("createdBy", "name email")
         .populate("playgrounds", "name address sportType")
