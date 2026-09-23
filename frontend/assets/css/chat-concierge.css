@@ -2,3 +2,4 @@
 
 /* Keep the composer visible while the growing history scrolls inside its row. */
 .chat-panel{min-height:0;grid-template-rows:auto minmax(0,1fr) auto}.message-list{min-height:0}
+/* Extra chat features: conversation call buttons and system/concierge messages. */

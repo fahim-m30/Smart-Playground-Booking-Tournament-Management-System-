@@ -6,6 +6,9 @@
  * Author  : Fahim Muntasir
  * ==========================================================
  */
+// ===================================================
+// Navbar Initialisation & Mobile Menu
+// ===================================================
 const initNavbar = () => {
     const navbar = document.getElementById("navbar");
     const menuToggle = document.querySelector(".menu-toggle");

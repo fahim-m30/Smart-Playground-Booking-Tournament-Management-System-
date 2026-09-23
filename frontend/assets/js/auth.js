@@ -4,8 +4,12 @@
  * recovery. Successful login details are saved in localStorage for other
  * frontend pages to use when calling the protected API.
  */
+// ===================================================
+// Authentication API & Shared Helpers
+// ===================================================
 const BASE_URL = "https://smart-playground-booking-tournament.onrender.com/api/v1/auth";
 
+// Shows the extra NID/venue fields only when the user chooses an owner account.
 const toggleOwnerFields = () => {
     const accountType = document.querySelector("#accountType")?.value;
     const ownerFields = document.querySelector("#ownerFields");
@@ -14,11 +18,13 @@ const toggleOwnerFields = () => {
     }
 };
 
+// Displays one success or error message inside the form's message area.
 const showMessage = (container, message, type = "error") => {
     if (!container) return;
     container.innerHTML = `<div class="auth-alert auth-alert--${type}">${message}</div>`;
 };
 
+// Reads a registration API response, shows its message, and redirects after success when needed.
 const handleResponse = async (response, messageContainer, successRedirect) => {
     const data = await response.json();
     if (response.ok) {
@@ -33,11 +39,13 @@ const handleResponse = async (response, messageContainer, successRedirect) => {
     }
 };
 
+// Reads a value from the current URL, such as the email passed to the OTP page.
 const getQueryParam = (name) => {
     const params = new URLSearchParams(window.location.search);
     return params.get(name) || "";
 };
 
+// Chooses the dashboard for a logged-in account, or the home page when no role exists.
 const getDashboardRedirect = (user) => {
     // One role-aware dashboard keeps every account in the correct workspace.
     return user?.role ? "dashboard.html" : "index.html";
@@ -62,6 +70,7 @@ document.querySelectorAll(".password-toggle").forEach((button) => {
     });
 });
 
+// Reads a selected image file in the browser and shows a small preview before upload.
 const previewImage = (input, previewBox) => {
     const file = input.files && input.files[0];
     if (!file) return;
@@ -97,6 +106,7 @@ if (document.querySelector("#nidBackImage") && document.querySelector("#nidBackP
     });
 }
 
+// Customer and playground-owner registration: validates the form, uploads files, then requests an OTP.
 if (registerForm) {
     registerForm.addEventListener("submit", async (event) => {
         event.preventDefault();
@@ -193,6 +203,7 @@ if (registerForm) {
     });
 }
 
+// Login: validates credentials, stores the access token/user, then opens the correct dashboard.
 if (loginForm) {
     loginForm.addEventListener("submit", async (event) => {
         event.preventDefault();
@@ -258,6 +269,7 @@ if (loginForm) {
     });
 }
 
+// OTP verification: confirms the email address and returns the user to the login page.
 if (verifyOtpForm) {
     const emailInput = verifyOtpForm.email;
     const prefilledEmail = getQueryParam("email");
@@ -302,6 +314,7 @@ if (verifyOtpForm) {
     });
 }
 
+// Password recovery step 1: requests a reset OTP for the entered email address.
 if (forgotPasswordForm) {
     forgotPasswordForm.addEventListener("submit", async (event) => {
         event.preventDefault();
@@ -338,6 +351,7 @@ if (forgotPasswordForm) {
     });
 }
 
+// Password recovery step 2: checks the OTP and saves the new password.
 if (resetPasswordForm) {
     resetPasswordForm.style.display = "none";
 

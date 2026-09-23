@@ -1,1 +1,2 @@
 .daily-slot.unavailable{background:#f6f7f7;border-color:#dbe1df;color:#596762}.daily-slot.unavailable span{color:#8a5350}.daily-slot button{min-height:36px;padding:8px 10px;font-size:.68rem;white-space:nowrap}.daily-slot.available button{border-color:#b8d9c1!important;color:#21633a!important}.daily-slot.unavailable button{border-color:#cbd4d0!important;color:#51615b!important}@media(max-width:600px){.daily-slot{align-items:flex-start;flex-direction:column}.daily-slot button{width:100%}}
+/* Per-date slot availability and unavailable-date action states. */

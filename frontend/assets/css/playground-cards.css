@@ -65,3 +65,4 @@
     .ground-info { grid-template-columns: 1fr; }
     .ground-detail-image { height: 180px; }
 }
+/* Reusable playground/venue cards shown in listings and search results. */

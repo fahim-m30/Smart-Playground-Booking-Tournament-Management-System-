@@ -4,6 +4,9 @@
  * official group shuffles, fixtures, standings, match administration and
  * customer shuffle-review flows.
  */
+// ===================================================
+// Tournament Setup, Session & API Access
+// ===================================================
 const API = "https://smart-playground-booking-tournament.onrender.com/api/v1";
 const token = localStorage.getItem("authToken");
 const user = JSON.parse(localStorage.getItem("authUser") || "{}");

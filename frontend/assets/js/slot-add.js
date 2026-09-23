@@ -3,6 +3,9 @@
  * Loads the admin's venues, creates their weekly time slots and presents
  * clear form feedback when a slot is saved or cannot be created.
  */
+// ===================================================
+// Slot Form Setup, Schedule Preview & API Access
+// ===================================================
 const API_ROOT = "https://smart-playground-booking-tournament.onrender.com/api/v1";
 const token = localStorage.getItem("authToken");
 const form = document.getElementById("slot-form");

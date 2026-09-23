@@ -22,3 +22,4 @@
 .notification-menu .notification-delete:disabled{opacity:.5;cursor:wait;transform:none}
 .notification-empty{padding:28px 18px;background:#fbfefc}
 .notification-menu a,.notification-menu a:visited{color:inherit;text-decoration:none!important}
+/* Notification bell, unread badge, notification list and dropdown controls. */

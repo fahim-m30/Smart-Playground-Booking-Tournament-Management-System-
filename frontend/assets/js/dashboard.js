@@ -4,6 +4,9 @@
  * admins, including bookings, tournaments, income, notifications and live
  * official-shuffle updates.
  */
+// ===================================================
+// Dashboard Setup, Session & API Access
+// ===================================================
 const API_ROOT = "https://smart-playground-booking-tournament.onrender.com/api/v1";
 const token = localStorage.getItem("authToken");
 let user;

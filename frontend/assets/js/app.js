@@ -3,6 +3,9 @@
  * Keeps the navigation in sync with the logged-in user and sends the hero
  * search form to either the playground or tournament search page.
  */
+// ===================================================
+// Home Page Setup & Navigation State
+// ===================================================
 (() => {
     const safeUser = () => {
         try { return JSON.parse(localStorage.getItem("authUser") || "null"); } catch (_) { return null; }

@@ -3,6 +3,9 @@
  * Lets playground admins and super admins manage venues, users, payments,
  * reports and other operational data returned by the protected API.
  */
+// ===================================================
+// Admin Workspace Setup & API Access
+// ===================================================
 const API = "https://smart-playground-booking-tournament.onrender.com/api/v1";
 const token = localStorage.getItem("authToken");
 let me;

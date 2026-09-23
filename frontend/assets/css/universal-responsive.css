@@ -394,3 +394,4 @@ tr:hover td { background: #f8fcf8; }
     .message-list { padding: 13px 11px; }
     .composer { padding: 9px; }
 }
+/* Shared responsive rules that keep all TURF pages usable on small screens. */

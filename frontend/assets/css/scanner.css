@@ -84,3 +84,4 @@ body { min-width: 320px; margin: 0; }
   .camera-controls { grid-template-columns: 1fr; }
   .camera-controls .secondary { width: 100%; }
 }
+/* QR ticket scanner page: camera area, validation result and attendee details. */

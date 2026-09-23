@@ -3,6 +3,9 @@
  * Loads conversations, sends messages, and shows a venue's saved Google Maps
  * link whenever location information is available in the chat data.
  */
+// ===================================================
+// Chat Setup, Session & API Access
+// ===================================================
 const SERVER_URL = window.TURF_SERVER_URL || "https://smart-playground-booking-tournament.onrender.com";
 const API = SERVER_URL + "/api/v1";
 const token = localStorage.getItem("authToken");

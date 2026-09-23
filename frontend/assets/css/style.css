@@ -564,3 +564,4 @@ body{
     .home-venue-grid{ grid-template-columns:1fr; gap:16px; }
     .home-venue-image{ height:188px; }
 }
+/* Global public-site styles: typography, shared sections, buttons and base layout. */

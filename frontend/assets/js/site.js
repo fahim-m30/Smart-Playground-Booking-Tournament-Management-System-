@@ -3,6 +3,9 @@
  * Defines the common navigation and reusable public-page interactions so the
  * landing, about, contact and exploration pages behave consistently.
  */
+// ===================================================
+// Shared Public-Site Navigation & UI
+// ===================================================
 const SITE_NAV = [
     { label: "Home", href: "index.html" },
     { label: "Playgrounds", href: "playgrounds.html" },

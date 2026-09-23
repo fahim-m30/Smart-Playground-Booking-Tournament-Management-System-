@@ -3,6 +3,9 @@
  * Loads active playgrounds and available slots, creates bookings, starts
  * payment, and renders the customer's bookings and QR tickets.
  */
+// ===================================================
+// Booking Page Setup, Session & API Access
+// ===================================================
 (() => {
     const API_ROOT = "https://smart-playground-booking-tournament.onrender.com/api/v1";
     const token = localStorage.getItem("authToken");
@@ -10,13 +13,16 @@
     try { user = JSON.parse(localStorage.getItem("authUser") || "null"); } catch (_) { /* handled below */ }
     if (!token || !user) { location.replace("login.html"); return; }
 
+    // Short helper for selecting one element from the booking page.
     const $ = (selector) => document.querySelector(selector);
     const groundSelect = $("#ground"), dateInput = $("#date"), slotBoard = $("#slot-board");
     const reserve = $("#reserve"), method = $("#method"), content = $("#content");
     const summary = $("#selected-summary");
     let selectedSlot = null;
 
+    // Escapes dynamic text before it is inserted into HTML cards or modals.
     const escapeHtml = (value) => String(value ?? "").replace(/[&<>\"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character]));
+    // Sends an authenticated API request and returns only the useful data field.
     const request = async (path, options = {}) => {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 10000);
@@ -50,11 +56,16 @@
         if (!response.ok) throw new Error(body.message || "Could not load playgrounds.");
         return body.data;
     };
+    // Replaces the main content area with the provided loading state, card list or message.
     const showContent = (html) => { content.innerHTML = html; };
+    // Returns today's local date in the YYYY-MM-DD format required by date inputs.
     const localDate = () => new Date().toLocaleDateString("en-CA");
+    // Changes a stored booking date into a readable date for customers.
     const bookingDate = (value) => new Date(value + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+    // Formats a slot price for display, while handling slots priced at checkout.
     const money = (value) => value == null ? "Price set at checkout" : `৳${Number(value).toLocaleString()}`;
 
+    // Clears a chosen slot whenever the playground or date changes.
     function resetSelection() {
         selectedSlot = null;
         summary.hidden = true;
@@ -62,7 +73,9 @@
         reserve.disabled = true;
     }
 
+    // Shows a booking-page success or error notice above the content area.
     const showNotice = (message, bad = false) => { const notice = $("#notice"); notice.textContent = message; notice.className = `notice${bad ? " error" : ""}`; notice.style.display = "block"; };
+    // Opens a confirmation dialog before a customer cancels a booking.
     const openCancellationConfirmation = ({ title, summary, onConfirm }) => {
         const modal = document.createElement("div");
         modal.className = "modal show cancellation-confirmation";
@@ -81,6 +94,7 @@
         document.body.append(modal);
     };
 
+    // Builds the playground details modal, including contact actions and Google Maps preview.
     function openGroundDetails(ground) {
         const existing = document.querySelector("#ground-details-modal");
         if (existing) existing.remove();
@@ -127,6 +141,7 @@
         });
     }
 
+    // Draws the available time-slot buttons and remembers the customer's selection.
     function renderSlots(slots) {
         if (!slots.length) {
             slotBoard.innerHTML = '<p class="meta">No published slots are available for this date.</p>';
@@ -146,6 +161,7 @@
         }));
     }
 
+    // Fetches and displays slots for the currently selected playground and date.
     async function loadAvailability() {
         resetSelection();
         if (!groundSelect.value || !dateInput.value) {
@@ -161,6 +177,7 @@
         }
     }
 
+    // Fetches active playgrounds, fills the selector and renders browse cards.
     async function loadGrounds() {
         try {
             const data = await publicRequest("/playgrounds");
@@ -180,6 +197,7 @@
         }
     }
 
+    // Fetches the signed-in customer's bookings and adds cancellation actions where allowed.
     async function loadBookings() {
         showContent('<div class="empty">Loading your bookings…</div>');
         try {
@@ -215,6 +233,7 @@
         } catch (error) { showContent(`<div class="empty">${escapeHtml(error.message)}</div>`); }
     }
 
+    // Fetches paid payments and renders the corresponding QR ticket cards.
     async function loadTickets() {
         showContent('<div class="empty">Loading your tickets…</div>');
         try {

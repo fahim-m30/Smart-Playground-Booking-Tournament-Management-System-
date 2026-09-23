@@ -151,3 +151,4 @@
 .venue-primary { border:1px solid #16803c; background:#16803c; color:#fff; box-shadow:0 7px 14px rgba(22,128,60,.18); }.venue-primary:hover { background:#095c2a; }
 @media (max-width:760px) { .super-venue-hero { align-items:flex-start; flex-direction:column; }.super-venue-stats { width:100%; }.super-venue-stats article { min-width:0; }.super-venue-card { min-height:0; } }
 @media (max-width:430px) { .super-venue-hero { padding:18px; }.super-venue-stats { grid-template-columns:1fr; }.venue-card-actions button { flex:1 1 100%; } }
+/* Base profile page layout, profile card, account form and photo upload styles. */

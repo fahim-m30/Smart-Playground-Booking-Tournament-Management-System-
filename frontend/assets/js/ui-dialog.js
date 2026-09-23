@@ -3,6 +3,9 @@
  * Provides consistent confirm, prompt and alert popups for the rest of the
  * frontend, including keyboard handling and safe HTML escaping.
  */
+// ===================================================
+// Dialog Style Loading & Shared Popup Setup
+// ===================================================
 (() => {
     if (!document.querySelector("link[data-turf-dialog-styles]")) {
         const stylesheet = document.createElement("link");

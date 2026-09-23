@@ -149,3 +149,4 @@
     .ticket-qr { min-height: 178px; border-top: 1px dashed #b8dbbf; border-left: 0; }
     .ticket-qr-frame { width: 118px; height: 118px; }
 }
+/* Paid ticket presentation page, including QR code and entry-pass details. */
