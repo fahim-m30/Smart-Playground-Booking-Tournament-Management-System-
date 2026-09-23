@@ -1,3 +1,8 @@
+/**
+ * Public-site shared UI helper.
+ * Defines the common navigation and reusable public-page interactions so the
+ * landing, about, contact and exploration pages behave consistently.
+ */
 const SITE_NAV = [
     { label: "Home", href: "index.html" },
     { label: "Playgrounds", href: "playgrounds.html" },

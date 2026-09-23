@@ -1,3 +1,8 @@
+/**
+ * Payment receipt page controller.
+ * Loads one paid booking or tournament payment from its URL id and renders
+ * the printable receipt, amount, venue details and QR ticket.
+ */
 const API = "https://smart-playground-booking-tournament.onrender.com/api/v1";
 const token = localStorage.getItem("authToken");
 const paymentId = new URLSearchParams(location.search).get("payment");

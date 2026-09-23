@@ -1,3 +1,9 @@
+/**
+ * Tournament centre controller.
+ * Covers tournament discovery and creation, team registration and payment,
+ * official group shuffles, fixtures, standings, match administration and
+ * customer shuffle-review flows.
+ */
 const API = "https://smart-playground-booking-tournament.onrender.com/api/v1";
 const token = localStorage.getItem("authToken");
 const user = JSON.parse(localStorage.getItem("authUser") || "{}");

@@ -1,3 +1,8 @@
+/**
+ * Customer slot-booking page controller.
+ * Loads active playgrounds and available slots, creates bookings, starts
+ * payment, and renders the customer's bookings and QR tickets.
+ */
 (() => {
     const API_ROOT = "https://smart-playground-booking-tournament.onrender.com/api/v1";
     const token = localStorage.getItem("authToken");

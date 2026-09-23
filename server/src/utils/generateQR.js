@@ -5,6 +5,10 @@
  * Purpose : QR Code Generation Utility
  * Author  : Fahim Muntasir
  * ==============================================================
+ *
+ * Creates signed QR tickets for paid slot bookings and tournament teams.
+ * The scanner can verify that the QR data was issued by this server before
+ * the payment service checks whether the ticket is still eligible to enter.
  */
 
 const QRCode = require("qrcode");

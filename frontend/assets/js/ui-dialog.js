@@ -1,3 +1,8 @@
+/**
+ * Shared accessible dialog helper.
+ * Provides consistent confirm, prompt and alert popups for the rest of the
+ * frontend, including keyboard handling and safe HTML escaping.
+ */
 (() => {
     if (!document.querySelector("link[data-turf-dialog-styles]")) {
         const stylesheet = document.createElement("link");

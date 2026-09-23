@@ -1,3 +1,9 @@
+/**
+ * Role-based dashboard controller.
+ * Builds a different workspace for customers, playground admins and super
+ * admins, including bookings, tournaments, income, notifications and live
+ * official-shuffle updates.
+ */
 const API_ROOT = "https://smart-playground-booking-tournament.onrender.com/api/v1";
 const token = localStorage.getItem("authToken");
 let user;

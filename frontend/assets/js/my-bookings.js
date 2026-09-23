@@ -1,3 +1,8 @@
+/**
+ * Customer booking-history controller.
+ * Switches between bookings and paid QR tickets, and provides safe actions
+ * such as payment, cancellation, receipt viewing and ticket download.
+ */
 (() => {
     const API_ROOT = "https://smart-playground-booking-tournament.onrender.com/api/v1";
     const token = localStorage.getItem("authToken");

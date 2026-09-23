@@ -1,3 +1,9 @@
+/**
+ * Authentication page controller.
+ * Handles customer/venue registration, login, OTP verification and password
+ * recovery. Successful login details are saved in localStorage for other
+ * frontend pages to use when calling the protected API.
+ */
 const BASE_URL = "https://smart-playground-booking-tournament.onrender.com/api/v1/auth";
 
 const toggleOwnerFields = () => {

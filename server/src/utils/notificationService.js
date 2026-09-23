@@ -5,6 +5,10 @@
  * Purpose : Notification Service (SMS / Dummy)
  * Author  : Fahim Muntasir
  * ==============================================================
+ *
+ * Collects the customer-facing booking and tournament messages in one place.
+ * SMS delivery is currently a safe console-based demo; in-app notifications
+ * are still stored through the notification module.
  */
 
 const Booking = require("../modules/booking/booking.model");

@@ -5,6 +5,9 @@
  * Purpose : SSLCommerz Payment Validation
  * Author  : Fahim Muntasir
  * ==============================================================
+ *
+ * Calls SSLCommerz after a payment callback to confirm the transaction with
+ * the gateway itself, instead of trusting details received from the browser.
  */
 
 const axios = require("axios");

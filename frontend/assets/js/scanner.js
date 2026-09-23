@@ -1,3 +1,8 @@
+/**
+ * Venue check-in scanner controller.
+ * Restricts access to playground admins, reads a QR ticket with the camera
+ * or manual input, and asks the backend whether the ticket is valid.
+ */
 (() => {
     const API = "https://smart-playground-booking-tournament.onrender.com/api/v1";
     const token = localStorage.getItem("authToken");

@@ -1,3 +1,8 @@
+/**
+ * Builds the HTML email sent for OTP verification.
+ * Keeping the design here lets the authentication service send the same
+ * branded message for registration, password reset and similar flows.
+ */
 const emailTemplate = ({ name, otp, expireMinutes = 10 }) => {
   return `
 <!DOCTYPE html>

@@ -1,3 +1,8 @@
+/**
+ * Demo payment gateway controller.
+ * Displays the selected payment method, validates demo wallet/card details,
+ * completes or cancels the checkout, then opens the receipt on success.
+ */
 const API = "https://smart-playground-booking-tournament.onrender.com/api/v1";
 const token = localStorage.getItem("authToken");
 const paymentId = new URLSearchParams(location.search).get("payment");

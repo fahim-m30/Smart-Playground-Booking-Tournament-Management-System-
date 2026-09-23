@@ -5,6 +5,9 @@
  * Purpose : Create Default Super Admin
  * Author  : Fahim Muntasir
  * ==============================================================
+ *
+ * Runs when the server starts. It creates the initial super-admin account
+ * only when one does not already exist, so normal restarts never duplicate it.
  */
 
 const User = require("../modules/user/user.model");

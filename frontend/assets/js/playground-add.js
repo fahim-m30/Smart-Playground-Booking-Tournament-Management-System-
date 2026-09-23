@@ -1,3 +1,8 @@
+/**
+ * Playground setup form controller for venue administrators.
+ * Collects venue details, resolves a shared Google Maps location into address
+ * fields, previews the map, uploads images and saves the playground.
+ */
 const API_ROOT = "https://smart-playground-booking-tournament.onrender.com/api/v1";
 const token = localStorage.getItem("authToken");
 let user;
