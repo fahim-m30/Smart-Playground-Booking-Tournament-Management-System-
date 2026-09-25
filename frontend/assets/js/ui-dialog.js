@@ -14,19 +14,23 @@
         stylesheet.dataset.turfDialogStyles = "";
         document.head.append(stylesheet);
     }
+    // Escapes dynamic text before it is inserted into an HTML template.
     const escapeHTML = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character]));
 
+    // Opens the workflow for open dialog.
     const openDialog = ({ title, message, confirmLabel = "Continue", cancelLabel = "Cancel", tone = "danger", input = null, rules = [], showCancel = true }) => new Promise((resolve) => {
         const dialog = document.createElement("div");
         dialog.className = "turf-dialog-backdrop";
         dialog.innerHTML = `<section class="turf-dialog" role="dialog" aria-modal="true" aria-labelledby="turf-dialog-title"><span class="turf-dialog-icon ${tone}" aria-hidden="true">${tone === "danger" ? "!" : "i"}</span><div class="turf-dialog-copy"><h2 id="turf-dialog-title">${escapeHTML(title)}</h2><p>${escapeHTML(message)}</p></div>${rules.length ? `<ul class="turf-dialog-rules">${rules.map((rule) => `<li>${escapeHTML(rule)}</li>`).join("")}</ul>` : ""}${input ? `<label class="turf-dialog-field">${escapeHTML(input.label || "Value")}<input id="turf-dialog-input" maxlength="120" value="${escapeHTML(input.value || "")}" placeholder="${escapeHTML(input.placeholder || "")}" required></label>` : ""}<div class="turf-dialog-actions">${showCancel ? `<button class="turf-dialog-cancel" type="button">${escapeHTML(cancelLabel)}</button>` : ""}<button class="turf-dialog-confirm ${tone}" type="button">${escapeHTML(confirmLabel)}</button></div></section>`;
         document.body.append(dialog);
         const inputElement = dialog.querySelector("#turf-dialog-input");
+        // Handles the finish workflow.
         const finish = (value) => {
             document.removeEventListener("keydown", onKeydown);
             dialog.remove();
             resolve(value);
         };
+        // Handles the on keydown workflow.
         const onKeydown = (event) => {
             if (event.key === "Escape") finish(input ? null : false);
             if (event.key === "Enter" && document.activeElement === inputElement) dialog.querySelector(".turf-dialog-confirm").click();

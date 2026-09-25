@@ -8,6 +8,7 @@
 
 const APP_TIME_ZONE = process.env.APP_TIME_ZONE || "Asia/Dhaka";
 
+// Handles the valid time workflow.
 const validTime = (value) => /^([01]\d|2[0-3]):[0-5]\d$/.test(String(value || ""));
 
 const zonedParts = (date = new Date()) => {
@@ -34,11 +35,13 @@ const calendarDate = (date = new Date(), daysToAdd = 0) => {
     return { year: shifted.getUTCFullYear(), month: shifted.getUTCMonth() + 1, day: shifted.getUTCDate() };
 };
 
+// Handles the day range workflow.
 const dayRange = ({ year, month, day }) => ({
     start: new Date(Date.UTC(year, month - 1, day)),
     end: new Date(Date.UTC(year, month - 1, day + 1)),
 });
 
+// Handles the date only parts workflow.
 const dateOnlyParts = (date) => ({
     year: new Date(date).getUTCFullYear(),
     month: new Date(date).getUTCMonth() + 1,
@@ -55,7 +58,9 @@ const zonedDateTime = ({ year, month, day }, time) => {
     return new Date(utcGuess - offsetMs);
 };
 
+// Handles the booking starts at workflow.
 const bookingStartsAt = (bookingDate, startTime) => zonedDateTime(dateOnlyParts(bookingDate), startTime);
+// Handles the booking ends at workflow.
 const bookingEndsAt = (bookingDate, endTime) => zonedDateTime(dateOnlyParts(bookingDate), endTime);
 
 // Tournament dates represent Bangladesh calendar days.  A 30 August event,

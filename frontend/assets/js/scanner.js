@@ -13,6 +13,7 @@
     try { user = JSON.parse(localStorage.getItem("authUser") || "null"); } catch (_) { /* Redirect below. */ }
     if (!token || user?.role !== "playground-admin") { location.replace("login.html"); return; }
 
+    // Selects the first DOM element that matches a CSS selector.
     const $ = (selector) => document.querySelector(selector);
     const status = $("#camera-status");
     const state = $("#scanner-state");
@@ -29,8 +30,11 @@
     let lastValue = "";
     let lastScanAt = 0;
 
+    // Escapes dynamic text before it is inserted into an HTML template.
     const escapeHTML = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
+    // Sets the state used for set state.
     const setState = (kind, text) => { state.className = `state ${kind}`; state.textContent = text; };
+    // Sets the state used for set result.
     const setResult = (kind, title, message, details = "") => {
         result.className = `result ${kind}`;
         result.innerHTML = `<strong>${escapeHTML(title)}</strong><p>${escapeHTML(message)}</p>${details}`;
@@ -38,9 +42,11 @@
         page.classList.toggle("has-validation-result", hasValidationResult);
         scanNextButton.hidden = !hasValidationResult;
     };
+    // Shows the interface for show reader placeholder.
     const showReaderPlaceholder = () => {
         reader.innerHTML = '<div class="reader-placeholder"><span aria-hidden="true">&#x2315;</span><strong>Camera is off</strong><small>Tap &ldquo;Start QR scanner&rdquo; to scan a ticket</small></div>';
     };
+    // Handles the beep workflow.
     const beep = (success) => {
         try {
             const audio = new (window.AudioContext || window.webkitAudioContext)();
@@ -52,6 +58,7 @@
             tone.connect(volume); volume.connect(audio.destination); tone.start(); tone.stop(audio.currentTime + 0.15);
         } catch (_) { /* Audio feedback is optional. */ }
     };
+    // Handles the ticket details workflow.
     const ticketDetails = (data) => {
         const isSlot = data.type === "SlotBooking";
         const person = isSlot ? data.customerName : data.teamName;
@@ -65,6 +72,7 @@
         const opponent = match ? `${match.opponent} - ${match.date || "Date TBD"}, ${match.startTime || "Time TBD"}` : "Opponent has not been fixed yet";
         return `<dl>${commonDetails}<div><dt>Current round</dt><dd>${escapeHTML(round)}</dd></div><div><dt>Playing against</dt><dd>${escapeHTML(opponent)}</dd></div></dl>`;
     };
+    // Validates the data used for validate ticket.
     const validateTicket = async (qrData) => {
         if (!qrData || validating) return;
         const now = Date.now();
@@ -102,6 +110,7 @@
             if (scannerRunning) status.textContent = "Scanning continuously - ready for the next QR code.";
         }
     };
+    // Handles the stop scanner workflow.
     const stopScanner = () => {
         if (!qrScanner) return;
         try { qrScanner.stop(); qrScanner.destroy(); } catch (_) { /* The camera may already be closed. */ }
@@ -113,12 +122,14 @@
         setState("idle", "Idle");
         showReaderPlaceholder();
     };
+    // Handles the populate cameras workflow.
     const populateCameras = async () => {
         if (!window.QrScanner) return;
         const cameras = await window.QrScanner.listCameras(true);
         if (!cameras.length) return;
         cameraSelect.innerHTML = '<option value="environment">Back camera (recommended)</option>' + cameras.map((camera) => `<option value="${escapeHTML(camera.id)}">${escapeHTML(camera.label)}</option>`).join("");
     };
+    // Handles the camera error message workflow.
     const cameraErrorMessage = (error) => {
         const text = `${error?.name || ""} ${error?.message || ""}`.toLowerCase();
         if (text.includes("notallowed") || text.includes("permission") || text.includes("security")) return "Camera permission was blocked. Allow Camera in your browser settings, then try again.";
@@ -126,6 +137,7 @@
         if (text.includes("notreadable") || text.includes("in use")) return "Your camera is being used by another app or browser tab. Close it, then try again.";
         return "Camera could not start. Open the deployed HTTPS site and try again.";
     };
+    // Creates or starts the workflow for start scanner.
     const startScanner = async () => {
         if (scannerRunning) return;
         if (!window.QrScanner) {
@@ -172,6 +184,7 @@
             setResult("error", "Camera unavailable", cameraErrorMessage(error));
         }
     };
+    // Handles the scan image workflow.
     const scanImage = async (file) => {
         if (!file) return;
         if (!window.QrScanner) { setResult("error", "Image scanner unavailable", "Reload the page while connected to the internet."); return; }

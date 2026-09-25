@@ -38,6 +38,7 @@ const createSlotController = async (req, res) => {
     }
 };
 
+// Creates or starts the workflow for create slots controller.
 const createSlotsController = async (req, res) => {
     try {
         const slots = await createSlots(req.body, req.user.userId);
@@ -47,6 +48,7 @@ const createSlotsController = async (req, res) => {
     }
 };
 
+// Retrieves the data needed for get availability controller.
 const getAvailabilityController = async (req, res) => {
     try {
         const result = await getAvailability(req.query.playground, req.query.date);
@@ -98,6 +100,7 @@ const updateSlotController = async (req, res) => {
     }
 };
 
+// Sets the state used for set slot date availability controller.
 const setSlotDateAvailabilityController = async (req, res) => {
     try {
         const slot = await setSlotDateAvailability(req.params.id, req.body, req.user.userId);

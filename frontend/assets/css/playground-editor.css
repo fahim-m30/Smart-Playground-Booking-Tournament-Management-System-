@@ -1,2 +1,124 @@
-.playground-editor-modal{padding:18px}.playground-editor{width:min(760px,100%);max-height:min(92dvh,820px);padding:0!important;overflow:auto;background:#f8fcf9!important}.playground-editor>.close{position:sticky;z-index:2;top:14px;float:right;margin:14px 16px 0 0}.playground-editor__head{padding:27px 74px 24px 27px;border-bottom:1px solid #dcece0;background:linear-gradient(135deg,#0a6932,#19954b);color:#fff}.playground-editor__head>span{display:block;color:#bdeecb;font-size:.64rem;font-weight:850;letter-spacing:.12em}.playground-editor__head h2{margin:7px 0 5px;color:#fff;font-size:1.42rem;letter-spacing:-.04em}.playground-editor__head p{margin:0;color:#dff7e6;font-size:.76rem;line-height:1.5}.playground-editor__section{margin:16px 18px;padding:15px;border:1px solid #dbeadf;border-radius:13px;background:#fff}.playground-editor__section h3{margin:0 0 12px;color:#1b4d2e;font-size:.86rem}.playground-editor__section label{display:grid;gap:6px;color:#496352;font-size:.69rem;font-weight:800}.playground-editor__section label small{color:#7b8f81;font-size:.64rem;font-weight:600}.playground-editor__section input,.playground-editor__section select,.playground-editor__section textarea{min-height:43px;margin:0}.playground-editor__section textarea{min-height:82px;resize:vertical}.playground-editor__error{margin:0 18px;padding:10px 12px;border:1px solid #efc7c1;border-radius:9px;background:#fff4f2;color:#983d33;font-size:.74rem;line-height:1.45}.playground-editor__actions{display:flex;justify-content:flex-end;gap:10px;padding:4px 18px 20px}.playground-editor__actions button{min-height:43px}@media(max-width:620px){.playground-editor-modal{padding:8px}.playground-editor{max-height:calc(100dvh - 16px)}.playground-editor__head{padding:22px 62px 20px 20px}.playground-editor__section{margin:12px;padding:13px}.playground-editor__section .form-grid{grid-template-columns:1fr}.playground-editor__actions{display:grid;grid-template-columns:1fr;padding:4px 12px 14px}.playground-editor__actions button{width:100%}.playground-editor__error{margin:0 12px}}
+.playground-editor-modal {
+    padding:18px
+}
+.playground-editor {
+    width:min(760px,100%);
+    max-height:min(92dvh,820px);
+    padding:0!important;
+    overflow:auto;
+    background:#f8fcf9!important
+}
+.playground-editor>.close {
+    position:sticky;
+    z-index:2;
+    top:14px;
+    float:right;
+    margin:14px 16px 0 0
+}
+.playground-editor__head {
+    padding:27px 74px 24px 27px;
+    border-bottom:1px solid #dcece0;
+    background:linear-gradient(135deg,#0a6932,#19954b);
+    color:#fff
+}
+.playground-editor__head>span {
+    display:block;
+    color:#bdeecb;
+    font-size:.64rem;
+    font-weight:850;
+    letter-spacing:.12em
+}
+.playground-editor__head h2 {
+    margin:7px 0 5px;
+    color:#fff;
+    font-size:1.42rem;
+    letter-spacing:-.04em
+}
+.playground-editor__head p {
+    margin:0;
+    color:#dff7e6;
+    font-size:.76rem;
+    line-height:1.5
+}
+.playground-editor__section {
+    margin:16px 18px;
+    padding:15px;
+    border:1px solid #dbeadf;
+    border-radius:13px;
+    background:#fff
+}
+.playground-editor__section h3 {
+    margin:0 0 12px;
+    color:#1b4d2e;
+    font-size:.86rem
+}
+.playground-editor__section label {
+    display:grid;
+    gap:6px;
+    color:#496352;
+    font-size:.69rem;
+    font-weight:800
+}
+.playground-editor__section label small {
+    color:#7b8f81;
+    font-size:.64rem;
+    font-weight:600
+}
+.playground-editor__section input,.playground-editor__section select,.playground-editor__section textarea {
+    min-height:43px;
+    margin:0
+}
+.playground-editor__section textarea {
+    min-height:82px;
+    resize:vertical
+}
+.playground-editor__error {
+    margin:0 18px;
+    padding:10px 12px;
+    border:1px solid #efc7c1;
+    border-radius:9px;
+    background:#fff4f2;
+    color:#983d33;
+    font-size:.74rem;
+    line-height:1.45
+}
+.playground-editor__actions {
+    display:flex;
+    justify-content:flex-end;
+    gap:10px;
+    padding:4px 18px 20px
+}
+.playground-editor__actions button {
+    min-height:43px
+}
+/* Phone layout: applies at (max-width:620px) */
+@media(max-width:620px) {
+    .playground-editor-modal {
+        padding:8px
+    }
+    .playground-editor {
+        max-height:calc(100dvh - 16px)
+    }
+    .playground-editor__head {
+        padding:22px 62px 20px 20px
+    }
+    .playground-editor__section {
+        margin:12px;
+        padding:13px
+    }
+    .playground-editor__section .form-grid {
+        grid-template-columns:1fr
+    }
+    .playground-editor__actions {
+        display:grid;
+        grid-template-columns:1fr;
+        padding:4px 12px 14px
+    }
+    .playground-editor__actions button {
+        width:100%
+    }
+    .playground-editor__error {
+        margin:0 12px
+    }
+}
 /* Modal editor used by playground admins to update venue information and settings. */

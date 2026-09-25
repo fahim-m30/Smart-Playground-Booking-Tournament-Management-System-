@@ -14,6 +14,7 @@ const SITE_NAV = [
     { label: "Contact", href: "contact.html" }
 ];
 
+// Retrieves the data needed for get authenticated user.
 const getAuthenticatedUser = () => {
     try {
         const user = JSON.parse(localStorage.getItem("authUser") || "null");
@@ -79,6 +80,7 @@ const PAGE_DATA = {
     }
 };
 
+// Builds the interface for build header.
 const buildHeader = (page) => {
     const currentPage = page || "home";
     const user = getAuthenticatedUser();
@@ -111,6 +113,7 @@ const buildHeader = (page) => {
     `;
 };
 
+// Builds the interface for build footer.
 const buildFooter = () => {
     const year = new Date().getFullYear();
     return `
@@ -125,6 +128,7 @@ const buildFooter = () => {
     `;
 };
 
+// Builds the interface for render page content.
 const renderPageContent = (page) => {
     const content = document.getElementById("page-content");
     if (!content) return;
@@ -185,6 +189,7 @@ const renderPageContent = (page) => {
     }
 };
 
+// Updates the state used for update active playground count.
 const updateActivePlaygroundCount = async () => {
     const countElement = document.getElementById("active-playground-count");
     if (!countElement) return;

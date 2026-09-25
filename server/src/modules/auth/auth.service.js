@@ -16,6 +16,7 @@ const emailTemplate = require("../../utils/emailTemplate");
 const User = require("../user/user.model");
 const PendingRegistration = require("./pendingRegistration.model");
 
+// Handles the convert file to data url workflow.
 const convertFileToDataUrl = (file) => {
     if (!file) {
         return null;
@@ -30,14 +31,17 @@ const convertFileToDataUrl = (file) => {
     return `data:${mimeType};base64,${Buffer.from(buffer).toString("base64")}`;
 };
 
+// Safely handles a password operation without exposing its value.
 const hashPassword = async (password) => {
     return bcrypt.hash(password, 10);
 };
 
+// Normalizes or formats the value used for normalize email.
 const normalizeEmail = (email) => {
     return typeof email === "string" ? email.trim().toLowerCase() : email;
 };
 
+// Checks whether is pending expired is true.
 const isPendingExpired = (pending) => {
     return Boolean(
         pending &&
@@ -47,6 +51,7 @@ const isPendingExpired = (pending) => {
     );
 };
 
+// Handles the cleanup expired pending registration workflow.
 const cleanupExpiredPendingRegistration = async (email) => {
     const pending = await PendingRegistration.findOne({ email });
     if (pending && isPendingExpired(pending)) {
@@ -70,6 +75,7 @@ const upsertPendingRegistration = async (email, registration) =>
         }
     );
 
+// Creates or starts the workflow for create user from pending registration.
 const createUserFromPendingRegistration = async (pending) => {
     const user = await User.create({
         name: pending.name,
@@ -473,11 +479,13 @@ const changePassword = async ({
     };
 };
 
+// Removes or cancels the data used for clear sensitive otp.
 const clearSensitiveOTP = (user) => {
     user.otp = { code: null, expiresAt: null, purpose: null };
     user.pendingEmail = null;
 };
 
+// Validates the data used for validate sensitive otp.
 const validateSensitiveOTP = (user, otp, purpose) => {
     if (!otp || !user.otp?.code || user.otp.purpose !== purpose) {
         throw new Error("Request a new verification OTP before continuing.");
@@ -488,6 +496,7 @@ const validateSensitiveOTP = (user, otp, purpose) => {
     }
 };
 
+// Handles the request sensitive otp workflow.
 const requestSensitiveOTP = async ({ userId, action, newEmail }) => {
     if (!["password-change", "email-change"].includes(action)) {
         throw new Error("Choose a valid verification action.");
@@ -534,6 +543,7 @@ const requestSensitiveOTP = async ({ userId, action, newEmail }) => {
     return { message: `Verification OTP sent to ${recipient}.` };
 };
 
+// Handles the change email workflow.
 const changeEmail = async ({ userId, newEmail, otp }) => {
     const user = await User.findById(userId);
     if (!user) throw new Error("User not found.");

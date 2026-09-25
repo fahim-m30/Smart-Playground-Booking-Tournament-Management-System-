@@ -132,6 +132,7 @@ const cancelBookingController = async (req, res) => {
     }
 };
 
+// Checks whether cancel booking by admin controller is true.
 const cancelBookingByAdminController = async (req, res) => {
     try {
         const booking = await cancelBookingByAdmin(req.params.id, req.user.userId, req.body.reason);

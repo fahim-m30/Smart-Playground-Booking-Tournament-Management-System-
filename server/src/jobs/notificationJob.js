@@ -8,6 +8,7 @@
  */
 
 const Booking = require("../modules/booking/booking.model");
+const mongoose = require("mongoose");
 const Tournament = require("../modules/tournament/tournament.model");
 const TournamentGroup = require("../modules/tournament/tournamentGroup.model");
 const TournamentTeam = require("../modules/tournament/tournamentTeam.model");
@@ -23,6 +24,12 @@ const { emitDashboardUpdate } = require("../config/socket");
 // A run can take longer than one minute when an external SMS provider is
 // slow. Prevent an overlapping run from sending the same reminder twice.
 let notificationJobsRunning = false;
+let databaseUnavailableLogged = false;
+
+// Mongoose readyState 1 means the connection is open. Jobs only run against
+// an open connection so a temporary outage cannot turn into repeated query
+// errors in the server log.
+const isDatabaseReady = () => mongoose.connection.readyState === 1;
 
 // ===================================================
 // Helpers
@@ -159,6 +166,7 @@ const processTournamentDrawReminders = async () => {
     }
 };
 
+// Handles the process match reminders workflow.
 const processMatchReminders = async () => {
     const now = new Date();
     const firstCandidate = rangeForCalendarDay();
@@ -388,6 +396,14 @@ const processFixturePublication = async () => {
 
 const runNotificationJobs = async () => {
     if (notificationJobsRunning) return;
+    if (!isDatabaseReady()) {
+        if (!databaseUnavailableLogged) {
+            console.warn("Notification scheduler is waiting for a database connection.");
+            databaseUnavailableLogged = true;
+        }
+        return;
+    }
+    databaseUnavailableLogged = false;
     notificationJobsRunning = true;
     try {
         await resumeLiveTournamentDraws();
@@ -411,11 +427,16 @@ const runNotificationJobs = async () => {
 // ===================================================
 
 const startNotificationScheduler = () => {
+    if (!isDatabaseReady()) {
+        console.warn("Notification scheduler was not started because the database is unavailable.");
+        return null;
+    }
+
     console.log("📬 Notification Scheduler Started (every 1 minute)");
 
     runNotificationJobs();
 
-    setInterval(runNotificationJobs, 60 * 1000);
+    return setInterval(runNotificationJobs, 60 * 1000);
 };
 
 // ===================================================

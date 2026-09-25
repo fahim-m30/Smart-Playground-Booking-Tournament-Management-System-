@@ -8,6 +8,22 @@
  */
 
 const mongoose = require("mongoose");
+const dns = require("dns");
+
+// Some local routers expose a loopback DNS resolver that rejects MongoDB
+// Atlas SRV requests. A local MONGODB_DNS_SERVERS setting can override Node's
+// resolver; production deployments keep their platform-provided DNS.
+const configureAtlasDns = (mongoURI) => {
+    if (!mongoURI.startsWith("mongodb+srv://")) return;
+    const configuredResolvers = process.env.MONGODB_DNS_SERVERS;
+    if (!configuredResolvers) return;
+    const resolvers = String(configuredResolvers)
+        .split(",")
+        .map((server) => server.trim())
+        .filter(Boolean);
+    if (!resolvers.length) return;
+    dns.setServers(resolvers);
+};
 
 // Older deployments created unique indexes for optional payment references.
 // A tournament payment has no booking, so multiple `booking: null` records
@@ -31,6 +47,7 @@ const repairPaymentReferenceIndexes = async () => {
     }
 };
 
+// Handles the connect db workflow.
 const connectDB = async () => {
     const mongoURI =
         process.env.DATABASE_URL ||
@@ -45,6 +62,7 @@ const connectDB = async () => {
     }
 
     try {
+        configureAtlasDns(mongoURI);
         await mongoose.connect(mongoURI);
         await repairPaymentReferenceIndexes();
 

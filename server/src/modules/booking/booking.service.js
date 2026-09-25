@@ -16,6 +16,7 @@ const { sendOfficeRefundSMS } = require("../../utils/notificationService");
 const { emitDashboardUpdate } = require("../../config/socket");
 const { bookingStartsAt, calendarDate, dayRange } = require("../../utils/scheduleTime");
 
+// Handles the time to minutes workflow.
 const timeToMinutes = (timeStr) => {
     const [h, m] = timeStr.split(":").map(Number);
     return h * 60 + m;
@@ -313,6 +314,7 @@ const cancelBooking = async (id, customerId) => {
     return booking;
 };
 
+// Checks whether cancel booking by admin is true.
 const cancelBookingByAdmin = async (id, adminId, reason) => {
     const booking = await Booking.findOne({ _id: id, isDeleted: false }).populate("playground", "name playgroundAdmin").populate("customer", "name phone");
     if (!booking) throw new Error("Booking not found.");

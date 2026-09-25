@@ -162,6 +162,7 @@ const getAllPlaygrounds = async (query) => {
         data,
     };
 };
+// Retrieves the data needed for get all playgrounds for admin.
 const getAllPlaygroundsForAdmin = async () => {
     return Playground.find({ isDeleted: false })
         .populate("playgroundAdmin", "name email phone")

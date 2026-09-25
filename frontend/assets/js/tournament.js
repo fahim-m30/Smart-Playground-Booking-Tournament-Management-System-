@@ -10,11 +10,15 @@
 const API = "https://smart-playground-booking-tournament.onrender.com/api/v1";
 const token = localStorage.getItem("authToken");
 const user = JSON.parse(localStorage.getItem("authUser") || "{}");
+// Selects the first DOM element that matches a CSS selector.
 const $ = (selector) => document.querySelector(selector);
+// Escapes dynamic text before it is inserted into an HTML template.
 const esc = (value) => String(value ?? "").replace(/[&<>'"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[c]));
 if (!token) location = "login.html";
+// Sends an authenticated request to the backend API and handles failed responses.
 const req = async (path, options = {}) => { const response = await fetch(API + path, { ...options, cache: "no-store", headers: { Authorization: `Bearer ${token}`, ...(options.headers || {}) } }); const body = await response.json(); if (!response.ok) throw new Error(body.message || "Request failed"); return body.data; };
 let feedbackTimer;
+// Handles the say workflow.
 const say = (message, bad = false) => {
     const notice = $("#notice");
     notice.textContent = message;
@@ -43,6 +47,7 @@ const say = (message, bad = false) => {
 const realtime = window.io && token ? window.io(API.replace(/\/api\/v1$/, ""), { auth: { token } }) : null;
 const liveDrawStates = new Map();
 
+// Handles the live draw modal workflow.
 const liveDrawModal = (event) => {
     const id = String(event.tournamentId);
     let state = liveDrawStates.get(id);
@@ -58,6 +63,7 @@ const liveDrawModal = (event) => {
     return state;
 };
 
+// Shows the interface for show live draw reveal.
 const showLiveDrawReveal = (event) => {
     const state = liveDrawModal(event);
     if (state.revealed.has(event.index)) return;
@@ -89,10 +95,12 @@ if (realtime) {
         try { await list(); decorateTournamentManagement(); } catch (_) { /* page can still show the live result */ }
     });
 }
+// Opens the workflow for open cancellation confirmation.
 const openCancellationConfirmation = ({ title, summary, onConfirm }) => {
     const modal = document.createElement("div");
     modal.className = "modal show cancellation-confirmation";
     modal.innerHTML = `<section class="modal-box cancellation-box" role="dialog" aria-modal="true" aria-labelledby="cancellation-title"><button class="close" type="button" aria-label="Close">Close</button><span class="eyebrow">CANCELLATION CONFIRMATION</span><h2 id="cancellation-title">${esc(title)}</h2><p class="meta">${esc(summary)}</p><p class="cancellation-question">Are you sure you want to cancel this registration? This action cannot be undone.</p><div class="cancellation-actions"><button class="alt keep-booking" type="button">Keep registration</button><button class="confirm-cancellation" type="button">Yes, cancel & request refund</button></div><p class="cancellation-error" hidden></p></section>`;
+    // Closes the workflow for close.
     const close = () => modal.remove();
     modal.querySelector(".close").onclick = close;
     modal.querySelector(".keep-booking").onclick = close;
@@ -106,10 +114,12 @@ const openCancellationConfirmation = ({ title, summary, onConfirm }) => {
     };
     document.body.append(modal);
 };
+// Opens the workflow for open tournament payment.
 const openTournamentPayment = (teamId) => {
     const modal = document.createElement("div");
     modal.className = "modal show payment-method-modal";
     modal.innerHTML = `<section class="modal-box payment-method-box"><button class="close" type="button" aria-label="Close">Close</button><span class="eyebrow">SECURE DEMO CHECKOUT</span><h2>Complete registration</h2><p class="meta">Choose how you would like to pay the tournament registration fee.</p><div class="payment-method-grid"><button type="button" data-method="bKash"><strong>bKash</strong><small>Mobile wallet</small></button><button type="button" data-method="Nagad"><strong>Nagad</strong><small>Mobile wallet</small></button><button type="button" data-method="Rocket"><strong>Rocket</strong><small>Mobile wallet</small></button><button type="button" data-method="Card"><strong>Card</strong><small>Debit or credit card</small></button></div><p class="method-error" hidden></p></section>`;
+    // Closes the workflow for close.
     const close = () => modal.remove();
     modal.querySelector(".close").onclick = close;
     modal.onclick = (event) => { if (event.target === modal) close(); };
@@ -129,7 +139,9 @@ const openTournamentPayment = (teamId) => {
     }));
     document.body.append(modal);
 };
+// Formats a stored date or time for display in the interface.
 const dateLabel = (value) => new Date(value).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+// Handles the tournament date parts workflow.
 const tournamentDateParts = (value) => String(value || "").slice(0, 10).split("-").map(Number);
 // Bangladesh is UTC+06 without daylight-saving changes.  Tournament dates are
 // Bangladesh calendar dates, so this exactly mirrors the backend deadline.
@@ -137,16 +149,19 @@ const registrationDeadline = (tournament) => {
     const [year, month, day] = tournamentDateParts(tournament.startDate);
     return new Date(Date.UTC(year, month - 1, day - 2, 0, 0) - (6 * 60 * 60 * 1000));
 };
+// Handles the sport profile workflow.
 const sportProfile = (sport) => ({
     Football: { icon: "Football", format: "FIFA World Cup format — 4-team groups, quarter-finals, semi-finals, third place and final" },
     Cricket: { icon: "Cricket", format: "ICC World Cup format — 4-team groups, quarter-finals, semi-finals and final" },
     Badminton: { icon: "Badminton", format: "BWF World Cup format — singles or doubles, groups, knockout and final" },
 }[sport] || { icon: "Tournament", format: "Professional group-stage competition" });
+// Handles the match rule config workflow.
 const matchRuleConfig = (sport) => ({
     Cricket: { label: "Overs per innings", help: "Choose how many overs each team will bat.", min: 1, max: 50, value: 20 },
     Football: { label: "Match duration (minutes)", help: "Choose the total regulation playing time for each match.", min: 30, max: 120, value: 90 },
     Badminton: { label: "Points to win each game", help: "Choose the points needed to win a badminton game.", min: 1, max: 30, value: 21 },
 }[sport] || null);
+// Handles the match rule label workflow.
 const matchRuleLabel = (tournament) => {
     const rules = tournament?.matchRules || {};
     if (tournament?.sportType === "Cricket" && rules.cricketOvers) return `${rules.cricketOvers}-over innings`;
@@ -154,6 +169,7 @@ const matchRuleLabel = (tournament) => {
     if (tournament?.sportType === "Badminton" && rules.badmintonPointsToWin) return `First to ${rules.badmintonPointsToWin} points per game`;
     return "Match rule to be announced";
 };
+// Handles the round robin matchdays workflow.
 const roundRobinMatchdays = (teams) => {
     const rotation = [...teams];
     if (rotation.length % 2) rotation.push(null);
@@ -164,8 +180,10 @@ const roundRobinMatchdays = (teams) => {
         return pairs;
     });
 };
+// Handles the knockout demo workflow.
 const knockoutDemo = (groups, lastGroupMatchDate, sport) => {
     const names = groups.map((group) => group.name.replace("Group ", ""));
+    // Handles the at workflow.
     const at = (daysAfter, time) => {
         const date = new Date(lastGroupMatchDate);
         date.setUTCDate(date.getUTCDate() + daysAfter);
@@ -198,8 +216,10 @@ let tournaments = [], selected = null, tournamentSearch = new URLSearchParams(lo
 let myRegistrations = [];
 const requestedFixtureId = new URLSearchParams(location.search).get("fixture");
 const requestedShuffleReview = new URLSearchParams(location.search).get("shuffle") === "1";
+// Handles the tournament list path workflow.
 const tournamentListPath = () => user.role === "playground-admin" ? "/tournaments/my-playgrounds/tournaments" : "/tournaments";
 
+// Retrieves the data needed for list.
 async function list() {
     tournaments = await req(tournamentListPath());
     $("#content").innerHTML = tournaments.length ? tournaments.map((tournament) => `<article class="card"><span class="badge">${esc(tournament.status)}</span><h3>${esc(tournament.name)}</h3><p>${esc(tournament.sportType)} · ${dateLabel(tournament.startDate)} – ${dateLabel(tournament.endDate)}<br>${esc(tournament.playground?.name || tournament.playgrounds?.[0]?.name || "Venue TBA")}</p><div class="card-foot"><strong>৳${tournament.registrationFee}</strong>${user.role === "customer" && tournament.status === "Upcoming" ? `<button onclick="join('${tournament._id}')">Join</button>` : `<button class="alt" onclick="detail('${tournament._id}')">Fixtures</button>`}</div></article>`).join("") : '<div class="empty">No tournament is available right now.</div>';
@@ -207,10 +227,12 @@ async function list() {
 
 window.detail = async (id) => { try { const [groups, teams, matches] = await Promise.all([req(`/tournaments/${id}/groups`), req(`/tournaments/${id}/teams`), req(`/tournaments/${id}/matches`)]); const tournament = tournaments.find((item) => item._id === id); const fixtures = matches.map((match, index) => `${index + 1}. ${dateLabel(match.matchDate)} ${match.startTime}-${match.endTime}: ${match.teamA?.teamName || "TBD"} vs ${match.teamB?.teamName || "TBD"}${match.group?.name ? ` (${match.group.name})` : ""}`).join(" | "); say(`${tournament.name}: ${teams.length}/${tournament.totalTeams} teams · Groups: ${groups.map((group) => group.name).join(", ") || "awaiting approval"}. ${fixtures || "Fixtures will be published automatically when all teams register."}`); } catch (error) { say(error.message, true); } };
 
+// Handles the roster field workflow.
 function rosterField(index, extra) {
     const label = extra ? `Extra player ${index + 1} (optional)` : `Player ${index + 1}`;
     return `<section class="panel" data-roster data-extra="${extra}"><h3>${label}</h3><div class="form-grid"><input data-name placeholder="${label} name" ${extra ? "" : "required"}><input data-phone inputmode="tel" placeholder="${label} phone number" ${extra ? "" : "required"}><label class="full meta">${label} photo<input data-photo type="file" accept="image/*" ${extra ? "" : "required"}></label></div></section>`;
 }
+// Builds the interface for render roster.
 function renderRoster() {
     const playing = Math.max(0, Number(selected.playingMembers) - 1);
     const extras = Math.max(0, Number(selected.extraMembers));
@@ -277,6 +299,7 @@ $("#join-form").onsubmit = async (event) => {
     try { const team = await req(`/tournaments/${selected._id}/register`, { method: "POST", body: data }); const provider = { bkash: "bKash", nagad: "Nagad", rocket: "Rocket", card: "Card" }[$("#join-method").value]; const checkout = await req("/payments/demo/checkout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tournamentTeam: team._id, paymentMethod: provider }) }); sessionStorage.setItem("turfFixtureTournament", selected._id); location.href = `demo-payment.html?payment=${checkout.payment._id}`; } catch (error) { say(error.message, true); }
 };
 
+// Handles the venues workflow.
 async function venues() {
     const grounds = await req(user.role === "playground-admin" ? "/playgrounds/my-playgrounds" : "/playgrounds");
     $("#venue").innerHTML = '<option value="">Choose an approved playground</option>' + grounds.map((ground) => `<option value="${ground._id}" data-sport-type="${esc(ground.sportType)}">${esc(ground.name)} · ${esc(ground.sportType)} · ${esc(ground.area || ground.address)}</option>`).join("");
@@ -291,7 +314,9 @@ const creatorForm = $("#create-form");
 // The published fixture engine has verified brackets for two or four groups.
 // Do not offer group counts that would create an undefined knockout route.
 creatorForm?.querySelectorAll('select[name="groupCount"] option[value="6"], select[name="groupCount"] option[value="8"]').forEach((option) => option.remove());
+// Normalizes or formats the value used for normalize name.
 const normalizeName = (value) => String(value || "").trim().replace(/\s+/g, " ").toLowerCase();
+// Updates the state used for sync venue sport.
 const syncVenueSport = () => {
     const venueSport = $("#venue")?.selectedOptions?.[0]?.dataset.sportType;
     const sportSelect = creatorForm?.querySelector('[name="sportType"]');
@@ -305,6 +330,7 @@ const syncVenueSport = () => {
         option.disabled = Boolean(option.value && option.value !== venueSport);
     });
 };
+// Handles the apply sport rules workflow.
 const applySportRules = () => {
     const sport = creatorForm?.querySelector('[name="sportType"]')?.value;
     const playing = creatorForm?.querySelector('[name="playingMembers"]');
@@ -342,6 +368,7 @@ const applySportRules = () => {
         delete matchRule.dataset.sport;
     }
 };
+// Sets the state used for set create feedback.
 const setCreateFeedback = (message = "", type = "error") => {
     const box = $("#create-feedback");
     box.hidden = !message;
@@ -352,6 +379,7 @@ const setCreateFeedback = (message = "", type = "error") => {
         ? `<strong>Duplicate event prevented</strong>${esc(message)}<br><small>Next step: keep the existing tournament, or change its name, venue, or start date.</small>`
         : `<strong>Review this setup</strong>${esc(message)}`;
 };
+// Updates the state used for update creator preview.
 const updateCreatorPreview = () => {
     const data = Object.fromEntries(new FormData(creatorForm));
     const teamCount = Number(data.totalTeams || 0), groupCount = Number(data.groupCount || 0);
@@ -421,10 +449,12 @@ $("#create-form").onsubmit = async (event) => {
 if (canCreateTournament) { $("#create-toggle").hidden = false; venues().catch((error) => say(error.message, true)); }
 $("#logout").onclick = () => { localStorage.clear(); location = "login.html"; };
 
+// Opens the workflow for open tournament cancellation.
 const openTournamentCancellation = (tournament) => {
     const modal = document.createElement("div");
     modal.className = "modal show";
     modal.innerHTML = `<form class="modal-box cancellation-box tournament-cancel-box"><button class="close" type="button">Close</button><span class="eyebrow">TOURNAMENT CANCELLATION</span><h2>Cancel ${esc(tournament.name)}?</h2><p class="meta">This will cancel the full tournament, lock its fixtures and prepare every paid team's refund for venue-office collection.</p><label>Official reason<select name="reason" required><option value="">Select a reason</option><option>Weather</option><option>Unsafe playing conditions</option><option>Venue issue</option><option>Power outage</option><option>Equipment issue</option><option>Security or emergency</option><option>Official decision</option><option>Other</option></select></label><label>Message for registered teams<textarea name="details" maxlength="500" required placeholder="Explain what happened and confirm that the tournament will not proceed."></textarea></label><ul class="tournament-cancel-policy"><li>Every paid team collects its full refund from the venue office.</li><li>Customers receive the reason and SMS collection instructions immediately.</li><li>This action is available only before the tournament starts.</li></ul><div class="cancellation-actions"><button class="alt keep-booking" type="button">Keep tournament</button><button class="danger-action" type="submit">Cancel & arrange refunds</button></div><p class="cancellation-error" hidden></p></form>`;
+    // Closes the workflow for close.
     const close = () => modal.remove();
     modal.querySelector(".close").onclick = close;
     modal.querySelector(".keep-booking").onclick = close;
@@ -459,6 +489,7 @@ const openTournamentCancellation = (tournament) => {
     document.body.append(modal);
 };
 
+// Handles the decorate tournament management workflow.
 function decorateTournamentManagement() {
     if (!["super-admin", "playground-admin"].includes(user.role)) return;
     document.querySelectorAll("#content > .card").forEach((card, index) => {
@@ -515,6 +546,7 @@ function decorateTournamentManagement() {
     });
 }
 
+// Builds the interface for render team registration progress.
 const renderTeamRegistrationProgress = (progress, registeredTeams, paidTeams, totalTeams) => {
     const progressValue = totalTeams ? Math.min(100, Math.round((registeredTeams / totalTeams) * 100)) : 0;
     const pendingTeams = Math.max(0, registeredTeams - paidTeams);
@@ -522,6 +554,7 @@ const renderTeamRegistrationProgress = (progress, registeredTeams, paidTeams, to
     progress.innerHTML = `<div><strong>${registeredTeams}<small> / ${totalTeams} teams</small></strong><span>${paidTeams} paid${pendingTeams ? ` · ${pendingTeams} pending` : ""}</span></div><div class="team-progress-track" role="progressbar" aria-label="Registered teams" aria-valuemin="0" aria-valuemax="${totalTeams}" aria-valuenow="${registeredTeams}"><i style="width:${progressValue}%"></i></div>`;
 };
 
+// Updates the state used for refresh team registration progress.
 const refreshTeamRegistrationProgress = async (tournament, progress, totalTeams, fallbackRegisteredTeams, fallbackPaidTeams) => {
     try {
         const teams = await req(`/tournaments/${tournament._id}/teams`);
@@ -532,17 +565,21 @@ const refreshTeamRegistrationProgress = async (tournament, progress, totalTeams,
     }
 };
 
+// Handles the bangladesh date key workflow.
 const bangladeshDateKey = (date) => {
     const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Dhaka", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(date);
+    // Handles the value workflow.
     const value = (type) => parts.find((part) => part.type === type)?.value;
     return `${value("year")}-${value("month")}-${value("day")}`;
 };
 
+// Handles the official shuffle date workflow.
 const officialShuffleDate = (tournament) => {
     const [year, month, day] = tournamentDateParts(tournament.startDate);
     return new Date(Date.UTC(year, month - 1, day - 1)).toISOString().slice(0, 10);
 };
 
+// Handles the shuffle schedule label workflow.
 const shuffleScheduleLabel = (tournament) => {
     const scheduledAt = tournament.drawScheduledAt ? new Date(tournament.drawScheduledAt) : null;
     if (scheduledAt && !Number.isNaN(scheduledAt.getTime())) {
@@ -551,16 +588,19 @@ const shuffleScheduleLabel = (tournament) => {
     return `${dateLabel(officialShuffleDate(tournament))} (Bangladesh time)`;
 };
 
+// Checks whether can start official shuffle is true.
 const canStartOfficialShuffle = (tournament) => {
     const scheduledAt = tournament.drawScheduledAt ? new Date(tournament.drawScheduledAt) : null;
     if (scheduledAt && !Number.isNaN(scheduledAt.getTime())) return Date.now() >= scheduledAt.getTime();
     return bangladeshDateKey(new Date()) === officialShuffleDate(tournament);
 };
 
+// Shows the interface for show shuffle schedule.
 const showShuffleSchedule = (tournament) => {
     const modal = document.createElement("div");
     modal.className = "modal show shuffle-schedule-modal";
     modal.innerHTML = `<section class="modal-box shuffle-schedule-box" role="dialog" aria-modal="true" aria-labelledby="shuffle-schedule-title"><button class="close" type="button" aria-label="Close">Close</button><span class="eyebrow">OFFICIAL SHUFFLE SCHEDULE</span><h2 id="shuffle-schedule-title">Shuffle is not available yet</h2><p class="meta">To keep the group draw fair for every registered team, it can start only at its scheduled time.</p><section class="shuffle-schedule-time"><span>Available from</span><strong>${esc(shuffleScheduleLabel(tournament))}</strong><small>${esc(tournament.name)} · Group assignments and the final fixture publish immediately after the live shuffle.</small></section><button class="shuffle-schedule-close" type="button">Got it</button></section>`;
+    // Closes the workflow for close.
     const close = () => modal.remove();
     modal.querySelector(".close").onclick = close;
     modal.querySelector(".shuffle-schedule-close").onclick = close;
@@ -568,6 +608,7 @@ const showShuffleSchedule = (tournament) => {
     document.body.append(modal);
 };
 
+// Handles the view registered teams workflow.
 async function viewRegisteredTeams(tournament) {
     try {
         const teams = await req(`/tournaments/${tournament._id}/teams`);
@@ -577,6 +618,7 @@ async function viewRegisteredTeams(tournament) {
             ? teams.map((team, index) => `<li><b>${index + 1}</b><span>${esc(team.teamName)}</span><em class="${team.paymentStatus === "Paid" ? "is-paid" : "is-pending"}">${esc(team.paymentStatus)}</em></li>`).join("")
             : "<li class=\"no-registered-team\">No team has registered yet.</li>";
         modal.innerHTML = `<section class="modal-box registered-teams-box" role="dialog" aria-modal="true" aria-labelledby="registered-teams-title"><button class="close" type="button" aria-label="Close">Close</button><span class="eyebrow">TOURNAMENT ROSTER</span><h2 id="registered-teams-title">${esc(tournament.name)}</h2><p class="meta">${teams.length} registered team${teams.length === 1 ? "" : "s"} · Paid teams can join the official shuffle.</p><ol class="registered-teams-list">${rows}</ol></section>`;
+        // Closes the workflow for close.
         const close = () => modal.remove();
         modal.querySelector(".close").onclick = close;
         modal.onclick = (event) => { if (event.target === modal) close(); };
@@ -586,6 +628,7 @@ async function viewRegisteredTeams(tournament) {
     }
 }
 
+// Handles the conduct lottery draw workflow.
 async function conductLotteryDraw(tournament, button = null) {
     if (button) {
         button.disabled = true;
@@ -604,6 +647,7 @@ async function conductLotteryDraw(tournament, button = null) {
     const modal = document.createElement("div");
     modal.className = "modal show";
     modal.innerHTML = `<section class="modal-box official-draw-box"><button class="close" type="button">Close</button><span class="eyebrow">OFFICIAL GROUP LOTTERY</span><h2>Ready to draw the groups?</h2><p class="meta">Every paid team will be randomly and evenly placed into a group. Once the draw is complete, the final fixture is published and all registered teams are notified.</p><div class="draw-policy"><strong>${esc(tournament.name)}</strong><span>Draw schedule: ${tournament.drawScheduledAt ? `${dateLabel(tournament.drawScheduledAt)} at ${new Date(tournament.drawScheduledAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}` : "One day before the tournament"}</span><span>This action is final and can run only on the day before play.</span></div><div class="cancellation-actions"><button class="alt keep-booking" type="button">Not now</button><button class="confirm-draw" type="button">Start live lottery</button></div><p class="cancellation-error" hidden></p></section>`;
+    // Closes the workflow for close.
     const close = () => modal.remove();
     modal.querySelector(".close").onclick = close;
     modal.querySelector(".keep-booking").onclick = close;
@@ -626,13 +670,16 @@ async function conductLotteryDraw(tournament, button = null) {
     document.body.append(modal);
 }
 
+// Handles the manage matches workflow.
 async function manageMatches(tournamentId) {
     try {
         const [tournament, matches] = await Promise.all([req(`/tournaments/${tournamentId}`), req(`/tournaments/${tournamentId}/matches`)]);
         const modal = document.createElement("div");
         modal.className = "modal show";
         const scoreLabel = tournament.sportType === "Football" ? "goals" : tournament.sportType === "Cricket" ? "runs" : "points";
+        // Handles the cricket wickets workflow.
         const cricketWickets = (match) => tournament.sportType === "Cricket" ? `<label>${esc(match.teamA?.teamName || "Team A")} wickets (optional)<input name="teamAWickets" type="number" min="0" max="10" value="${Number.isFinite(Number(match.teamAWickets)) ? Number(match.teamAWickets) : ""}" placeholder="e.g. 8"></label><label>${esc(match.teamB?.teamName || "Team B")} wickets (optional)<input name="teamBWickets" type="number" min="0" max="10" value="${Number.isFinite(Number(match.teamBWickets)) ? Number(match.teamBWickets) : ""}" placeholder="e.g. 10"></label>` : "";
+        // Checks whether cancellation notice is true.
         const cancellationNotice = (match) => {
             const notice = match.cancellation;
             if (!notice?.reason) return "";
@@ -693,12 +740,15 @@ async function manageMatches(tournamentId) {
     } catch (error) { say(error.message, true); }
 }
 
+// Handles the registration open workflow.
 const registrationOpen = (tournament) => {
     return tournament.status === "Upcoming" && Date.now() < registrationDeadline(tournament).getTime();
 };
 
+// Handles the tournament status label workflow.
 const tournamentStatusLabel = (tournament) => tournament.status;
 
+// Updates the state used for update tournament overview.
 function updateTournamentOverview() {
     let overview = document.querySelector(".tournament-overview");
     if (!overview) {
@@ -736,6 +786,7 @@ list = async function () {
     }).join("") : `<div class="empty">${term ? "No tournament matches your search." : "No tournament is available right now."}</div>`;
 };
 
+// Builds the interface for render tournament match rules.
 const renderTournamentMatchRules = () => {
     document.querySelectorAll("#content > .card").forEach((card) => {
         const tournament = tournaments.find((item) => item.name === card.querySelector("h3")?.textContent);
@@ -771,6 +822,7 @@ list().then(() => {
     }
 }).catch((error) => say(error.message, true));
 
+// Loads the data needed for load my tournament registrations.
 async function loadMyTournamentRegistrations() {
     if (user.role !== "customer") return;
     try {
@@ -779,6 +831,7 @@ async function loadMyTournamentRegistrations() {
         const section = document.createElement("section");
         section.className = "panel";
         section.id = "my-tournament-registrations";
+        // Checks whether cancellation allowed is true.
         const cancellationAllowed = (team) => {
             return team.tournament?.status === "Upcoming" && Date.now() < registrationDeadline(team.tournament).getTime();
         };
@@ -820,6 +873,7 @@ loadMyTournamentRegistrations();
 
 document.head.insertAdjacentHTML("beforeend", '<link rel="stylesheet" href="assets/css/tournament-centre.css?v=20260921-scrollable-final"><link rel="stylesheet" href="assets/css/tournament-admin.css?v=20260901contrast5">');
 
+// Handles the download fixture pdf workflow.
 function downloadFixturePdf(tournament, matches) {
     if (!matches.length) return say("Fixtures are not published yet.", true);
     const popup = window.open("", "_blank");
@@ -843,6 +897,7 @@ window.detail = async (id) => {
             req(`/tournaments/${id}/groups`), req(`/tournaments/${id}/teams`), req(`/tournaments/${id}/matches`), req(`/tournaments/${id}/standings`),
         ]);
         const sport = tournament?.sportType || "Tournament";
+        // Handles the group name workflow.
         const groupName = (group) => group?.name || "Group stage";
         const draw = groups.map((group) => `<article class="group-card"><h3>${esc(group.name)}</h3><ol>${teams.filter((team) => String(team.group?._id || team.group) === String(group._id)).map((team) => `<li>${esc(team.teamName)}</li>`).join("") || "<li>Teams are being assigned</li>"}</ol></article>`).join("");
         const isRequestedShuffleReview = user.role === "customer" && requestedShuffleReview && String(requestedFixtureId) === String(id);
@@ -885,9 +940,11 @@ window.detail = async (id) => {
         }
         if (previewFixtures.length) preview = groupStageSummary + preview;
         const table = standings.map((standing) => `<h3 class="standings-group-title">${esc(standing.group)}</h3><div class="standings-wrap"><table class="standings-table"><thead><tr><th>#</th><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>${sport === "Football" ? "GD" : "Diff"}</th><th>Pts</th></tr></thead><tbody>${standing.teams.map((team, index) => `<tr><td><span class="standing-rank">${index + 1}</span></td><td>${esc(team.teamName)}</td><td>${team.played}</td><td>${team.won}</td><td>${team.drawn}</td><td>${team.lost}</td><td>${team.goalDifference}</td><td><strong>${team.points}</strong></td></tr>`).join("")}</tbody></table></div>`).join("") || '<div class="fixture-empty">The points table will appear once groups are assigned.</div>';
+        // Handles the result score workflow.
         const resultScore = (match) => sport === "Cricket"
             ? `${match.teamAScore}${Number.isFinite(Number(match.teamAWickets)) ? `/${match.teamAWickets}` : ""} – ${match.teamBScore}${Number.isFinite(Number(match.teamBWickets)) ? `/${match.teamBWickets}` : ""}`
             : `${match.teamAScore} – ${match.teamBScore}`;
+        // Handles the match outcome workflow.
         const matchOutcome = (match) => {
             const score = resultScore(match);
             const teamA = match.teamA?.teamName || "Team A";

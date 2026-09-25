@@ -7,31 +7,50 @@
 // ===================================================
 // Dashboard Setup, Session & API Access
 // ===================================================
-const API_ROOT = "https://smart-playground-booking-tournament.onrender.com/api/v1";
+const productionServerUrl = "https://smart-playground-booking-tournament.onrender.com";
+const localHostnames = ["localhost", "127.0.0.1", "::1"];
+const isLocalFrontend = localHostnames.includes(window.location.hostname);
+const localProtocol = window.location.protocol === "https:" ? "https:" : "http:";
+const useLocalApi = isLocalFrontend && new URLSearchParams(window.location.search).get("api") === "local";
+// A locally served frontend normally uses the deployed API, so its data works
+// even when a developer's local MongoDB is unavailable. Add ?api=local when
+// explicitly testing the locally running backend.
+const SERVER_URL = String(window.TURF_SERVER_URL || (useLocalApi
+    ? `${localProtocol}//${window.location.hostname}:5000`
+    : productionServerUrl)).replace(/\/$/, "");
+const API_ROOT = `${SERVER_URL}/api/v1`;
 const token = localStorage.getItem("authToken");
 let user;
 try { user = JSON.parse(localStorage.getItem("authUser") || "null"); } catch (_) { user = null; }
 document.head.insertAdjacentHTML("beforeend", '<link rel="stylesheet" href="assets/css/dashboard-income-icons.css?v=20260901logos3">');
 
+// Keeps DOM lookups short and consistent throughout this page.
 const $ = (selector) => document.querySelector(selector);
+// Escapes API-provided text before it is inserted into an HTML template.
 const escapeHTML = (value = "") => { const node = document.createElement("div"); node.textContent = value; return node.innerHTML; };
+// Sends an authenticated request using the token saved at login.
 const authFetch = (path, options = {}) => fetch(`${API_ROOT}${path}`, { ...options, headers: { Authorization: `Bearer ${token}`, ...(options.headers || {}) } });
+// Fetches the API data payload and turns failed responses into useful errors.
 const api = async (path) => { const response = await authFetch(path); const body = await response.json(); if (!response.ok) throw new Error(body.message || "Could not load data"); return body.data || []; };
+// Formats stored dates in the date style used across the dashboard.
 const formatDate = (value) => value ? new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" }).format(new Date(value)) : "Date to be confirmed";
+// Converts a status into a CSS-safe class name.
 const statusClass = (status = "") => String(status).toLowerCase();
 let realtimeRefreshTimer;
+// Debounces socket events so several rapid updates cause only one reload.
 const refreshRealtime = () => {
     clearTimeout(realtimeRefreshTimer);
     realtimeRefreshTimer = setTimeout(() => init(), 250);
 };
 if (typeof io !== "undefined" && token) {
-    const socket = io("https://smart-playground-booking-tournament.onrender.com", { auth: { token } });
+    const socket = io(SERVER_URL, { auth: { token } });
     socket.on("notification:new", () => { loadNotifications(); refreshRealtime(); });
     socket.on("notification:deleted", loadNotifications);
     socket.on("booking:updated", refreshRealtime);
     socket.on("tournament:updated", refreshRealtime);
     socket.on("dashboard:update", refreshRealtime);
 }
+// Displays the user's uploaded profile image, or their first initial as a fallback.
 function renderAvatar() {
     const avatar = $("#user-avatar");
     const name = user?.name || "User";
@@ -43,6 +62,7 @@ function renderAvatar() {
     }
 }
 
+// Returns the inline SVG that belongs to a sidebar navigation item.
 const navIcon = (name) => ({
     overview: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13h6V4H4v9Zm0 7h6v-4H4v4Zm10 0h6v-9h-6v9Zm0-16v4h6V4h-6Z"/></svg>',
     playgrounds: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V8l8-5 8 5v11h-5v-5H9v5H4Zm3-8h2V9H7v2Zm0 3h2v-2H7v2Zm8-3h2V9h-2v2Zm0 3h2v-2h-2v2Z"/></svg>',
@@ -58,6 +78,7 @@ const navIcon = (name) => ({
     users: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 20v-1.5a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4V20m11-9a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm3 3.8a4 4 0 0 1 4 3.7V20"/></svg>'
 }[name] || '');
 
+// Builds the sidebar menu and exposes only the pages allowed for this role.
 function nav(role) {
     const items = [
         { label: "Overview", icon: "overview", href: "dashboard.html" },
@@ -78,6 +99,7 @@ function nav(role) {
     $("#side-nav").innerHTML = items.map((item) => `<a class="${item.href === "dashboard.html" ? "active" : ""}" href="${item.href}"><span class="nav-icon">${navIcon(item.icon)}</span><span>${item.label}</span></a>`).join("");
 }
 
+// Combines a booking date and end time so bookings can be compared with now.
 function bookingEndTime(booking) {
     const date = new Date(booking.bookingDate);
     const [hour, minute] = String(booking.endTime || "00:00").split(":").map(Number);
@@ -85,40 +107,49 @@ function bookingEndTime(booking) {
     return date;
 }
 
+// Returns true only for bookings that are still actionable in the future.
 function isUpcomingBooking(booking) { return !["Cancelled", "Completed"].includes(booking.bookingStatus) && bookingEndTime(booking) > new Date(); }
+// Keeps completed, cancelled, and past tournaments out of the live feed.
 function isLiveTournament(tournament) {
     const end = new Date(tournament.endDate || tournament.startDate);
     end.setHours(23, 59, 59, 999);
     return !["Completed", "Cancelled"].includes(tournament.status) && end >= new Date();
 }
 
+// Wraps rendered rows and provides a friendly empty state when needed.
 function rows(items, render, empty = "Nothing to show yet.") { return items.length ? `<div class="list">${items.map(render).join("")}</div>` : `<p class="item-meta">${empty}</p>`; }
+// Creates the compact booking row used in dashboard activity panels.
 function bookingRow(booking) {
     const ground = booking.playground || {};
     return `<div class="list-row"><div><div class="item-title">${escapeHTML(ground.name || "Playground booking")}</div><p class="item-meta">${formatDate(booking.bookingDate)} · ${escapeHTML(booking.startTime)}–${escapeHTML(booking.endTime)}</p></div><span class="status ${statusClass(booking.bookingStatus)}">${escapeHTML(booking.bookingStatus || "Pending")}</span></div>`;
 }
+// Creates the clickable booking row; this later definition replaces the legacy row above.
 function bookingRow(booking) {
     const ground = booking.playground || {};
     const status = booking.paymentStatus === "Paid" ? "Confirmed" : (booking.bookingStatus || "Pending");
     return `<a class="list-row activity-link" href="my-bookings.html"><div><div class="item-title">${escapeHTML(ground.name || "Playground booking")}</div><p class="item-meta">${formatDate(booking.bookingDate)} · ${escapeHTML(booking.startTime)}–${escapeHTML(booking.endTime)}</p></div><span class="status ${statusClass(status)}">${escapeHTML(status)}</span></a>`;
 }
 
+// Creates a safe, compact summary row for one tournament.
 function tournamentRow(tournament) {
     const ground = tournament.playgrounds?.[0] || tournament.playground || {};
     return `<div class="list-row"><div><div class="item-title">${escapeHTML(tournament.name)}</div><p class="item-meta">${escapeHTML(ground.name || "Venue TBD")} · ${formatDate(tournament.startDate)}</p></div><span class="status">${escapeHTML(tournament.status || "Upcoming")}</span></div>`;
 }
+// Creates the repeated scrolling strip used for live and upcoming tournaments.
 function ticker(tournaments) {
     if (!tournaments.length) return `<div class="empty-state">No live or upcoming tournaments are available right now.</div>`;
     const cards = tournaments.map((tournament) => { const ground = tournament.playgrounds?.[0] || tournament.playground || {}; return `<div class="ticker-item"><strong>${escapeHTML(tournament.name)}</strong><small>• ${escapeHTML(ground.name || "Venue TBD")} · ${formatDate(tournament.startDate)}</small></div>`; }).join("");
     return `<div class="ticker"><span class="ticker-label">LIVE & UPCOMING</span><div class="ticker-track">${cards}${cards}</div></div>`;
 }
 
+// Handles the customer view workflow.
 function customerView(bookings, tournaments) {
     const active = bookings.filter(isUpcomingBooking);
     const live = tournaments.filter(isLiveTournament);
     return `<section class="stats"><article class="stat-card"><span>Active bookings</span><strong>${active.length}</strong></article><article class="stat-card"><span>Available tournaments</span><strong>${live.length}</strong></article><article class="stat-card"><span>Booking history</span><strong>${bookings.length}</strong></article></section><div class="section-heading"><div><h2>Pinned for you</h2><p>Your upcoming bookings stay at the top.</p></div><a class="text-link" href="booking.html">Manage bookings →</a></div><section class="pinned-grid">${active.length ? active.slice(0, 3).map((booking) => { const ground = booking.playground || {}; return `<article class="pin-card"><h3>${escapeHTML(ground.name || "Your playground booking")}</h3><p>${formatDate(booking.bookingDate)} · ${escapeHTML(booking.startTime)}–${escapeHTML(booking.endTime)}<br>${escapeHTML(ground.address || "Location details will be shared")}</p></article>`; }).join("") : `<div class="empty-state">No active booking yet. Book a slot and it will appear here.</div>`}</section><div class="section-heading"><div><h2>Explore tournaments</h2><p>Upcoming and currently running near you.</p></div><a class="text-link" href="tournament.html">View all →</a></div>${ticker(live)}<section class="split-grid"><article class="panel"><h2 class="panel-title">Upcoming bookings</h2>${rows(active.slice(0, 5), bookingRow, "You have not made an upcoming booking yet.")}</article><article class="panel"><h2 class="panel-title">Tournament updates</h2>${rows(live.slice(0, 4), tournamentRow)}</article></section>`;
 }
 
+// Builds the original administrator dashboard layout for the supplied role.
 function adminView(role, tournaments, playgrounds, slots, bookings) {
     const superAdmin = role === "super-admin";
     const live = tournaments.filter(isLiveTournament);
@@ -127,6 +158,7 @@ function adminView(role, tournaments, playgrounds, slots, bookings) {
     return `<section class="stats"><article class="stat-card"><span>${superAdmin ? "Platform tournaments" : "Live tournaments"}</span><strong>${live.length}</strong></article><article class="stat-card"><span>${superAdmin ? "Listed playgrounds" : "My playgrounds"}</span><strong>${playgrounds.length}</strong></article><article class="stat-card"><span>${superAdmin ? "Scheduled activity" : "Booked slots"}</span><strong>${superAdmin ? live.length : booked.length}</strong></article></section><div class="section-heading"><div><h2>Live tournament feed</h2><p>Finished tournaments are automatically removed from this dashboard.</p></div><a class="text-link" href="tournament.html">Open tournaments →</a></div>${ticker(live)}${!superAdmin ? `<div class="section-heading"><div><h2>Slot availability</h2><p>Customer reservations are marked booked as soon as they are created.</p></div></div><section class="slot-board">${slotCards}</section>` : ""}<section class="split-grid"><article class="panel"><h2 class="panel-title">${superAdmin ? "Recent tournaments" : "Tournament activity"}</h2>${rows(live.slice(0, 5), tournamentRow)}</article><article class="panel"><h2 class="panel-title">${superAdmin ? "Venue overview" : "Upcoming booked slots"}</h2>${superAdmin ? rows(playgrounds.slice(0, 5), (ground) => `<div class="list-row"><div><div class="item-title">${escapeHTML(ground.name)}</div><p class="item-meta">${escapeHTML(ground.address || ground.area || "Location unavailable")}</p></div><span class="status">${escapeHTML(ground.status || "Active")}</span></div>`) : rows(booked.slice(0, 5), bookingRow, "No upcoming booking activity yet.")}</article></section>`;
 }
 
+// Groups active slot schedules by venue so an owner can see availability at a glance.
 function availabilityByPlayground(playgrounds, slots) {
     if (!playgrounds.length) return `<div class="empty-state">Add your first playground from Account centre to start setting availability.</div>`;
     return `<section class="availability-grid">${playgrounds.map((ground) => {
@@ -137,6 +169,7 @@ function availabilityByPlayground(playgrounds, slots) {
     }).join("")}</section>`;
 }
 
+// Builds the current admin dashboard, including role-specific platform totals for super admins.
 function professionalAdminView(role, tournaments, playgrounds, slots, users = []) {
     const superAdmin = role === "super-admin";
     const live = tournaments.filter(isLiveTournament);
@@ -146,8 +179,10 @@ function professionalAdminView(role, tournaments, playgrounds, slots, users = []
     return `${stats}<div class="section-heading"><div><h2>Live tournament feed</h2><p>Finished tournaments are automatically removed from this dashboard.</p></div><a class="text-link" href="tournament.html">Open tournaments →</a></div>${ticker(live)}${!superAdmin ? `<div class="section-heading"><div><h2>Availability by playground</h2><p>Each venue has a separate schedule for clearer operations.</p></div><a class="text-link" href="management.html?tab=Slots">Manage schedules →</a></div>${availabilityByPlayground(playgrounds, slots)}` : ""}<section class="split-grid"><article class="panel"><h2 class="panel-title">${superAdmin ? "Recent tournaments" : "Tournament activity"}</h2>${rows(live.slice(0, 5), tournamentRow)}</article><article class="panel"><h2 class="panel-title">${superAdmin ? "Venue overview" : "Venue status"}</h2>${venueRows}</article></section>`;
 }
 
+// Renders paid slot and tournament earnings for a playground administrator.
 function incomeDashboard(income) {
     if (!income) return "";
+    // Formats an amount for display in Bangladeshi Taka.
     const money = (value) => `৳${new Intl.NumberFormat("en-BD").format(value || 0)}`;
     const slotRows = income.slots?.slice(0, 4).map((item) => `<div class="list-row"><div><div class="item-title">${escapeHTML(item.playground)}</div><p class="item-meta">${formatDate(item.date)} · ${escapeHTML(item.startTime)}–${escapeHTML(item.endTime)}</p></div><span class="status">${money(item.amount)}</span></div>`).join("") || '<p class="item-meta">No paid slot bookings yet.</p>';
     const tournamentRows = income.tournaments?.slice(0, 4).map((item) => `<div class="list-row"><div><div class="item-title">${escapeHTML(item.tournament)}</div><p class="item-meta">${escapeHTML(item.team)} · ${escapeHTML(item.playground)}</p></div><span class="status">${money(item.amount)}</span></div>`).join("") || '<p class="item-meta">No paid tournament registrations yet.</p>';
@@ -156,14 +191,17 @@ function incomeDashboard(income) {
     return `<section class="income-dashboard"><div class="section-heading"><div><h2>Income overview</h2><p>Paid earnings from your own playgrounds.</p></div><a class="text-link" href="management.html?tab=Income">Full income report →</a></div><div class="income-stat-grid"><article>${slotIcon}<div><span>Slot income</span><strong>${money(income.slotTotal)}</strong></div></article><article>${tournamentIcon}<div><span>Tournament income</span><strong>${money(income.tournamentTotal)}</strong></div></article><article class="income-grand-total"><span>Total income</span><strong>${money(income.total)}</strong></article></div><section class="split-grid"><article class="panel income-panel slot-income-panel"><h2 class="panel-title">${slotIcon}<span>Slot booking income</span><small>Paid reservations</small></h2>${slotRows}</article><article class="panel income-panel tournament-income-panel"><h2 class="panel-title">${tournamentIcon}<span>Tournament income</span><small>Registration fees</small></h2>${tournamentRows}</article></section></section>`;
 }
 
+// Detects whether an official has entered a score for either team.
 function hasMatchScore(match) {
     return Number.isFinite(Number(match.teamAScore)) && Number.isFinite(Number(match.teamBScore));
 }
 
+// Formats a cricket score without showing a wicket value that has not been recorded.
 function cricketScore(runs, wickets) {
     return `${runs}${Number.isFinite(Number(wickets)) ? `/${wickets}` : ""}`;
 }
 
+// Explains the winning or tied result of a cricket match from the stored scores.
 function cricketResultSummary(match, teamA, teamB) {
     if (!hasMatchScore(match)) return "Score update will appear here when play begins.";
     if (Number(match.teamAScore) === Number(match.teamBScore)) return "Match tied";
@@ -178,6 +216,7 @@ function cricketResultSummary(match, teamA, teamB) {
     return `${teamB} won`;
 }
 
+// Produces one result card with sport-aware score and winner information.
 function matchResultCard(match) {
     const live = match.matchStatus === "Live";
     const completed = match.matchStatus === "Completed";
@@ -193,6 +232,7 @@ function matchResultCard(match) {
     return `<article class="match-result-card ${live ? "live" : ""} ${completed ? "completed" : "scheduled"}"><div class="match-result-meta"><span class="status ${live ? "live" : ""}">${state}</span><span>${formatDate(match.matchDate)} · ${escapeHTML(match.startTime)}</span></div>${scorecard}${summary}<p>${escapeHTML(match.playground?.name || "Tournament venue")} · ${escapeHTML(match.stage || "Match")}</p></article>`;
 }
 
+// Inserts a match-results section after the dashboard stats, when results exist.
 function mountMatchResults(matches, { pinned = false } = {}) {
     const liveMatches = matches.filter((match) => match.matchStatus === "Live");
     const scheduledMatches = matches.filter((match) => match.matchStatus === "Scheduled").sort((a, b) => new Date(`${String(a.matchDate).slice(0, 10)}T${a.startTime || "00:00"}`) - new Date(`${String(b.matchDate).slice(0, 10)}T${b.startTime || "00:00"}`));
@@ -206,6 +246,7 @@ function mountMatchResults(matches, { pinned = false } = {}) {
     if (pinned) (body.querySelector(".official-shuffle-prompts") || body.querySelector(".stats"))?.after(section); else body.append(section);
 }
 
+// Shows organisers any teams that still need the official-shuffle confirmation.
 function mountOfficialShufflePrompts(registrations) {
     // A paid team's update becomes pinned as soon as the venue starts the
     // official shuffle.  Once the draw finishes, keep the existing review
@@ -235,6 +276,7 @@ function mountOfficialShufflePrompts(registrations) {
     });
 }
 
+// Adds small interaction improvements after the dashboard HTML has been mounted.
 function enhanceActivityPanels() {
     document.querySelectorAll(".split-grid > .panel").forEach((panel) => {
         const title = panel.querySelector(".panel-title");
@@ -254,14 +296,17 @@ function enhanceActivityPanels() {
     });
 }
 
+// Adds quick-create actions that are available only to administrator roles.
 function renderAdminAddMenu() {
     return `<div class="admin-add-menu"><details><summary>+ Add</summary><div class="admin-add-options"><a href="playground-add.html">Add playground</a><a href="slot-add.html">Add slots</a></div></details></div>`;
 }
 
+// Loads match lists in parallel, while allowing one unavailable tournament to fail quietly.
 const getTournamentMatches = async (tournaments) => (await Promise.all(
     tournaments.map((tournament) => api(`/tournaments/${tournament._id}/matches`).catch(() => []))
 )).flat();
 
+// Loads the signed-in user's data, then renders the dashboard for their role.
 async function init() {
     if (!token || !user?.role) { location.replace("login.html"); return; }
     const role = String(user.role).toLowerCase();
@@ -306,6 +351,7 @@ async function init() {
 }
 
 $("#logout-button").addEventListener("click", () => { localStorage.removeItem("authToken"); localStorage.removeItem("authUser"); location.href = "login.html"; });
+// Fetches unread notifications and updates the dashboard notification controls.
 async function loadNotifications() {
     const list = $("#notification-list"), count = $("#notification-count");
     try {
@@ -338,7 +384,19 @@ $("#notification-button").addEventListener("click", () => {
     menu.hidden = !open; $("#notification-button").setAttribute("aria-expanded", String(open));
     if (open) loadNotifications();
 });
-$("#mark-all-read").addEventListener("click", async () => { await authFetch("/notifications/read-all", { method: "PATCH" }); loadNotifications(); });
+$("#mark-all-read").addEventListener("click", async () => {
+    try {
+        const response = await authFetch("/notifications/read-all", { method: "PATCH" });
+        if (!response.ok) {
+            const body = await response.json().catch(() => ({}));
+            throw new Error(body.message || "Could not mark notifications as read.");
+        }
+        await loadNotifications();
+    } catch (_) {
+        // Keep the menu usable if the API is temporarily unavailable.
+        $("#notification-subtitle").textContent = "Could not update notifications";
+    }
+});
 loadNotifications();
 setInterval(loadNotifications, 60 * 1000);
 $("#profile-image-upload").addEventListener("change", async (event) => {
@@ -378,10 +436,13 @@ const weatherCodes = {
     55: ["🌧️", "Heavy drizzle"], 61: ["🌦️", "Light rain"], 63: ["🌧️", "Rain"], 65: ["🌧️", "Heavy rain"],
     80: ["🌦️", "Rain showers"], 81: ["🌧️", "Rain showers"], 82: ["⛈️", "Heavy showers"], 95: ["⛈️", "Thunderstorm"],
 };
+// Returns today's label in the compact format used by the weather widget.
 const dashboardDate = () => new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short" }).format(new Date());
+// Updates the weather widget without exposing weather-provider details to the view.
 const showWeather = (icon, label) => {
     $("#weather-date").innerHTML = `<span class="weather-icon">${icon}</span><div><strong>${label}</strong><span>${dashboardDate()}</span></div>`;
 };
+// Requests the current local weather and falls back gracefully if it is unavailable.
 async function loadWeather() {
     let latitude = 23.8103, longitude = 90.4125; // Dhaka fallback
     try {
@@ -405,11 +466,13 @@ loadWeather();
 
 // Customer-facing live sport board. It is rebuilt by the existing socket and
 // timed refreshes, so new, updated and cancelled tournaments appear promptly.
+// Normalises a tournament sport value for sport-specific display decisions.
 function tournamentSport(tournament) {
     const sport = String(tournament.sportType || tournament.sport || "Sport").trim();
     return sport || "Sport";
 }
 
+// Derives a readable phase label from tournament schedule and status data.
 function tournamentPhase(tournament) {
     const now = new Date();
     const start = new Date(tournament.startDate);
@@ -418,6 +481,7 @@ function tournamentPhase(tournament) {
     return start <= now && now <= end ? "Live now" : "Upcoming";
 }
 
+// Builds grouped tournament cards so users can browse competitions by sport.
 function tournamentSportBoard(tournaments) {
     const grouped = tournaments.filter(isLiveTournament).reduce((sports, tournament) => {
         const name = tournamentSport(tournament);
@@ -440,6 +504,8 @@ function tournamentSportBoard(tournaments) {
     }).join("")}</section>`;
 }
 
+// Builds the customer-specific dashboard from their booking and tournament data.
+// Extends the customer view with the sport board; it intentionally replaces the earlier version.
 function customerView(bookings, tournaments) {
     const active = bookings.filter(isUpcomingBooking);
     const live = tournaments.filter(isLiveTournament);
@@ -450,6 +516,7 @@ function customerView(bookings, tournaments) {
     return `<section class="stats"><article class="stat-card"><span>Active bookings</span><strong>${active.length}</strong></article><article class="stat-card"><span>Available tournaments</span><strong>${live.length}</strong></article><article class="stat-card"><span>Booking history</span><strong>${bookings.length}</strong></article></section><div class="section-heading"><div><h2>Pinned for you</h2><p>Your upcoming bookings stay at the top.</p></div><a class="text-link" href="booking.html">Manage bookings &rarr;</a></div><section class="pinned-grid">${pinned}</section><div class="section-heading tournament-board-heading"><div><h2>Tournament sport board <span>LIVE</span></h2><p>See which sports are running now and which competitions are coming next.</p></div><a class="text-link" href="tournament.html">Browse all &rarr;</a></div>${tournamentSportBoard(tournaments)}<div class="section-heading"><div><h2>Live tournament feed</h2><p>Competition changes appear here automatically.</p></div><a class="text-link" href="tournament.html">View fixtures &rarr;</a></div>${ticker(live)}<section class="split-grid"><article class="panel"><h2 class="panel-title">Upcoming bookings</h2>${rows(active.slice(0, 5), bookingRow, "You have not made an upcoming booking yet.")}</article><article class="panel"><h2 class="panel-title">Tournament updates</h2>${rows(live.slice(0, 4), tournamentRow)}</article></section>`;
 }
 
+// Extends the ticker with sport metadata; it intentionally replaces the earlier version.
 function ticker(tournaments) {
     if (!tournaments.length) return `<div class="tournament-live-empty">No live or upcoming tournaments are available right now.</div>`;
     const visible = tournaments.slice().sort((left, right) => {

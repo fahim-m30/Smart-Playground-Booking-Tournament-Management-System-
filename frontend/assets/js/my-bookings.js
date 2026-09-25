@@ -11,11 +11,16 @@
     const token = localStorage.getItem("authToken");
     const user = JSON.parse(localStorage.getItem("authUser") || "null");
     if (!token || !user) { location.replace("login.html"); return; }
+    // Selects the first DOM element that matches a CSS selector.
     const $ = (selector) => document.querySelector(selector);
+    // Escapes dynamic text before it is inserted into an HTML template.
     const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    // Sends an authenticated request to the backend API and handles failed responses.
     const request = async (path, options = {}) => { const response = await fetch(API_ROOT + path, { ...options, headers: { Authorization: `Bearer ${token}`, ...(options.headers || {}) } }); const body = await response.json().catch(() => ({})); if (!response.ok) throw new Error(body.message || "Something went wrong."); return body.data; };
+    // Formats a stored date or time for display in the interface.
     const date = (value) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" }).format(new Date(value));
     const content = $("#content");
+    // Shows the interface for show notice.
     const showNotice = (message, bad = false) => {
         let notice = $("#notice");
         if (!notice) { notice = document.createElement("div"); notice.id = "notice"; notice.className = "notice"; document.querySelector(".tabs").before(notice); }
@@ -23,10 +28,12 @@
         notice.className = `notice${bad ? " error" : ""}`;
         notice.style.display = "block";
     };
+    // Opens the workflow for open cancellation confirmation.
     const openCancellationConfirmation = ({ title, summary, onConfirm }) => {
         const modal = document.createElement("div");
         modal.className = "modal show cancellation-confirmation";
         modal.innerHTML = `<section class="modal-box cancellation-box" role="dialog" aria-modal="true" aria-labelledby="cancellation-title"><button class="close" type="button" aria-label="Close">Close</button><span class="eyebrow">CANCELLATION CONFIRMATION</span><h2 id="cancellation-title">${escapeHtml(title)}</h2><p class="meta">${escapeHtml(summary)}</p><p class="cancellation-question">Are you sure you want to cancel this booking? This action cannot be undone.</p><div class="cancellation-actions"><button class="alt keep-booking" type="button">Keep booking</button><button class="confirm-cancellation" type="button">Yes, cancel & request refund</button></div><p class="cancellation-error" hidden></p></section>`;
+        // Closes the workflow for close.
         const close = () => modal.remove();
         modal.querySelector(".close").onclick = close;
         modal.querySelector(".keep-booking").onclick = close;
@@ -40,11 +47,13 @@
         };
         document.body.append(modal);
     };
+    // Handles the bookings workflow.
     async function bookings() {
         content.innerHTML = '<div class="empty">Loading your bookings...</div>';
         try {
-            const [list, teams, payments] = await Promise.all([request("/bookings/my-bookings"), request("/tournaments/my-registrations"), request("/payments/my-payments?includeTickets=false")]);
+            const [list, teams, payments] = await Promise.all([request("/bookings/my-bookings"), request("/tournaments/my-registrations"), request("/payments/my-payments")]);
             const pendingByBooking = new Map(payments.filter((payment) => payment.paymentStatus === "Pending" && payment.booking).map((payment) => [String(payment.booking?._id || payment.booking), payment]));
+            const paidTournamentPaymentByTeam = new Map(payments.filter((payment) => payment.paymentStatus === "Paid" && payment.tournamentTeam).map((payment) => [String(payment.tournamentTeam?._id || payment.tournamentTeam), payment]));
             const activeSlots = list.filter((booking) => !["Cancelled", "Completed"].includes(booking.bookingStatus) && new Date(`${String(booking.bookingDate).slice(0, 10)}T${booking.endTime}:00+06:00`) > new Date());
             const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Dhaka", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
             const activeTeams = teams.filter((team) => team.paymentStatus === "Paid" && !["Cancelled", "Completed"].includes(team.tournament?.status) && String(team.tournament?.endDate || "").slice(0, 10) >= today);
@@ -75,6 +84,8 @@
                 const tournamentCards = Array.from(content.querySelectorAll(".card")).slice(activeSlots.length);
                 tournamentCards.forEach((card, index) => {
                     const team = activeTeams[index];
+                    const paidPayment = paidTournamentPaymentByTeam.get(String(team._id));
+                    if (paidPayment) card.querySelector(".card-foot")?.insertAdjacentHTML("afterbegin", `<a class="button" href="receipt.html?payment=${encodeURIComponent(paidPayment._id)}">View ticket</a>`);
                     const startAt = new Date(`${String(team.tournament?.startDate || "").slice(0, 10)}T00:00:00+06:00`);
                     const action = startAt.getTime() - Date.now() >= 48 * 60 * 60 * 1000
                         ? `<button class="alt cancel-tournament" data-team-id="${team._id}">Cancel registration</button>`
@@ -105,16 +116,19 @@
             }));
         } catch (error) { content.innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`; }
     }
+    // Handles the legacy tickets workflow.
     async function legacyTickets() {
         content.innerHTML = '<div class="empty">Loading your tickets...</div>';
         try { const payments = await request("/payments/my-payments"); const tickets = payments.filter((payment) => payment.paymentStatus === "Paid"); content.innerHTML = tickets.length ? tickets.map((payment) => { const booking = payment.booking, team = payment.tournamentTeam, qr = booking?.qrCode || team?.qrCode, title = booking?.playground?.name || team?.tournament?.name || "TURF ticket"; return `<article class="card ticket"><div><span class="badge">PAID TICKET</span><h3>${escapeHtml(title)}</h3><p>${booking ? `${date(booking.bookingDate)} · ${escapeHtml(booking.startTime)} – ${escapeHtml(booking.endTime)}` : `Team: ${escapeHtml(team?.teamName)}`}<br>Paid: ৳${Number(payment.amount || 0).toLocaleString()}</p><a class="button alt" href="receipt.html?payment=${encodeURIComponent(payment._id)}">View receipt</a></div>${qr ? `<img src="https://smart-playground-booking-tournament.onrender.com${escapeHtml(qr)}" alt="QR ticket">` : ""}</article>`; }).join("") : '<div class="empty">No paid tickets yet.</div>'; } catch (error) { content.innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`; }
     }
+    // Handles the resolve qr url workflow.
     const resolveQrUrl = (value) => {
         const path = String(value || "").trim();
         if (!path) return "";
         if (path.startsWith("data:") || /^https?:\/\//i.test(path)) return path;
         return `https://smart-playground-booking-tournament.onrender.com${path.startsWith("/") ? "" : "/"}${path}`;
     };
+    // Handles the tickets workflow.
     async function tickets() {
         content.innerHTML = '<div class="empty">Loading your tickets...</div>';
         try {

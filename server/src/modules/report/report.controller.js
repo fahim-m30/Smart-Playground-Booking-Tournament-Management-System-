@@ -39,6 +39,7 @@ const createReportController = async (req, res) => {
     }
 };
 
+// Retrieves the data needed for get reportable customers controller.
 const getReportableCustomersController = async (req, res) => {
     try {
         const customers = await getReportableCustomers(req.user.userId);
@@ -70,6 +71,7 @@ const getAllReportsController = async (req, res) => {
     }
 };
 
+// Retrieves the data needed for get my reports controller.
 const getMyReportsController = async (req, res) => {
     try {
         const reports = await getMyReports(req.user.userId);

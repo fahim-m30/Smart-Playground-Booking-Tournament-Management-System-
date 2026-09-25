@@ -12,6 +12,7 @@
 
 const User = require("../modules/user/user.model");
 
+// Creates or starts the workflow for create super admin.
 const createSuperAdmin = async () => {
     try {
         // Check if Super Admin already exists

@@ -10,7 +10,9 @@ const API = "https://smart-playground-booking-tournament.onrender.com/api/v1";
 const token = localStorage.getItem("authToken");
 const paymentId = new URLSearchParams(location.search).get("payment");
 if (!token || !paymentId) location.replace("booking.html");
+// Escapes dynamic text before it is inserted into an HTML template.
 const escapeHTML = (value) => String(value ?? "—").replace(/[&<>'"]/g, (c) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", "'":"&#39;", '"':"&quot;" }[c]));
+// Handles the item workflow.
 const item = (label, value) => `<div><span>${label}</span><strong>${escapeHTML(value)}</strong></div>`;
 (async () => {
   try {

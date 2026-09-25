@@ -16,6 +16,7 @@ const generateOTP = require("../../utils/generateOTP");
 const User = require("../user/user.model");
 const { createNotification } = require("../notification/notification.service");
 
+// Handles the convert file to data url workflow.
 const convertFileToDataUrl = (file) => {
     if (!file?.buffer) return null;
     const mimeType = file.mimetype || "application/octet-stream";

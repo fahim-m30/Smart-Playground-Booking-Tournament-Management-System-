@@ -55,6 +55,7 @@ const createTournamentController = async (req, res) => {
     }
 };
 
+// Handles the respond to venue approval controller workflow.
 const respondToVenueApprovalController = async (req, res) => {
     try {
         const tournament = await respondToVenueApproval(req.params.id, req.user.userId, req.body.decision);
@@ -156,6 +157,7 @@ const registerTeamController = async (req, res) => {
     try {
         const captain = JSON.parse(req.body.captain || "{}");
         const players = JSON.parse(req.body.players || "[]");
+        // Handles the as data url workflow.
         const asDataUrl = (file) => {
             if (!file?.buffer) return null;
             if (!String(file.mimetype || "").startsWith("image/")) throw new Error("Player photos must be image files.");
@@ -227,6 +229,7 @@ const generateGroupMatchesController = async (req, res) => {
     }
 };
 
+// Handles the conduct tournament draw controller workflow.
 const conductTournamentDrawController = async (req, res) => {
     try {
         const result = await conductTournamentDraw(req.params.id, req.user.userId);
@@ -270,6 +273,7 @@ const updateLiveMatchScoreController = async (req, res) => {
     }
 };
 
+// Updates the state used for update match result controller.
 const updateMatchResultController = async (req, res) => {
     try {
         const match = await updateMatchResult(req.params.id, req.body, req.user);
@@ -433,6 +437,7 @@ const deleteTournamentController = async (req, res) => {
     }
 };
 
+// Retrieves the data needed for get my registrations controller.
 const getMyRegistrationsController = async (req, res) => {
     try {
         const registrations = await getMyRegistrations(req.user.userId);
@@ -442,6 +447,7 @@ const getMyRegistrationsController = async (req, res) => {
     }
 };
 
+// Handles the acknowledge tournament draw controller workflow.
 const acknowledgeTournamentDrawController = async (req, res) => {
     try {
         const result = await acknowledgeTournamentDraw(req.params.id, req.user.userId);
@@ -451,6 +457,7 @@ const acknowledgeTournamentDrawController = async (req, res) => {
     }
 };
 
+// Checks whether cancel tournament by venue admin controller is true.
 const cancelTournamentByVenueAdminController = async (req, res) => {
     try {
         const result = await cancelTournamentByVenueAdmin(req.params.id, req.body, req.user.userId);
@@ -460,6 +467,7 @@ const cancelTournamentByVenueAdminController = async (req, res) => {
     }
 };
 
+// Checks whether cancel registration controller is true.
 const cancelRegistrationController = async (req, res) => {
     try {
         const result = await cancelRegistration(req.params.teamId, req.user.userId);

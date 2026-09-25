@@ -21,7 +21,9 @@ const { sendOfficeRefundSMS } = require("../../utils/notificationService");
 const { emitDashboardUpdate, emitToUser } = require("../../config/socket");
 const { calendarDate, dateOnlyParts, dayRange, tournamentRegistrationClosesAt, zonedDateTime } = require("../../utils/scheduleTime");
 
+// Handles the tournament name key workflow.
 const tournamentNameKey = (value) => String(value || "").trim().replace(/\s+/g, " ").toLocaleLowerCase();
+// Handles the date range for workflow.
 const dateRangeFor = (value) => {
     const date = new Date(value);
     return {
@@ -30,6 +32,7 @@ const dateRangeFor = (value) => {
     };
 };
 
+// Handles the official draw time workflow.
 const officialDrawTime = (startDate) => {
     const start = dateOnlyParts(startDate);
     const drawDay = new Date(Date.UTC(start.year, start.month - 1, start.day - 1));
@@ -199,6 +202,7 @@ const createTournament = async (payload, createdBy) => {
     return { tournament, groups };
 };
 
+// Creates or starts the workflow for create tournament groups.
 const createTournamentGroups = async (tournament) => {
     const groupNames = ["A", "B", "C", "D", "E", "F", "G", "H"];
     return Promise.all(Array.from({ length: tournament.groupCount }, (_, index) => TournamentGroup.create({
@@ -208,7 +212,9 @@ const createTournamentGroups = async (tournament) => {
     })));
 };
 
+// Normalizes or formats the value used for normalized phone.
 const normalizedPhone = (value) => String(value || "").replace(/\D/g, "");
+// Normalizes or formats the value used for normalized team name.
 const normalizedTeamName = (value) => String(value || "").trim().replace(/\s+/g, " ").toLocaleLowerCase();
 
 // Fixture information is operational data. Venue/platform operators may view
@@ -231,6 +237,7 @@ const assertFixtureViewer = async (tournamentId, actor = {}) => {
     throw new Error("You are not authorized to view tournament fixtures.");
 };
 
+// Validates the data used for validate roster.
 const validateRoster = async (tournament, tournamentId, payload) => {
     const captain = payload.captain || {};
     const players = Array.isArray(payload.players) ? payload.players : [];
@@ -265,6 +272,7 @@ const validateRoster = async (tournament, tournamentId, payload) => {
     return { captain, players, playingCount, extraCount };
 };
 
+// Handles the respond to venue approval workflow.
 const respondToVenueApproval = async (tournamentId, adminId, decision) => {
     const tournament = await Tournament.findOne({ _id: tournamentId, isDeleted: false });
     if (!tournament) throw new Error("Tournament not found.");
@@ -386,6 +394,7 @@ const refreshTournamentStatuses = async () => {
     }
 };
 
+// Handles the tournament venue filter workflow.
 const tournamentVenueFilter = (playgroundIds) => ({
     $or: [
         { playground: { $in: playgroundIds } },
@@ -415,6 +424,7 @@ const withoutLegacyDuplicates = (tournaments) => {
     return canonical.map(({ item }) => item);
 };
 
+// Retrieves the data needed for get all tournaments.
 const getAllTournaments = async (actor = {}) => {
     await refreshTournamentStatuses();
     const filters = { isDeleted: false };
@@ -476,6 +486,7 @@ const getMyRegistrations = async (customerId) => TournamentTeam.find({
     isDeleted: false,
 }).populate("tournament", "name startDate endDate status registrationFee drawStatus drawCompletedAt fixturesPublishedAt sportType playground").sort({ createdAt: -1 });
 
+// Handles the acknowledge tournament draw workflow.
 const acknowledgeTournamentDraw = async (tournamentId, customerId) => {
     const [tournament, team] = await Promise.all([
         Tournament.findOne({ _id: tournamentId, isDeleted: false }).select("drawStatus fixturesPublishedAt"),
@@ -495,6 +506,7 @@ const acknowledgeTournamentDraw = async (tournamentId, customerId) => {
     return { tournamentId: String(tournament._id), drawViewedAt: team.drawViewedAt };
 };
 
+// Checks whether cancel tournament by venue admin is true.
 const cancelTournamentByVenueAdmin = async (tournamentId, payload, adminId, { systemCancellation = false } = {}) => {
     const reason = String(payload?.reason || "").trim();
     const details = String(payload?.details || "").trim();
@@ -565,6 +577,7 @@ const cancelTournamentByVenueAdmin = async (tournamentId, payload, adminId, { sy
     return { tournament, refundTotal, refundedTeams: paidTeams.length };
 };
 
+// Checks whether cancel registration is true.
 const cancelRegistration = async (teamId, customerId) => {
     const team = await TournamentTeam.findOne({ _id: teamId, registeredBy: customerId, isDeleted: false }).populate("tournament", "status startDate name");
     if (!team) throw new Error("Tournament registration not found.");
@@ -830,6 +843,7 @@ const shuffleTeams = (teams) => {
     return shuffled;
 };
 
+// Creates or starts the workflow for prepare fixture groups.
 const prepareFixtureGroups = async (tournament, teams) => {
     const effectiveGroupCount = Math.max(2, Math.min(tournament.groupCount, Math.floor(teams.length / 2)));
     const allGroups = await TournamentGroup.find({ tournament: tournament._id }).sort({ name: 1 });
@@ -854,15 +868,18 @@ const prepareFixtureGroups = async (tournament, teams) => {
     return { groups, drawSequence };
 };
 
+// Handles the draw audience workflow.
 const drawAudience = (teams, adminId) => [...new Set([
     ...teams.map((team) => String(team.registeredBy || "")).filter(Boolean),
     String(adminId || ""),
 ].filter(Boolean))];
 
+// Handles the publish draw event workflow.
 const publishDrawEvent = (audience, event, payload) => {
     audience.forEach((userId) => emitToUser(userId, event, payload));
 };
 
+// Handles the finalise tournament draw workflow.
 const finaliseTournamentDraw = async (tournamentId, audience) => {
     const tournament = await Tournament.findById(tournamentId);
     if (!tournament || tournament.drawStatus !== "Live") return;
@@ -906,6 +923,7 @@ const finaliseTournamentDraw = async (tournamentId, audience) => {
     emitDashboardUpdate({ type: "tournament-draw-completed", tournamentId: tournament._id });
 };
 
+// Handles the schedule tournament draw workflow.
 const scheduleTournamentDraw = ({ tournament, teams, groups, adminId }) => {
     const tournamentId = String(tournament._id);
     if (activeDrawTimers.has(tournamentId)) return;
@@ -979,6 +997,7 @@ const resumeLiveTournamentDraws = async () => {
     }));
 };
 
+// Handles the generate group matches workflow.
 const generateGroupMatches = async (tournamentId) => {
     const tournament = await Tournament.findById(tournamentId);
 
@@ -1213,15 +1232,18 @@ const assertPreviousRoundsCompleted = async (match, targetStage = match.stage) =
     }
 };
 
+// Handles the advance knockout bracket workflow.
 const advanceKnockoutBracket = async (completedMatch) => {
     if (!['Quarter Final', 'Semi Final'].includes(completedMatch.stage)) return;
     const tournament = await Tournament.findById(completedMatch.tournament).select('sportType playground endDate');
     if (!tournament) return;
+    // Handles the within tournament workflow.
     const withinTournament = (date) => {
         const end = new Date(tournament.endDate);
         end.setHours(23, 59, 59, 999);
         if (date > end) throw new Error('The tournament end date is too early for the next knockout round. Extend the tournament dates before recording the final qualifying result.');
     };
+    // Handles the next day workflow.
     const nextDay = (matches) => {
         const latest = [...matches].sort((first, second) => new Date(second.matchDate) - new Date(first.matchDate))[0];
         const date = new Date(latest.matchDate);
@@ -1248,6 +1270,7 @@ const advanceKnockoutBracket = async (completedMatch) => {
         TournamentMatch.create({ tournament: tournament._id, stage: 'Final', teamA: semiFinals[0].winner, teamB: semiFinals[1].winner, playground: tournament.playground, matchDate: date, startTime: '17:00', endTime: '20:00', matchStatus: 'Scheduled' }),
     ];
     if (tournament.sportType === 'Football') {
+        // Handles the loser workflow.
         const loser = (match) => String(match.winner) === String(match.teamA) ? match.teamB : match.teamA;
         finalMatches.unshift(TournamentMatch.create({ tournament: tournament._id, stage: 'Third Place', teamA: loser(semiFinals[0]), teamB: loser(semiFinals[1]), playground: tournament.playground, matchDate: date, startTime: '13:00', endTime: '16:00', matchStatus: 'Scheduled' }));
     }
@@ -1281,6 +1304,7 @@ const updateLiveMatchScore = async (matchId, payload, actor) => {
     return match;
 };
 
+// Updates the state used for update match result.
 const updateMatchResult = async (matchId, payload, actor) => {
     const match = await TournamentMatch.findById(matchId);
 
@@ -1407,8 +1431,10 @@ const updateMatchResult = async (matchId, payload, actor) => {
 
 const isValidTime = (value) => /^([01]\d|2[0-3]):[0-5]\d$/.test(value || "");
 
+// Checks whether has time clash is true.
 const hasTimeClash = (startA, endA, startB, endB) => startA < endB && endA > startB;
 
+// Handles the assert no fixture conflict workflow.
 const assertNoFixtureConflict = async (match, matchDate, startTime, endTime) => {
     const { start, end } = dateRangeFor(matchDate);
     const otherMatches = await TournamentMatch.find({
@@ -1431,6 +1457,7 @@ const assertNoFixtureConflict = async (match, matchDate, startTime, endTime) => 
         : "One of these teams already has a fixture during the selected time.");
 };
 
+// Handles the schedule match workflow.
 const scheduleMatch = async (tournamentId, matchId, payload, actor) => {
     const tournament = await Tournament.findById(tournamentId);
 
@@ -1642,6 +1669,7 @@ const generateKnockoutStage = async (tournamentId) => {
     endDate.setHours(23, 59, 59, 999);
     if (nextDate > endDate) throw new Error("Tournament dates need at least one day after group play for the knockout stage.");
 
+    // Creates or starts the workflow for create match.
     const createMatch = (stage, teamA, teamB, date, startTime, endTime) => TournamentMatch.create({
         tournament: tournamentId, stage, teamA: teamA._id, teamB: teamB._id,
         playground: tournament.playground, matchDate: date, startTime, endTime, matchStatus: "Scheduled",

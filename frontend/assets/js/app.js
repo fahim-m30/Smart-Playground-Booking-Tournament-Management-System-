@@ -7,6 +7,7 @@
 // Home Page Setup & Navigation State
 // ===================================================
 (() => {
+    // Handles the safe user workflow.
     const safeUser = () => {
         try { return JSON.parse(localStorage.getItem("authUser") || "null"); } catch (_) { return null; }
     };
@@ -33,6 +34,7 @@
     const form = document.querySelector("#hero-search-form");
     const input = document.querySelector("#hero-search-input");
     const searchType = document.querySelector("#hero-search-type");
+    // Updates the state used for update search placeholder.
     const updateSearchPlaceholder = () => {
         if (input) input.placeholder = searchType?.value === "tournaments" ? "Search tournaments..." : "Search playgrounds...";
     };

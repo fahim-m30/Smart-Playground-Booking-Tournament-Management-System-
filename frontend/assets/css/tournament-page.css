@@ -1,26 +1,788 @@
-body{background:radial-gradient(circle at 7% 0%,#e7f8eb 0,transparent 28rem),#f7faf8}.portal{max-width:1220px;padding:38px 24px 64px}.portal-head{margin-bottom:28px}.portal-head>div:first-child{position:relative;padding-left:62px}.portal-head>div:first-child:before{content:"🏆";position:absolute;display:grid;place-items:center;left:0;top:24px;width:46px;height:46px;border-radius:14px;background:linear-gradient(145deg,#e6f8ea,#ccefd5);font-size:1.4rem;box-shadow:inset 0 0 0 1px #c6e7ce}.portal-head a{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;letter-spacing:.01em}.portal-head h1{margin-top:8px;font-size:clamp(1.75rem,3vw,2.2rem);line-height:1.05;letter-spacing:-.055em}.portal-head p{font-size:.92rem}.user-actions button{transition:transform .18s ease,box-shadow .18s ease,background .18s ease}.user-actions button:hover,.card-foot button:hover{transform:translateY(-2px)}#create-toggle{display:inline-flex;align-items:center;gap:7px;padding:12px 17px;background:linear-gradient(135deg,#087535,#15934a);box-shadow:0 8px 16px rgba(19,122,57,.17)}#create-toggle[hidden]{display:none}#create-toggle:before{content:"＋";font-size:1.15rem;line-height:0}#logout{background:#fff;color:#496054;border:1px solid #d7e4da}.grid{gap:19px}.card{position:relative;min-height:253px;padding:20px;border-radius:17px;border-color:#dce9df;box-shadow:0 12px 25px rgba(11,65,31,.045);overflow:hidden}.card:after{content:"";position:absolute;width:104px;height:104px;right:-42px;top:-46px;border-radius:50%;background:#e9f8ed}.card>*{position:relative;z-index:1}.card h3{margin:15px 0 8px;font-size:1.1rem;letter-spacing:-.025em}.card p{min-height:51px;font-size:.81rem;line-height:1.62}.badge{padding:6px 10px;background:#e5f6e9;color:#0c6931;font-size:.65rem;letter-spacing:.02em}.card-foot{gap:10px;margin-top:17px;padding-top:15px}.card-foot strong{font-size:1.22rem;letter-spacing:-.04em;color:#152b1d}.card-foot button{padding:10px 13px;border-radius:9px;font-size:.77rem;transition:transform .18s ease,box-shadow .18s ease}.card-foot button:not(.alt){box-shadow:0 6px 12px rgba(19,122,57,.13)}.card-foot .alt{background:#f8fcf9;border-color:#c8e2cf}.form-panel{border-radius:17px}.empty{background:rgba(255,255,255,.6)}@media(max-width:600px){.portal{padding:24px 15px 45px}.portal-head>div:first-child{padding-left:54px}.portal-head>div:first-child:before{top:20px;width:40px;height:40px;border-radius:14px;background:linear-gradient(145deg,#e6f8ea,#ccefd5);font-size:1.4rem;box-shadow:inset 0 0 0 1px #c6e7ce}.card{min-height:0}}
-.tournament-search { display: block; margin: 0 0 20px; }
-.tournament-search label { display: grid; grid-template-columns: 175px minmax(0, 1fr); align-items: center; gap: 16px; color: var(--ink, #1e2b22); font-size: .86rem; font-weight: 800; }
-.tournament-search input { width: 100%; border: 1px solid #c9ddce; border-radius: 9px; padding: 12px 13px; color: #1e2b22; font: inherit; outline: 0; }
-.tournament-search input:focus { border-color: #137a39; box-shadow: 0 0 0 3px rgba(19,122,57,.12); }
-@media (max-width: 600px) { .tournament-search label { grid-template-columns: 1fr; gap: 8px; } }
-
+body {
+    background:radial-gradient(circle at 7% 0%,#e7f8eb 0,transparent 28rem),#f7faf8
+}
+.portal {
+    max-width:1220px;
+    padding:38px 24px 64px
+}
+.portal-head {
+    margin-bottom:28px
+}
+.portal-head>div:first-child {
+    position:relative;
+    padding-left:62px
+}
+.portal-head>div:first-child:before {
+    content:"🏆";
+    position:absolute;
+    display:grid;
+    place-items:center;
+    left:0;
+    top:24px;
+    width:46px;
+    height:46px;
+    border-radius:14px;
+    background:linear-gradient(145deg,#e6f8ea,#ccefd5);
+    font-size:1.4rem;
+    box-shadow:inset 0 0 0 1px #c6e7ce
+}
+.portal-head a {
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    font-size:.78rem;
+    letter-spacing:.01em
+}
+.portal-head h1 {
+    margin-top:8px;
+    font-size:clamp(1.75rem,3vw,2.2rem);
+    line-height:1.05;
+    letter-spacing:-.055em
+}
+.portal-head p {
+    font-size:.92rem
+}
+.user-actions button {
+    transition:transform .18s ease,box-shadow .18s ease,background .18s ease
+}
+.user-actions button:hover,.card-foot button:hover {
+    transform:translateY(-2px)
+}
+#create-toggle {
+    display:inline-flex;
+    align-items:center;
+    gap:7px;
+    padding:12px 17px;
+    background:linear-gradient(135deg,#087535,#15934a);
+    box-shadow:0 8px 16px rgba(19,122,57,.17)
+}
+#create-toggle[hidden] {
+    display:none
+}
+#create-toggle:before {
+    content:"＋";
+    font-size:1.15rem;
+    line-height:0
+}
+#logout {
+    background:#fff;
+    color:#496054;
+    border:1px solid #d7e4da
+}
+.grid {
+    gap:19px
+}
+.card {
+    position:relative;
+    min-height:253px;
+    padding:20px;
+    border-radius:17px;
+    border-color:#dce9df;
+    box-shadow:0 12px 25px rgba(11,65,31,.045);
+    overflow:hidden
+}
+.card:after {
+    content:"";
+    position:absolute;
+    width:104px;
+    height:104px;
+    right:-42px;
+    top:-46px;
+    border-radius:50%;
+    background:#e9f8ed
+}
+.card>* {
+    position:relative;
+    z-index:1
+}
+.card h3 {
+    margin:15px 0 8px;
+    font-size:1.1rem;
+    letter-spacing:-.025em
+}
+.card p {
+    min-height:51px;
+    font-size:.81rem;
+    line-height:1.62
+}
+.badge {
+    padding:6px 10px;
+    background:#e5f6e9;
+    color:#0c6931;
+    font-size:.65rem;
+    letter-spacing:.02em
+}
+.card-foot {
+    gap:10px;
+    margin-top:17px;
+    padding-top:15px
+}
+.card-foot strong {
+    font-size:1.22rem;
+    letter-spacing:-.04em;
+    color:#152b1d
+}
+.card-foot button {
+    padding:10px 13px;
+    border-radius:9px;
+    font-size:.77rem;
+    transition:transform .18s ease,box-shadow .18s ease
+}
+.card-foot button:not(.alt) {
+    box-shadow:0 6px 12px rgba(19,122,57,.13)
+}
+.card-foot .alt {
+    background:#f8fcf9;
+    border-color:#c8e2cf
+}
+.form-panel {
+    border-radius:17px
+}
+.empty {
+    background:rgba(255,255,255,.6)
+}
+/* Phone layout: applies at (max-width:600px) */
+@media(max-width:600px) {
+    .portal {
+        padding:24px 15px 45px
+    }
+    .portal-head>div:first-child {
+        padding-left:54px
+    }
+    .portal-head>div:first-child:before {
+        top:20px;
+        width:40px;
+        height:40px;
+        border-radius:14px;
+        background:linear-gradient(145deg,#e6f8ea,#ccefd5);
+        font-size:1.4rem;
+        box-shadow:inset 0 0 0 1px #c6e7ce
+    }
+    .card {
+        min-height:0
+    }
+}
+.tournament-search {
+    display:block;
+    margin:0 0 20px;
+}
+.tournament-search label {
+    display:grid;
+    grid-template-columns:175px minmax(0,1fr);
+    align-items:center;
+    gap:16px;
+    color:var(--ink,#1e2b22);
+    font-size:.86rem;
+    font-weight:800;
+}
+.tournament-search input {
+    width:100%;
+    border:1px solid #c9ddce;
+    border-radius:9px;
+    padding:12px 13px;
+    color:#1e2b22;
+    font:inherit;
+    outline:0;
+}
+.tournament-search input:focus {
+    border-color:#137a39;
+    box-shadow:0 0 0 3px rgba(19,122,57,.12);
+}
+/* Phone layout: applies at (max-width:600px) */
+@media (max-width:600px) {
+    .tournament-search label {
+        grid-template-columns:1fr;
+        gap:8px;
+    }
+}
 /* Tournament creator */
-.tournament-creator{padding:0;overflow:hidden;border:1px solid #d9e8dc;background:#fff;box-shadow:0 18px 44px rgba(8,75,33,.07)}
-.creator-heading{display:flex;justify-content:space-between;gap:24px;padding:26px 30px 23px;color:#f8fff9;background:linear-gradient(122deg,#064c26,#138242 58%,#35a75d)}
-.creator-kicker,.sidebar-kicker{display:block;font-size:.65rem;font-weight:800;letter-spacing:.14em}.creator-kicker{color:#a8e6b6}.creator-heading h2{margin:7px 0 6px;font-size:1.55rem;letter-spacing:-.035em}.creator-heading .meta{margin:0;max-width:650px;color:#ddf6e3;line-height:1.5}.creator-badge{align-self:center;min-width:106px;padding:10px 13px;border:1px solid rgba(255,255,255,.26);border-radius:12px;background:rgba(255,255,255,.1);color:#dff9e5;font-size:.68rem;line-height:1.45}.creator-badge strong{font-size:1rem;color:#fff}.creator-layout{display:grid;grid-template-columns:minmax(0,1fr) 262px;gap:0}.tournament-creator form{padding:24px 28px 28px;gap:16px}.creator-section{margin:0;padding:16px;border:1px solid #dfebe2;border-radius:13px;background:#fbfefb}.creator-section legend{padding:0 7px;color:#1c5630;font-size:.82rem;font-weight:800}.creator-section legend span{display:inline-grid;place-items:center;width:21px;height:21px;margin-right:7px;border-radius:50%;background:#167a3d;color:#fff;font-size:.68rem}.creator-section .form-grid{gap:13px}.creator-section label{display:grid;gap:7px;color:#466652;font-size:.72rem;font-weight:800}.creator-section input,.creator-section select,.creator-section textarea{margin:0;background:#fff;border-color:#cfe1d3;color:#173420}.creator-section textarea{min-height:81px;resize:vertical}.form-guidance{margin:0;padding:9px 11px;border-left:3px solid #5ab677;background:#f1faf3;color:#52745d;font-size:.73rem;line-height:1.45}.form-guidance.warning{border-left-color:#d49b1d;background:#fff9e8;color:#7d5d13}.creator-sidebar{padding:24px 20px;border-left:1px solid #e1ece3;background:linear-gradient(180deg,#f6fbf7,#eff8f1)}.format-preview,.duplicate-guard{padding:15px;border:1px solid #d7e8da;border-radius:12px;background:rgba(255,255,255,.9)}.sidebar-kicker{color:#198042}.format-preview h3{margin:7px 0 14px;font-size:1rem;line-height:1.3}.format-preview dl{display:grid;gap:10px;margin:0}.format-preview dl div{display:grid;gap:3px;padding-bottom:9px;border-bottom:1px solid #e7f0e8}.format-preview dl div:last-child{padding-bottom:0;border:0}.format-preview dt{color:#74907b;font-size:.63rem;font-weight:800;letter-spacing:.07em;text-transform:uppercase}.format-preview dd{margin:0;color:#245234;font-size:.77rem;font-weight:700;line-height:1.38}.duplicate-guard{margin-top:14px;border-color:#eedfa6;background:#fffdf3}.duplicate-guard strong{display:block;color:#73550d;font-size:.78rem}.duplicate-guard p{margin:7px 0 0;color:#766436;font-size:.71rem;line-height:1.5}.create-submit{display:flex;align-items:center;justify-content:center;gap:9px;min-height:48px;background:linear-gradient(120deg,#087137,#14934b);font-size:.9rem;box-shadow:0 9px 16px rgba(13,116,55,.15)}.create-submit span{font-size:1.15rem}.create-feedback{padding:12px 14px;border-radius:10px;border:1px solid #e8c2ba;background:#fff6f4;color:#8b2e22;font-size:.78rem;line-height:1.5}.create-feedback strong{display:block;margin-bottom:2px}.create-feedback.ok{border-color:#b8dfc1;background:#f1fbf3;color:#196333}
-@media(max-width:820px){.creator-layout{grid-template-columns:1fr}.creator-sidebar{display:grid;grid-template-columns:1fr 1fr;gap:14px;border-left:0;border-top:1px solid #e1ece3}.duplicate-guard{margin:0}}@media(max-width:600px){.creator-heading{padding:21px 18px}.creator-badge{display:none}.tournament-creator form{padding:17px}.creator-sidebar{grid-template-columns:1fr;padding:17px}.creator-section{padding:12px}.creator-section .form-grid{grid-template-columns:1fr}.creator-section .full{grid-column:auto}}
-
+.tournament-creator {
+    padding:0;
+    overflow:hidden;
+    border:1px solid #d9e8dc;
+    background:#fff;
+    box-shadow:0 18px 44px rgba(8,75,33,.07)
+}
+.creator-heading {
+    display:flex;
+    justify-content:space-between;
+    gap:24px;
+    padding:26px 30px 23px;
+    color:#f8fff9;
+    background:linear-gradient(122deg,#064c26,#138242 58%,#35a75d)
+}
+.creator-kicker,.sidebar-kicker {
+    display:block;
+    font-size:.65rem;
+    font-weight:800;
+    letter-spacing:.14em
+}
+.creator-kicker {
+    color:#a8e6b6
+}
+.creator-heading h2 {
+    margin:7px 0 6px;
+    font-size:1.55rem;
+    letter-spacing:-.035em
+}
+.creator-heading .meta {
+    margin:0;
+    max-width:650px;
+    color:#ddf6e3;
+    line-height:1.5
+}
+.creator-badge {
+    align-self:center;
+    min-width:106px;
+    padding:10px 13px;
+    border:1px solid rgba(255,255,255,.26);
+    border-radius:12px;
+    background:rgba(255,255,255,.1);
+    color:#dff9e5;
+    font-size:.68rem;
+    line-height:1.45
+}
+.creator-badge strong {
+    font-size:1rem;
+    color:#fff
+}
+.creator-layout {
+    display:grid;
+    grid-template-columns:minmax(0,1fr) 262px;
+    gap:0
+}
+.tournament-creator form {
+    padding:24px 28px 28px;
+    gap:16px
+}
+.creator-section {
+    margin:0;
+    padding:16px;
+    border:1px solid #dfebe2;
+    border-radius:13px;
+    background:#fbfefb
+}
+.creator-section legend {
+    padding:0 7px;
+    color:#1c5630;
+    font-size:.82rem;
+    font-weight:800
+}
+.creator-section legend span {
+    display:inline-grid;
+    place-items:center;
+    width:21px;
+    height:21px;
+    margin-right:7px;
+    border-radius:50%;
+    background:#167a3d;
+    color:#fff;
+    font-size:.68rem
+}
+.creator-section .form-grid {
+    gap:13px
+}
+.creator-section label {
+    display:grid;
+    gap:7px;
+    color:#466652;
+    font-size:.72rem;
+    font-weight:800
+}
+.creator-section input,.creator-section select,.creator-section textarea {
+    margin:0;
+    background:#fff;
+    border-color:#cfe1d3;
+    color:#173420
+}
+.creator-section textarea {
+    min-height:81px;
+    resize:vertical
+}
+.form-guidance {
+    margin:0;
+    padding:9px 11px;
+    border-left:3px solid #5ab677;
+    background:#f1faf3;
+    color:#52745d;
+    font-size:.73rem;
+    line-height:1.45
+}
+.form-guidance.warning {
+    border-left-color:#d49b1d;
+    background:#fff9e8;
+    color:#7d5d13
+}
+.creator-sidebar {
+    padding:24px 20px;
+    border-left:1px solid #e1ece3;
+    background:linear-gradient(180deg,#f6fbf7,#eff8f1)
+}
+.format-preview,.duplicate-guard {
+    padding:15px;
+    border:1px solid #d7e8da;
+    border-radius:12px;
+    background:rgba(255,255,255,.9)
+}
+.sidebar-kicker {
+    color:#198042
+}
+.format-preview h3 {
+    margin:7px 0 14px;
+    font-size:1rem;
+    line-height:1.3
+}
+.format-preview dl {
+    display:grid;
+    gap:10px;
+    margin:0
+}
+.format-preview dl div {
+    display:grid;
+    gap:3px;
+    padding-bottom:9px;
+    border-bottom:1px solid #e7f0e8
+}
+.format-preview dl div:last-child {
+    padding-bottom:0;
+    border:0
+}
+.format-preview dt {
+    color:#74907b;
+    font-size:.63rem;
+    font-weight:800;
+    letter-spacing:.07em;
+    text-transform:uppercase
+}
+.format-preview dd {
+    margin:0;
+    color:#245234;
+    font-size:.77rem;
+    font-weight:700;
+    line-height:1.38
+}
+.duplicate-guard {
+    margin-top:14px;
+    border-color:#eedfa6;
+    background:#fffdf3
+}
+.duplicate-guard strong {
+    display:block;
+    color:#73550d;
+    font-size:.78rem
+}
+.duplicate-guard p {
+    margin:7px 0 0;
+    color:#766436;
+    font-size:.71rem;
+    line-height:1.5
+}
+.create-submit {
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:9px;
+    min-height:48px;
+    background:linear-gradient(120deg,#087137,#14934b);
+    font-size:.9rem;
+    box-shadow:0 9px 16px rgba(13,116,55,.15)
+}
+.create-submit span {
+    font-size:1.15rem
+}
+.create-feedback {
+    padding:12px 14px;
+    border-radius:10px;
+    border:1px solid #e8c2ba;
+    background:#fff6f4;
+    color:#8b2e22;
+    font-size:.78rem;
+    line-height:1.5
+}
+.create-feedback strong {
+    display:block;
+    margin-bottom:2px
+}
+.create-feedback.ok {
+    border-color:#b8dfc1;
+    background:#f1fbf3;
+    color:#196333
+}
+/* Tablet and phone layout: applies at (max-width:820px) */
+@media(max-width:820px) {
+    .creator-layout {
+        grid-template-columns:1fr
+    }
+    .creator-sidebar {
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        gap:14px;
+        border-left:0;
+        border-top:1px solid #e1ece3
+    }
+    .duplicate-guard {
+        margin:0
+    }
+}
+/* Phone layout: applies at (max-width:600px) */
+@media(max-width:600px) {
+    .creator-heading {
+        padding:21px 18px
+    }
+    .creator-badge {
+        display:none
+    }
+    .tournament-creator form {
+        padding:17px
+    }
+    .creator-sidebar {
+        grid-template-columns:1fr;
+        padding:17px
+    }
+    .creator-section {
+        padding:12px
+    }
+    .creator-section .form-grid {
+        grid-template-columns:1fr
+    }
+    .creator-section .full {
+        grid-column:auto
+    }
+}
 /* Tournament workspace header */
-.portal-head{position:relative;isolation:isolate;min-height:146px;margin:4px 0 30px;padding:24px 26px;overflow:hidden;border:1px solid #d3e8d9;border-radius:22px;background:linear-gradient(112deg,#fff 0%,#f7fcf8 54%,#e7f7ea 100%);box-shadow:0 14px 32px rgba(15,81,39,.075)}
-.portal-head:before,.portal-head:after{content:"";position:absolute;z-index:-1;border-radius:999px;pointer-events:none}.portal-head:before{width:210px;height:210px;right:-84px;top:-130px;background:rgba(134,218,158,.2)}.portal-head:after{width:128px;height:128px;right:22%;bottom:-102px;border:1px solid rgba(54,151,82,.13)}
-.portal-head>div:first-child{padding-left:72px}.portal-head>div:first-child:before{top:34px;width:52px;height:52px;border-radius:16px;font-size:1.55rem;box-shadow:inset 0 0 0 1px #bee4c8,0 8px 18px rgba(20,117,58,.11)}
-.portal-head a{width:max-content;padding:6px 10px;border-radius:999px;background:#effaf1;color:#087238;font-size:.76rem;font-weight:800;transition:background .18s ease,color .18s ease}.portal-head a:hover{background:#dff4e4;color:#075a2a}.portal-head h1{margin-top:10px;font-size:clamp(1.8rem,3.2vw,2.45rem);line-height:1.04;color:#132e1c;text-wrap:balance}.portal-head h1:before{content:"COMPETITION WORKSPACE";display:block;margin-bottom:6px;color:#549264;font-size:.63rem;font-weight:800;letter-spacing:.13em}.portal-head p{max-width:620px;margin-top:8px;color:#5e7465;font-size:.94rem;line-height:1.55}
-.portal-head .user-actions{flex:0 0 auto;gap:8px;padding:7px;border:1px solid rgba(176,220,187,.88);border-radius:15px;background:rgba(255,255,255,.76);box-shadow:0 8px 18px rgba(15,81,39,.055)}.portal-head #create-toggle,.portal-head #logout{min-height:46px;border-radius:10px;padding:12px 16px;font-size:.82rem}.portal-head #create-toggle{box-shadow:0 8px 15px rgba(19,122,57,.19)}.portal-head #logout{color:#466251;border-color:#d7e7da;background:#fff}.portal-head #logout:hover{border-color:#badac2;background:#f2faf4;color:#075a2a}
-@media(max-width:760px){.portal-head{align-items:flex-start;min-height:0;padding:20px;margin-bottom:22px}.portal-head>div:first-child{padding-left:64px}.portal-head>div:first-child:before{top:34px;width:48px;height:48px}.portal-head .user-actions{width:100%;display:grid;grid-template-columns:minmax(0,1fr) auto;align-self:stretch}.portal-head .user-actions button{width:100%;padding-inline:13px}}@media(max-width:430px){.portal-head{padding:18px 16px;border-radius:18px}.portal-head>div:first-child{padding-left:0}.portal-head>div:first-child:before{display:none}.portal-head h1{font-size:1.75rem}.portal-head .user-actions{grid-template-columns:1fr}}
-
+.portal-head {
+    position:relative;
+    isolation:isolate;
+    min-height:146px;
+    margin:4px 0 30px;
+    padding:24px 26px;
+    overflow:hidden;
+    border:1px solid #d3e8d9;
+    border-radius:22px;
+    background:linear-gradient(112deg,#fff 0%,#f7fcf8 54%,#e7f7ea 100%);
+    box-shadow:0 14px 32px rgba(15,81,39,.075)
+}
+.portal-head:before,.portal-head:after {
+    content:"";
+    position:absolute;
+    z-index:-1;
+    border-radius:999px;
+    pointer-events:none
+}
+.portal-head:before {
+    width:210px;
+    height:210px;
+    right:-84px;
+    top:-130px;
+    background:rgba(134,218,158,.2)
+}
+.portal-head:after {
+    width:128px;
+    height:128px;
+    right:22%;
+    bottom:-102px;
+    border:1px solid rgba(54,151,82,.13)
+}
+.portal-head>div:first-child {
+    padding-left:72px
+}
+.portal-head>div:first-child:before {
+    top:34px;
+    width:52px;
+    height:52px;
+    border-radius:16px;
+    font-size:1.55rem;
+    box-shadow:inset 0 0 0 1px #bee4c8,0 8px 18px rgba(20,117,58,.11)
+}
+.portal-head a {
+    width:max-content;
+    padding:6px 10px;
+    border-radius:999px;
+    background:#effaf1;
+    color:#087238;
+    font-size:.76rem;
+    font-weight:800;
+    transition:background .18s ease,color .18s ease
+}
+.portal-head a:hover {
+    background:#dff4e4;
+    color:#075a2a
+}
+.portal-head h1 {
+    margin-top:10px;
+    font-size:clamp(1.8rem,3.2vw,2.45rem);
+    line-height:1.04;
+    color:#132e1c;
+    text-wrap:balance
+}
+.portal-head h1:before {
+    content:"COMPETITION WORKSPACE";
+    display:block;
+    margin-bottom:6px;
+    color:#549264;
+    font-size:.63rem;
+    font-weight:800;
+    letter-spacing:.13em
+}
+.portal-head p {
+    max-width:620px;
+    margin-top:8px;
+    color:#5e7465;
+    font-size:.94rem;
+    line-height:1.55
+}
+.portal-head .user-actions {
+    flex:0 0 auto;
+    gap:8px;
+    padding:7px;
+    border:1px solid rgba(176,220,187,.88);
+    border-radius:15px;
+    background:rgba(255,255,255,.76);
+    box-shadow:0 8px 18px rgba(15,81,39,.055)
+}
+.portal-head #create-toggle,.portal-head #logout {
+    min-height:46px;
+    border-radius:10px;
+    padding:12px 16px;
+    font-size:.82rem
+}
+.portal-head #create-toggle {
+    box-shadow:0 8px 15px rgba(19,122,57,.19)
+}
+.portal-head #logout {
+    color:#466251;
+    border-color:#d7e7da;
+    background:#fff
+}
+.portal-head #logout:hover {
+    border-color:#badac2;
+    background:#f2faf4;
+    color:#075a2a
+}
+/* Phone layout: applies at (max-width:760px) */
+@media(max-width:760px) {
+    .portal-head {
+        align-items:flex-start;
+        min-height:0;
+        padding:20px;
+        margin-bottom:22px
+    }
+    .portal-head>div:first-child {
+        padding-left:64px
+    }
+    .portal-head>div:first-child:before {
+        top:34px;
+        width:48px;
+        height:48px
+    }
+    .portal-head .user-actions {
+        width:100%;
+        display:grid;
+        grid-template-columns:minmax(0,1fr) auto;
+        align-self:stretch
+    }
+    .portal-head .user-actions button {
+        width:100%;
+        padding-inline:13px
+    }
+}
+/* Phone layout: applies at (max-width:430px) */
+@media(max-width:430px) {
+    .portal-head {
+        padding:18px 16px;
+        border-radius:18px
+    }
+    .portal-head>div:first-child {
+        padding-left:0
+    }
+    .portal-head>div:first-child:before {
+        display:none
+    }
+    .portal-head h1 {
+        font-size:1.75rem
+    }
+    .portal-head .user-actions {
+        grid-template-columns:1fr
+    }
+}
 /* Customer registration cards */
-#my-tournament-registrations{margin:0 0 24px;padding:24px}.registration-heading{margin-bottom:18px}.registration-heading span{color:#198042;font-size:.66rem;font-weight:800;letter-spacing:.13em;text-transform:uppercase}.registration-heading h2{margin:5px 0 6px;font-size:1.32rem;letter-spacing:-.035em}.registration-heading p{max-width:600px}.registration-grid{gap:18px}.registration-card{display:flex;min-height:0;flex-direction:column;padding:21px}.registration-card-top{display:flex;align-items:center;justify-content:space-between;gap:10px}.payment-note{color:#a06908;font-size:.68rem;font-weight:800}.registration-card h3{margin:16px 0 7px;font-size:1.17rem}.registration-card p{min-height:0;margin-bottom:18px}.registration-actions{display:grid;gap:10px;margin-top:auto;padding-top:15px;border-top:1px solid #e6efe8}.registration-pay{display:flex;min-height:46px;align-items:center;justify-content:space-between;width:100%;padding:12px 15px;border-radius:10px;background:linear-gradient(135deg,#087638,#20a556);box-shadow:0 8px 16px rgba(18,126,59,.18);font-size:.82rem}.registration-pay span{font-size:1.1rem}.registration-secondary{display:grid;grid-template-columns:1fr 1fr;gap:9px}.registration-secondary:has(:only-child){grid-template-columns:1fr}.registration-secondary .button,.registration-secondary button{display:flex;min-height:41px;align-items:center;justify-content:center;padding:9px 10px;text-align:center;font-size:.73rem}.registration-secondary .registration-cancel{border-color:#f0d0cd;color:#a53c35;background:#fffafa}.registration-actions small{color:#7b8c80;font-size:.7rem;text-align:center}@media(max-width:480px){#my-tournament-registrations{padding:18px}.registration-card{padding:18px}.registration-secondary{grid-template-columns:1fr}.registration-secondary:has(:only-child){grid-template-columns:1fr}}
-
-.payment-method-box{width:min(470px,100%);padding:25px}.payment-method-box .eyebrow{color:#168040;font-size:.65rem;font-weight:800;letter-spacing:.13em}.payment-method-box h2{margin:8px 0 7px;font-size:1.42rem}.payment-method-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:20px}.payment-method-grid button{display:grid;min-height:78px;gap:4px;padding:13px;border:1px solid #cce4d2;border-radius:12px;background:#f8fcf9;color:#145c2e;text-align:left;box-shadow:none}.payment-method-grid button:hover{border-color:#1e914c;background:#effaf2;transform:translateY(-1px)}.payment-method-grid button:disabled{opacity:.65;cursor:wait}.payment-method-grid strong{font-size:.9rem}.payment-method-grid small{color:#708074;font-size:.69rem;font-weight:600}.method-error{margin:16px 0 0;padding:10px 12px;border:1px solid #f0c9c4;border-radius:9px;background:#fff4f2;color:#9b3228;font-size:.78rem;line-height:1.45}@media(max-width:420px){.payment-method-grid{grid-template-columns:1fr}}
+#my-tournament-registrations {
+    margin:0 0 24px;
+    padding:24px
+}
+.registration-heading {
+    margin-bottom:18px
+}
+.registration-heading span {
+    color:#198042;
+    font-size:.66rem;
+    font-weight:800;
+    letter-spacing:.13em;
+    text-transform:uppercase
+}
+.registration-heading h2 {
+    margin:5px 0 6px;
+    font-size:1.32rem;
+    letter-spacing:-.035em
+}
+.registration-heading p {
+    max-width:600px
+}
+.registration-grid {
+    gap:18px
+}
+.registration-card {
+    display:flex;
+    min-height:0;
+    flex-direction:column;
+    padding:21px
+}
+.registration-card-top {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px
+}
+.payment-note {
+    color:#a06908;
+    font-size:.68rem;
+    font-weight:800
+}
+.registration-card h3 {
+    margin:16px 0 7px;
+    font-size:1.17rem
+}
+.registration-card p {
+    min-height:0;
+    margin-bottom:18px
+}
+.registration-actions {
+    display:grid;
+    gap:10px;
+    margin-top:auto;
+    padding-top:15px;
+    border-top:1px solid #e6efe8
+}
+.registration-pay {
+    display:flex;
+    min-height:46px;
+    align-items:center;
+    justify-content:space-between;
+    width:100%;
+    padding:12px 15px;
+    border-radius:10px;
+    background:linear-gradient(135deg,#087638,#20a556);
+    box-shadow:0 8px 16px rgba(18,126,59,.18);
+    font-size:.82rem
+}
+.registration-pay span {
+    font-size:1.1rem
+}
+.registration-secondary {
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:9px
+}
+.registration-secondary:has(:only-child) {
+    grid-template-columns:1fr
+}
+.registration-secondary .button,.registration-secondary button {
+    display:flex;
+    min-height:41px;
+    align-items:center;
+    justify-content:center;
+    padding:9px 10px;
+    text-align:center;
+    font-size:.73rem
+}
+.registration-secondary .registration-cancel {
+    border-color:#f0d0cd;
+    color:#a53c35;
+    background:#fffafa
+}
+.registration-actions small {
+    color:#7b8c80;
+    font-size:.7rem;
+    text-align:center
+}
+/* Phone layout: applies at (max-width:480px) */
+@media(max-width:480px) {
+    #my-tournament-registrations {
+        padding:18px
+    }
+    .registration-card {
+        padding:18px
+    }
+    .registration-secondary {
+        grid-template-columns:1fr
+    }
+    .registration-secondary:has(:only-child) {
+        grid-template-columns:1fr
+    }
+}
+.payment-method-box {
+    width:min(470px,100%);
+    padding:25px
+}
+.payment-method-box .eyebrow {
+    color:#168040;
+    font-size:.65rem;
+    font-weight:800;
+    letter-spacing:.13em
+}
+.payment-method-box h2 {
+    margin:8px 0 7px;
+    font-size:1.42rem
+}
+.payment-method-grid {
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    margin-top:20px
+}
+.payment-method-grid button {
+    display:grid;
+    min-height:78px;
+    gap:4px;
+    padding:13px;
+    border:1px solid #cce4d2;
+    border-radius:12px;
+    background:#f8fcf9;
+    color:#145c2e;
+    text-align:left;
+    box-shadow:none
+}
+.payment-method-grid button:hover {
+    border-color:#1e914c;
+    background:#effaf2;
+    transform:translateY(-1px)
+}
+.payment-method-grid button:disabled {
+    opacity:.65;
+    cursor:wait
+}
+.payment-method-grid strong {
+    font-size:.9rem
+}
+.payment-method-grid small {
+    color:#708074;
+    font-size:.69rem;
+    font-weight:600
+}
+.method-error {
+    margin:16px 0 0;
+    padding:10px 12px;
+    border:1px solid #f0c9c4;
+    border-radius:9px;
+    background:#fff4f2;
+    color:#9b3228;
+    font-size:.78rem;
+    line-height:1.45
+}
+/* Phone layout: applies at (max-width:420px) */
+@media(max-width:420px) {
+    .payment-method-grid {
+        grid-template-columns:1fr
+    }
+}
 /* Customer and admin tournament listing page: cards, filters, forms and mobile view. */

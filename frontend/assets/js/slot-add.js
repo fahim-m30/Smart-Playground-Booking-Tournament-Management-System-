@@ -17,22 +17,31 @@ const previewCount = document.getElementById("preview-count");
 const warningCard = document.getElementById("prerequisite-warning");
 const formCard = document.getElementById("slot-form-card");
 
+// Handles the safe user workflow.
 function safeUser() { try { return JSON.parse(localStorage.getItem("authUser")) || null; } catch { return null; } }
+// Sets the state used for set message.
 function setMessage(message = "", type = "") { messageEl.textContent = message; messageEl.className = `form-message ${type}`; }
+// Shows the interface for show prerequisite.
 function showPrerequisite(title = "No playground found", text = "You need to add a playground first before creating slots.") {
     formCard.hidden = true; warningCard.hidden = false;
     warningCard.querySelector("h3").textContent = title; warningCard.querySelector("p").textContent = text;
 }
+// Shows the interface for show slot form.
 function showSlotForm() { warningCard.hidden = true; formCard.hidden = false; }
+// Sends an authenticated request to the backend API and handles failed responses.
 async function authFetch(path, options = {}) {
     const response = await fetch(`${API_ROOT}${path}`, { ...options, headers: { Authorization: `Bearer ${token}`, ...(options.headers || {}) } });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(body.message || "Something went wrong. Please try again.");
     return body;
 }
+// Handles the selected days workflow.
 function selectedDays(type) { return type === "weekdays" ? [0, 1, 2, 3, 4] : type === "weekend" ? [5, 6] : [0, 1, 2, 3, 4, 5, 6]; }
+// Handles the to minutes workflow.
 function toMinutes(value) { const [hour, minute] = String(value || "").split(":").map(Number); return Number.isInteger(hour) && Number.isInteger(minute) ? hour * 60 + minute : NaN; }
+// Formats a stored date or time for display in the interface.
 function formatTime(value) { return `${String(Math.floor(value / 60)).padStart(2, "0")}:${String(value % 60).padStart(2, "0")}`; }
+// Handles the break window workflow.
 function breakWindow(values, opening, closing) {
     const hasStart = Boolean(values.breakStartTime), hasEnd = Boolean(values.breakEndTime);
     if (!hasStart && !hasEnd) return null;
@@ -41,6 +50,7 @@ function breakWindow(values, opening, closing) {
     return Number.isFinite(start) && Number.isFinite(end) && start >= opening && end <= closing && end > start ? { start, end } : "invalid";
 }
 
+// Builds the interface for build schedule.
 function buildSchedule() {
     const values = Object.fromEntries(new FormData(form));
     const opening = toMinutes(values.openingTime), closing = toMinutes(values.closingTime);
@@ -64,6 +74,7 @@ function buildSchedule() {
     return { slots: selectedDays(values.dayType).flatMap((dayOfWeek) => dailySlots.map((slot) => ({ ...slot, dayOfWeek }))), reason: "" };
 }
 
+// Updates the state used for update preview.
 function updatePreview() {
     const schedule = buildSchedule();
     const values = Object.fromEntries(new FormData(form));
@@ -74,6 +85,7 @@ function updatePreview() {
         : `<span>${schedule.reason}</span>`;
 }
 
+// Loads the data needed for load playgrounds.
 async function loadPlaygrounds() {
     if (!token || safeUser()?.role !== "playground-admin") return location.replace("login.html");
     submitButton.disabled = true; showPrerequisite(); playgroundSelect.innerHTML = '<option value="">Choose one of your playgrounds</option>';

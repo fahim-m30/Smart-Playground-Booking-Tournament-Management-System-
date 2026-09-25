@@ -12,16 +12,19 @@ const Playground = require("../playground/playground.model");
 const Booking = require("../booking/booking.model");
 const { bookingStartsAt, calendarDate, dayRange } = require("../../utils/scheduleTime");
 
+// Handles the time to minutes workflow.
 const timeToMinutes = (time) => {
     if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(String(time))) return NaN;
     const [hour, minute] = String(time).split(":").map(Number);
     return hour * 60 + minute;
 };
 
+// Handles the overlaps workflow.
 const overlaps = (first, second) =>
     timeToMinutes(first.startTime) < timeToMinutes(second.endTime)
     && timeToMinutes(first.endTime) > timeToMinutes(second.startTime);
 
+// Handles the assert valid range workflow.
 const assertValidRange = ({ startTime, endTime, durationMinutes }) => {
     const start = timeToMinutes(startTime);
     const end = timeToMinutes(endTime);
@@ -33,6 +36,7 @@ const assertValidRange = ({ startTime, endTime, durationMinutes }) => {
     }
 };
 
+// Handles the assert valid break workflow.
 const assertValidBreak = ({ breakStartTime, breakEndTime }) => {
     if (!breakStartTime && !breakEndTime) return;
     if (!breakStartTime || !breakEndTime || timeToMinutes(breakEndTime) <= timeToMinutes(breakStartTime)) {
@@ -40,6 +44,7 @@ const assertValidBreak = ({ breakStartTime, breakEndTime }) => {
     }
 };
 
+// Handles the slot date workflow.
 const slotDate = (value) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value))) throw new Error("Choose a valid calendar date.");
     const date = new Date(`${value}T00:00:00.000Z`);
@@ -92,6 +97,7 @@ const createSlot = async (payload, adminId) => {
     return slot;
 };
 
+// Creates or starts the workflow for create slots.
 const createSlots = async (payload, adminId) => {
     if (!Array.isArray(payload.slots) || payload.slots.length === 0 || payload.slots.length > 168) {
         throw new Error("Provide between 1 and 168 slots in a schedule.");

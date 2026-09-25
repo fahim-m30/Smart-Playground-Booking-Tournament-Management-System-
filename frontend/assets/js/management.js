@@ -11,21 +11,27 @@ const token = localStorage.getItem("authToken");
 let me;
 try { me = JSON.parse(localStorage.getItem("authUser") || "{}"); } catch (_) { me = {}; }
 
+// Selects the first DOM element that matches a CSS selector.
 const $ = (selector) => document.querySelector(selector);
+// Escapes dynamic text before it is inserted into an HTML template.
 const E = (value) => String(value ?? "").replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[character]));
+// Sends an authenticated request to the backend API and handles failed responses.
 const R = async (path, options = {}) => {
     const response = await fetch(API + path, { ...options, headers: { Authorization: "Bearer " + token, ...(options.headers || {}) } });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(body.message || "Request failed");
     return body.data;
 };
+// Handles the say workflow.
 const say = (message, bad = false) => {
     const notice = $("#notice");
     notice.textContent = message;
     notice.className = "notice" + (bad ? " error" : "");
     notice.style.display = "block";
 };
+// Formats a stored date or time for display in the interface.
 const formatDate = (value) => value ? new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" }).format(new Date(value)) : "Not available";
+// Handles the status class workflow.
 const statusClass = (value) => String(value || "").toLowerCase().replace(/\s+/g, "-");
 const role = me.role;
 
@@ -48,6 +54,7 @@ const tabs = role === "customer"
 const requestedTab = new URLSearchParams(location.search).get("tab");
 const initialTab = tabs.includes(requestedTab) ? requestedTab : tabs[0];
 
+// Sets the state used for set title.
 function setTitle(tab) {
     $("#title").textContent = tab === "Profile" ? "Account centre" : tab === "Reports" ? "Issue reports" : tab === "Bookings" ? "Booking history" : tab === "Income" ? "Income overview" : role.replace("-", " ") + " operations";
     $("#subtitle").textContent = tab === "Reports"
@@ -62,6 +69,7 @@ $("#tabs").innerHTML = tabs.filter((tab) => tab !== "Reports").map((tab) => '<bu
 $("#tabs").hidden = true;
 setTitle(initialTab);
 
+// Handles the profile workflow.
 async function profile() {
     const user = await R("/users/me");
     const birthDate = user.dateOfBirth ? String(user.dateOfBirth).slice(0, 10) : "";
@@ -83,6 +91,7 @@ async function profile() {
     const headings = children.filter((item) => item.tagName === "H3");
     const emailHeading = headings.find((item) => item.textContent.trim() === "Change email");
     const passwordHeading = headings.find((item) => item.textContent.trim() === "Change password");
+    // Handles the section nodes workflow.
     const sectionNodes = (start, end) => children.slice(children.indexOf(start), end ? children.indexOf(end) : children.length);
     const personalNodes = children.slice(0, children.indexOf(emailHeading));
     const passwordNodes = sectionNodes(passwordHeading, null);
@@ -92,6 +101,7 @@ async function profile() {
     nav.className = "profile-section-nav";
     nav.innerHTML = '<button type="button" data-profile-view="personal">Edit profile</button><button type="button" data-profile-view="password">Change password</button>';
     document.querySelector(".profile-form-card > h2").before(nav);
+    // Shows the interface for show profile view.
     const showProfileView = (view, scroll = true) => {
         [...personalNodes, ...emailNodes, ...passwordNodes].forEach((node) => node.classList.add("profile-mode-hidden"));
         (view === "password" ? passwordNodes : personalNodes).forEach((node) => node.classList.remove("profile-mode-hidden"));
@@ -172,12 +182,14 @@ async function profile() {
     };
 }
 
+// Handles the report stats workflow.
 function reportStats(reports) {
     const open = reports.filter((report) => ["Pending", "Under Review"].includes(report.status)).length;
     const resolved = reports.filter((report) => report.status === "Resolved").length;
     return '<div class="report-stats"><div class="report-stat"><strong>' + reports.length + '</strong><span>Total reports</span></div><div class="report-stat"><strong>' + open + '</strong><span>Open</span></div><div class="report-stat"><strong>' + resolved + '</strong><span>Resolved</span></div></div>';
 }
 
+// Handles the user report card workflow.
 function userReportCard(report) {
     const target = report.targetType === "User" ? (report.reportedUser?.name || "Customer account") : (report.playground?.name || "Account issue");
     const note = report.adminNote
@@ -187,6 +199,7 @@ function userReportCard(report) {
         + "<h3>" + E(report.subject) + "</h3><p>" + E(report.message) + '</p><div class="report-meta"><span>' + E(report.category) + "</span><span>" + E(target) + "</span><span>" + E(formatDate(report.createdAt)) + "</span></div>" + note + "</article>";
 }
 
+// Handles the playground admin reports workflow.
 async function playgroundAdminReports() {
     const [reportableCustomers, allReports] = await Promise.all([R("/reports/reportable-customers"), R("/reports/my-reports")]);
     const selectedStatus = new URLSearchParams(location.search).get("status") || "All";
@@ -211,6 +224,7 @@ async function playgroundAdminReports() {
     };
 }
 
+// Handles the reports workflow.
 async function reports() {
     if (role === "playground-admin") return playgroundAdminReports();
     const result = await Promise.all([R("/playgrounds"), R("/reports/my-reports")]);
@@ -246,6 +260,7 @@ const reviewStatusHelp = {
     Dismissed: "No further action will be taken on this report.",
 };
 
+// Handles the admin report card workflow.
 function adminReportCard(report) {
     const target = report.targetType === "User" ? (report.reportedUser?.name || "Customer account") : (report.playground?.name || "Account issue");
     const note = report.adminNote ? '<div class="report-review"><div class="report-review-head"><strong>Latest review</strong><span>' + E(report.reviewedBy?.name || "Admin") + " · " + E(formatDate(report.reviewedAt)) + "</span></div><p>" + E(report.adminNote) + "</p></div>" : "";
@@ -254,6 +269,7 @@ function adminReportCard(report) {
     return '<article class="report-card" data-report-id="' + E(report._id) + '"><div class="report-card-top"><span class="report-status ' + statusClass(report.status) + '">' + E(report.status) + '</span><span class="report-severity ' + statusClass(report.severity) + '">' + E(report.severity) + " priority</span></div><h3>" + E(report.subject) + "</h3><p>" + E(report.message) + '</p><div class="report-meta"><span>Category: ' + E(report.category) + "</span><span>From: " + E(report.reporter?.name || "Unknown") + "</span><span>Regarding: " + E(target) + "</span><span>Submitted: " + E(formatDate(report.createdAt)) + "</span></div>" + note + '<div class="report-actions">' + decision + message + '<button type="button" data-save><strong>Save decision</strong><small>Notify reporter</small></button></div></article>';
 }
 
+// Builds the interface for render admin reports.
 function renderAdminReports(allReports) {
     const search = ($("#report-search")?.value || "").trim().toLowerCase();
     const status = $("#report-status-filter")?.value || "All";
@@ -268,6 +284,7 @@ function renderAdminReports(allReports) {
         const report = allReports.find((item) => item._id === card.dataset.reportId);
         select.value = report.status;
         const statusHelp = card.querySelector("[data-status-help]");
+        // Updates the state used for refresh status help.
         const refreshStatusHelp = () => { statusHelp.textContent = reviewStatusHelp[select.value] || ""; };
         refreshStatusHelp();
         select.onchange = refreshStatusHelp;
@@ -276,6 +293,7 @@ function renderAdminReports(allReports) {
 }
 
 let adminReportData = [];
+// Handles the admin reports workflow.
 async function adminReports() {
     adminReportData = await R("/reports?limit=100");
     $("#panel").innerHTML = '<section class="report-workspace"><header class="report-hero"><div><h2>Report review queue</h2><p>Prioritise incoming issues, document decisions and keep reporters informed.</p></div>' + reportStats(adminReportData) + '</header><article class="report-list-panel"><header class="report-panel-head"><div><h3>All reports</h3><span>Filter the queue, then save a status and review note.</span></div><div class="report-filters"><input id="report-search" type="search" placeholder="Search reports"><select id="report-status-filter"><option value="All">All statuses</option><option value="Pending">Pending</option><option value="Under Review">Under review</option><option value="Resolved">Resolved</option><option value="Dismissed">Dismissed</option></select><select id="report-severity-filter"><option value="All">All priorities</option><option value="Critical">Critical</option><option value="High">High</option><option value="Medium">Medium</option><option value="Low">Low</option></select></div></header><div id="admin-report-list" class="report-card-list"></div></article></section>';
@@ -285,6 +303,7 @@ async function adminReports() {
     renderAdminReports(adminReportData);
 }
 
+// Handles the save report workflow.
 async function saveReport(id, status, adminNote) {
     try {
         await R("/reports/" + id + "/status", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status, adminNote: adminNote.trim() }) });
@@ -295,6 +314,7 @@ async function saveReport(id, status, adminNote) {
     }
 }
 
+// Handles the my grounds workflow.
 async function myGrounds() {
     const grounds = await R("/playgrounds/my-playgrounds");
     $("#panel").innerHTML = grounds.length ? grounds.map((ground) => '<article class="card"><span class="badge">' + E(ground.status) + " · " + (ground.isApproved ? "Approved" : "Pending approval") + "</span><h3>" + E(ground.name) + "</h3><p>" + E(ground.sportType) + " · " + E(ground.address) + "<br>Morning ৳" + (ground.pricing?.morning ?? "—") + ", Evening ৳" + (ground.pricing?.evening ?? "—") + '</p><div class="card-foot"><button onclick="editGround(\'' + ground._id + '\')">Edit details</button><button class="alt" onclick="removeGround(\'' + ground._id + '\')">Delete</button></div></article>').join("") : '<div class="empty">Create your first playground from the dashboard.</div>';
@@ -308,6 +328,7 @@ window.editGround = async (id) => {
     const modal = document.createElement("div");
     modal.className = "modal show playground-editor-modal";
     modal.innerHTML = `<form class="modal-box playground-editor" aria-labelledby="playground-editor-title"><button class="close" type="button">Close</button><header class="playground-editor__head"><span>PLAYGROUND SETTINGS</span><h2 id="playground-editor-title">Edit ${E(ground.name)}</h2><p>Keep your venue information, prices and customer contact details up to date.</p></header><section class="playground-editor__section"><h3>Venue details</h3><div class="form-grid"><label class="full">Playground name<input name="name" value="${E(ground.name)}" required></label><label>Sport type<select name="sportType" required>${sportOptions}</select></label><label>Maximum players<input name="maxPlayers" type="number" min="1" value="${Number(ground.maxPlayers) || 1}" required></label><label class="full">Description<textarea name="description" required>${E(ground.description)}</textarea></label></div></section><section class="playground-editor__section"><h3>Contact &amp; location</h3><div class="form-grid"><label>Phone number<input name="phone" type="tel" value="${E(ground.phone)}" required></label><label>Email address<input name="email" type="email" value="${E(ground.email)}" required></label><label class="full">Street address<input name="address" value="${E(ground.address)}" required></label><label>Division<input name="division" value="${E(ground.division)}" required></label><label>District<input name="district" value="${E(ground.district)}" required></label><label>Area<input name="area" value="${E(ground.area)}" required></label><label>Google Maps link <small>(optional)</small><input name="googleMapLocation" type="url" value="${E(ground.googleMapLocation)}" placeholder="https://maps.google.com/..."></label></div></section><section class="playground-editor__section"><h3>Hours &amp; pricing</h3><div class="form-grid"><label>Opening time<input name="openingTime" type="time" value="${E(ground.openingTime)}" required></label><label>Closing time<input name="closingTime" type="time" value="${E(ground.closingTime)}" required></label><label>Morning price (BDT)<input name="morningPrice" type="number" min="0" value="${Number(ground.pricing?.morning) || 0}" required></label><label>Day price (BDT)<input name="dayPrice" type="number" min="0" value="${Number(ground.pricing?.day) || 0}" required></label><label>Evening price (BDT)<input name="eveningPrice" type="number" min="0" value="${Number(ground.pricing?.evening) || 0}" required></label><label>Weekend price (BDT)<input name="weekendPrice" type="number" min="0" value="${Number(ground.pricing?.weekend) || 0}" required></label></div></section><section class="playground-editor__section"><h3>Facilities</h3><label>Available facilities <small>Separate each item with a comma</small><input name="facilities" value="${E(facilities)}" placeholder="Changing room, Parking, Washroom, Floodlights"></label></section><p class="playground-editor__error" hidden></p><footer class="playground-editor__actions"><button class="alt" type="button" data-cancel>Cancel</button><button type="submit">Save all changes</button></footer></form>`;
+    // Closes the workflow for close.
     const close = () => modal.remove();
     modal.querySelector(".close").onclick = close;
     modal.querySelector("[data-cancel]").onclick = close;
@@ -347,6 +368,7 @@ window.removeGround = async (id) => {
     try { await R("/playgrounds/" + id, { method: "DELETE" }); say("Playground deleted."); myGrounds(); } catch (error) { say(error.message, true); }
 };
 
+// Handles the slots workflow.
 async function slots() {
     const grounds = await R("/playgrounds/my-playgrounds");
     const all = [];
@@ -359,6 +381,7 @@ window.deleteSlot = async (id) => {
     try { await R("/slots/" + id, { method: "DELETE" }); say("Slot removed."); slots(); } catch (error) { say(error.message, true); }
 };
 
+// Handles the professional slots workflow.
 async function professionalSlots() {
     const grounds = await R("/playgrounds/my-playgrounds");
     const groups = await Promise.all(grounds.map(async (ground) => ({ ground, slots: await R("/slots/playground/" + ground._id) })));
@@ -367,6 +390,7 @@ async function professionalSlots() {
     $("#panel").innerHTML = header + content;
 }
 
+// Handles the bookings workflow.
 async function bookings() {
     if (role === "customer") {
         const all = await R("/bookings/my-bookings");
@@ -389,6 +413,7 @@ window.cancelBookingAsAdmin = (bookingId) => {
     modal.className = "modal show";
     modal.innerHTML = '<section class="modal-box cancellation-box" role="dialog" aria-modal="true" aria-labelledby="admin-cancel-title"><button class="close" type="button">Close</button><span class="eyebrow">VENUE ACTION</span><h2 id="admin-cancel-title">Cancel this booked slot?</h2><p class="meta">Enter a clear reason that will be shared with the customer.</p><form id="admin-cancel-form" class="form-grid"><label class="full">Reason for cancellation<textarea name="reason" minlength="8" maxlength="500" placeholder="Example: The field is unavailable due to urgent maintenance." required></textarea></label><p class="full cancellation-question">Are you sure you want to cancel this booking? The customer will be notified and any paid amount will be fully refunded.</p><div class="full cancellation-actions"><button class="alt" type="button" data-close>Keep booking</button><button class="confirm-cancellation" type="submit">Cancel, refund &amp; notify</button></div><p class="full cancellation-error" hidden></p></form></section>';
     document.body.append(modal);
+    // Closes the workflow for close.
     const close = () => modal.remove();
     modal.querySelector(".close").onclick = close;
     modal.querySelector("[data-close]").onclick = close;
@@ -416,11 +441,13 @@ window.cancelBookingAsAdmin = (bookingId) => {
     };
 };
 
+// Handles the local date key workflow.
 const localDateKey = (value) => {
     const date = new Date(value);
     return Number.isNaN(date.getTime()) ? "" : `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 };
 
+// Handles the legacy daily slots workflow.
 async function legacyDailySlots(dateValue = localDateKey(new Date())) {
     const grounds = await R("/playgrounds/my-playgrounds");
     const selectedDate = new Date(dateValue + "T12:00:00");
@@ -443,6 +470,7 @@ async function legacyDailySlots(dateValue = localDateKey(new Date())) {
     $("#slot-schedule-date").onchange = (event) => dailySlots(event.target.value);
 }
 
+// Handles the daily slots workflow.
 async function dailySlots(dateValue = localDateKey(new Date())) {
     const grounds = await R("/playgrounds/my-playgrounds");
     const selectedDate = new Date(dateValue + "T12:00:00");
@@ -485,14 +513,18 @@ async function dailySlots(dateValue = localDateKey(new Date())) {
     }));
 }
 
+// Handles the users workflow.
 async function users() {
     const users = await R("/users");
     $("#panel").innerHTML = users.map((item) => '<article class="card"><span class="badge">' + E(item.role) + "</span><h3>" + E(item.name) + "</h3><p>" + E(item.email) + "<br>" + (item.isBlocked ? "Blocked" : "Active") + '</p><div class="card-foot">' + (item.role !== "super-admin" ? '<button onclick="block(&quot;' + item._id + '&quot;,' + item.isBlocked + ')">' + (item.isBlocked ? "Unblock" : "Block") + "</button>" : "") + "</div></article>").join("");
 }
 
+// Handles the income workflow.
 async function income() {
     const data = await R("/payments/playground-admin/income");
+    // Formats an amount for display in Bangladeshi Taka.
     const money = (value) => "৳" + new Intl.NumberFormat("en-BD").format(value || 0);
+    // Handles the row workflow.
     const row = (item, type) => '<article class="income-row"><div><span>' + E(type) + '</span><strong>' + E(type === "Slot" ? item.playground : item.tournament) + '</strong><small>' + E(type === "Slot" ? `${formatDate(item.date)} · ${item.startTime}–${item.endTime}` : `${item.team} · ${item.playground}`) + '</small></div><b>' + money(item.amount) + '</b></article>';
     $("#panel").innerHTML = '<section class="income-summary"><article><span>Slot income</span><strong>' + money(data.slotTotal) + '</strong></article><article><span>Tournament income</span><strong>' + money(data.tournamentTotal) + '</strong></article><article class="income-total"><span>Total income</span><strong>' + money(data.total) + '</strong></article></section><section class="income-section"><h2>Slot booking income</h2><div>' + (data.slots.length ? data.slots.map((item) => row(item, "Slot")).join("") : '<p class="empty">No paid slot bookings yet.</p>') + '</div></section><section class="income-section"><h2>Tournament income</h2><div>' + (data.tournaments.length ? data.tournaments.map((item) => row(item, "Tournament")).join("") : '<p class="empty">No paid tournament registrations yet.</p>') + '</div></section>';
     const pendingRefunds = data.pendingRefunds || [];
@@ -520,6 +552,7 @@ window.block = async (id, blocked) => {
     try { await R("/users/" + (blocked ? "unblock/" : "block/") + id, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: "{}" }); say(blocked ? "User unblocked." : "User blocked."); users(); } catch (error) { say(error.message, true); }
 };
 
+// Handles the super grounds workflow.
 async function superGrounds() {
     const grounds = await R("/playgrounds/admin/all");
     $("#panel").innerHTML = grounds.map((ground) => '<article class="card"><span class="badge">' + (ground.isApproved ? "Approved" : "Pending") + " · " + E(ground.status) + "</span><h3>" + E(ground.name) + "</h3><p>" + E(ground.playgroundAdmin?.name || "Owner") + " · " + E(ground.address) + '</p><div class="card-foot">' + (!ground.isApproved ? '<button onclick="groundAction(&quot;' + ground._id + '&quot;,&quot;approve&quot;)">Approve</button>' : "") + '<button class="alt" onclick="groundAction(&quot;' + ground._id + '&quot;,&quot;' + (ground.status === "Active" ? "deactivate" : "activate") + '&quot;)">' + (ground.status === "Active" ? "Deactivate" : "Activate") + "</button></div></article>").join("");
@@ -532,11 +565,13 @@ async function superGrounds() {
         card.querySelector(".card-foot").prepend(button);
     });
 }
+// Handles the super grounds modern workflow.
 async function superGroundsModern() {
     const grounds = await R("/playgrounds/admin/all");
     const pending = grounds.filter((ground) => !ground.isApproved).length;
     const active = grounds.filter((ground) => ground.isApproved && ground.status === "Active").length;
     const inactive = grounds.filter((ground) => ground.isApproved && ground.status !== "Active").length;
+    // Handles the initials workflow.
     const initials = (value) => String(value || "V").trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
     $("#panel").innerHTML = '<section class="super-venue-workspace"><header class="super-venue-hero"><div><span>VENUE GOVERNANCE</span><h2>Playground approval centre</h2><p>Review venue information, approve new listings and control public availability.</p></div><div class="super-venue-stats"><article><strong>' + pending + '</strong><span>Pending review</span></article><article><strong>' + active + '</strong><span>Live venues</span></article><article><strong>' + inactive + '</strong><span>Inactive venues</span></article></div></header><section class="super-venue-grid">' + (grounds.length ? grounds.map((ground) => {
         const approved = Boolean(ground.isApproved);
@@ -557,6 +592,7 @@ window.groundAction = async (id, action) => {
 window.viewGround = async (id) => {
     try {
         const ground = await R("/playgrounds/" + id);
+        // Handles the price workflow.
         const price = (value) => "৳" + new Intl.NumberFormat("en-BD").format(value || 0);
         const images = [ground.coverImage, ...(ground.galleryImages || [])].filter(Boolean);
         const modal = document.createElement("div");

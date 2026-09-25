@@ -11,16 +11,21 @@ const token = localStorage.getItem("authToken");
 let user;
 try { user = JSON.parse(localStorage.getItem("authUser") || "null"); } catch (_) { user = null; }
 
+// Selects the first DOM element that matches a CSS selector.
 const $ = (selector) => document.querySelector(selector);
 const form = $("#playground-form");
+// Handles the message workflow.
 const message = (text, error = false) => {
     const element = $("#form-message");
     element.textContent = text;
     element.style.color = error ? "#a53636" : "#065f46";
 };
+// Checks whether is usable image is true.
 const isUsableImage = (file) => file && file.type.startsWith("image/") && file.size <= 5 * 1024 * 1024;
+// Checks whether is map url is true.
 const isMapUrl = (value) => /^https?:\/\//i.test(String(value || "").trim());
 let mapLookupTimer;
+// Extracts latitude and longitude coordinates from a Google Maps URL.
 const mapCoordinates = (value) => {
     const link = String(value || "");
     const match = link.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/)
@@ -31,11 +36,13 @@ const mapCoordinates = (value) => {
 
 if (!token || !user?.role) location.replace("login.html");
 
+// Builds the interface for render previews.
 function renderPreviews(files, target, limit) {
     const selected = Array.from(files || []).slice(0, limit);
     $(target).innerHTML = selected.map((file) => '<img src="' + URL.createObjectURL(file) + '" alt="Selected image preview">').join("");
 }
 
+// Builds the Google Maps search query from the entered venue details.
 function mapQuery() {
     return [$("#name").value, $("#address").value, $("#area").value, $("#district").value, $("#division").value]
         .map((value) => String(value || "").trim())
@@ -43,6 +50,7 @@ function mapQuery() {
         .join(", ");
 }
 
+// Updates the embedded Google Maps preview and saved venue location.
 function refreshMapPreview() {
     const query = mapQuery();
     const shareLink = $("#map-share-link").value.trim();
@@ -72,6 +80,7 @@ function refreshMapPreview() {
     preview.src = query ? "https://www.google.com/maps?q=" + encodeURIComponent(query) + "&output=embed" : "about:blank";
 }
 
+// Asks the backend to turn a Google Maps pin into venue address fields.
 async function autofillAddressFromMap() {
     const sharedUrl = $("#map-share-link").value.trim();
     if (!isMapUrl(sharedUrl)) return;
@@ -103,6 +112,7 @@ async function autofillAddressFromMap() {
     }
 }
 
+// Sets the state used for set step.
 function setStep(step) {
     const isDetails = step === 1;
     $("#details-step").classList.toggle("is-active", isDetails);
@@ -115,6 +125,7 @@ function setStep(step) {
     window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
+// Validates the data used for validate details.
 function validateDetails() {
     const invalid = [...$("#details-step").querySelectorAll("[required]")].find((field) => !field.checkValidity());
     if (!invalid) return true;

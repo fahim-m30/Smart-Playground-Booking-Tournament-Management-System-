@@ -42,6 +42,7 @@ const createPaymentController = async (req, res) => {
     }
 };
 
+// Creates or starts the workflow for create demo payment controller.
 const createDemoPaymentController = (paymentMethod) => async (req, res) => {
     try {
         const result = await startDemoCheckout({ ...req.body, paymentMethod }, req.user.userId);
@@ -51,6 +52,7 @@ const createDemoPaymentController = (paymentMethod) => async (req, res) => {
     }
 };
 
+// Creates or starts the workflow for start demo checkout controller.
 const startDemoCheckoutController = async (req, res) => {
     try {
         const result = await startDemoCheckout(req.body, req.user.userId);
@@ -60,6 +62,7 @@ const startDemoCheckoutController = async (req, res) => {
     }
 };
 
+// Retrieves the data needed for get demo checkout controller.
 const getDemoCheckoutController = async (req, res) => {
     try {
         const result = await getDemoCheckout(req.params.id, req.user.userId);
@@ -69,6 +72,7 @@ const getDemoCheckoutController = async (req, res) => {
     }
 };
 
+// Updates the state used for complete demo checkout controller.
 const completeDemoCheckoutController = async (req, res) => {
     try {
         const payment = await completeDemoCheckout(req.params.id, req.user.userId, req.body);
@@ -78,6 +82,7 @@ const completeDemoCheckoutController = async (req, res) => {
     }
 };
 
+// Checks whether cancel demo checkout controller is true.
 const cancelDemoCheckoutController = async (req, res) => {
     try {
         const payment = await cancelDemoCheckout(req.params.id, req.user.userId);
@@ -186,6 +191,7 @@ const refundPaymentController = async (req, res) => {
     }
 };
 
+// Updates the state used for complete office refund controller.
 const completeOfficeRefundController = async (req, res) => {
     try {
         const result = await completeOfficeRefund(req.params.id, req.user);
@@ -199,6 +205,7 @@ const completeOfficeRefundController = async (req, res) => {
     }
 };
 
+// Retrieves the data needed for get playground admin income controller.
 const getPlaygroundAdminIncomeController = async (req, res) => {
     try {
         const result = await getPlaygroundAdminIncome(req.user.userId);

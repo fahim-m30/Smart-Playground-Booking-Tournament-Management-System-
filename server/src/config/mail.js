@@ -10,6 +10,7 @@ const axios = require("axios");
 
 const BREVO_API_URL = "https://api.brevo.com/v3/smtp/email";
 
+// Sends the notification or response for send mail.
 const sendMail = async ({ to, subject, text, html }) => {
     const apiKey = process.env.BREVO_API_KEY;
     const senderEmail = process.env.BREVO_SENDER_EMAIL || process.env.EMAIL_USER;

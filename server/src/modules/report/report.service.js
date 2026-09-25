@@ -65,6 +65,7 @@ const createReport = async (reporterId, payload) => {
     return report;
 };
 
+// Retrieves the data needed for get reportable customers.
 const getReportableCustomers = async (adminId) => {
     const playgrounds = await Playground.find({ playgroundAdmin: adminId, isDeleted: false }).select("name");
     const playgroundIds = playgrounds.map((playground) => playground._id);
@@ -136,6 +137,7 @@ const getAllReports = async (query) => {
     };
 };
 
+// Retrieves the data needed for get my reports.
 const getMyReports = async (reporterId) => {
     return Report.find({ reporter: reporterId, isDeleted: false })
         .populate("playground", "name address sportType")

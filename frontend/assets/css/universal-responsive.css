@@ -1,397 +1,749 @@
 /* Shared responsive guardrails for every TURF workspace. */
-*, *::before, *::after { box-sizing: border-box; }
-html { min-width: 320px; overflow-x: hidden; }
-body { min-width: 320px; overflow-x: hidden; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
-img, svg, video, canvas { display: block; max-width: 100%; height: auto; }
-button, input, select, textarea { max-width: 100%; font: inherit; }
-button, a, input, select, textarea { touch-action: manipulation; }
-input, select, textarea { min-width: 0; }
-table { max-width: 100%; }
-iframe { max-width: 100%; border: 0; }
-
+*,*::before,*::after {
+    box-sizing:border-box;
+}
+html {
+    min-width:320px;
+    overflow-x:hidden;
+}
+body {
+    min-width:320px;
+    overflow-x:hidden;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+}
+img,svg,video,canvas {
+    display:block;
+    max-width:100%;
+    height:auto;
+}
+button,input,select,textarea {
+    max-width:100%;
+    font:inherit;
+}
+button,a,input,select,textarea {
+    touch-action:manipulation;
+}
+input,select,textarea {
+    min-width:0;
+}
+table {
+    max-width:100%;
+}
+iframe {
+    max-width:100%;
+    border:0;
+}
 /* Prevent long dynamic values (names, emails, booking IDs) from widening layouts. */
-.portal, .admin-container, .main-content, .dashboard-body, .modal-box,
-.card, .panel, .admin-card, .dashboard-card-link, .auth-card,
-.chat-shell, .chat-main, .conversation-copy, .message, .receipt {
-    min-width: 0;
+.portal,.admin-container,.main-content,.dashboard-body,.modal-box,.card,.panel,.admin-card,.dashboard-card-link,.auth-card,.chat-shell,.chat-main,.conversation-copy,.message,.receipt {
+    min-width:0;
 }
-
 /* Horizontal scrolling is intentional inside data tables, never on the page. */
-.table-wrap, .table-responsive, .standings-wrap, .schedule-table-wrap,
-.booking-table-wrap, .report-table-wrap {
-    max-width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+.table-wrap,.table-responsive,.standings-wrap,.schedule-table-wrap,.booking-table-wrap,.report-table-wrap {
+    max-width:100%;
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
 }
-
-@media (max-width: 1100px) {
-    .portal { width: min(100%, 1180px); }
-    .dashboard-shell { min-width: 0; }
-    .topbar, .portal-head, .admin-header { min-width: 0; }
-    .topbar > *, .portal-head > *, .admin-header > * { min-width: 0; }
-}
-
-@media (max-width: 900px) {
-    .portal { padding: 24px 18px 42px; }
-    .portal-head { align-items: flex-start; flex-wrap: wrap; }
-    .portal-head h1 { font-size: clamp(1.45rem, 5vw, 2rem); }
-    .user-actions { width: 100%; justify-content: flex-start; }
-    .grid { grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
-    .modal { padding: 12px; }
-    .modal-box { max-height: calc(100vh - 24px); }
-    .form-grid { gap: 10px; }
-
-    .admin-page { padding: 22px 18px 42px; }
-    .admin-header { padding: 22px; }
-    .admin-nav { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
-    .admin-nav a { flex: 0 0 auto; }
-}
-
-@media (max-width: 640px) {
-    body { font-size: 15px; }
-    .portal { padding: 18px 14px 32px; }
-    .portal-head { gap: 14px; margin-bottom: 18px; }
-    .portal-head p { font-size: .82rem; }
-    .user-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .user-actions .button, .user-actions button { justify-content: center; padding: 11px 8px; text-align: center; }
-    .grid { grid-template-columns: 1fr; gap: 12px; }
-    .card, .panel { padding: 15px; border-radius: 12px; }
-    .form-grid, .match-manager-row .form-grid { grid-template-columns: 1fr; }
-    .form-grid .full { grid-column: auto; }
-    .tabs { padding-bottom: 3px; margin-bottom: 15px; }
-    .tabs button { min-height: 42px; padding: 9px 12px; }
-    .slot-picker { grid-template-columns: 1fr 1fr; }
-    .slot-choice { min-height: 64px; padding: 10px; }
-    .card-foot { align-items: flex-start; flex-wrap: wrap; gap: 9px; }
-    .card-foot > * { flex: 1 1 auto; }
-    .ticket { gap: 14px; }
-    .notice { font-size: .8rem; }
-    .receipt { width: 100%; }
-
-    /* Keep action controls usable without forcing a horizontal page scroll. */
-    .portal-head > .user-actions, .portal-head > div:last-child:not(:first-child) {
-        width: 100%;
+/* Tablet and phone layout: applies at (max-width:1100px) */
+@media (max-width:1100px) {
+    .portal {
+        width:min(100%,1180px);
     }
-    .button, button, input[type="submit"], input[type="button"] {
-        min-height: 44px;
+    .dashboard-shell {
+        min-width:0;
     }
-    .modal { align-items: end; }
-    .modal-box { width: 100%; max-height: calc(100dvh - 16px); border-radius: 16px 16px 0 0; }
-    .ticket img { margin: 0 auto; }
-    .auth-page { padding: 14px; }
-    .auth-card { width: 100%; }
-    .admin-nav { margin-left: -2px; margin-right: -2px; }
-
-    /* Common compact layouts used by dashboards, booking and tournament pages. */
-    .stats, .income-stat-grid, .admin-grid, .panel-grid, .dashboard-hero,
-    .split-grid, .ground-form, .profile-grid, .report-summary,
-    .schedule-summary, .booking-summary { grid-template-columns: 1fr; }
-    .booking-panel-heading, .daily-schedule-toolbar, .filter-toolbar,
-    .toolbar, .report-toolbar { align-items: stretch; flex-direction: column; }
-    .booking-panel-heading > *, .daily-schedule-toolbar > *, .filter-toolbar > *,
-    .toolbar > *, .report-toolbar > * { width: 100%; }
-    .fixture-row { grid-template-columns: 1fr; }
-    .fixture-score { text-align: left; }
-    .tournament-overview { gap: 12px; }
-
-    .admin-page { padding: 14px 12px 32px; }
-    .admin-header { gap: 14px; padding: 18px; border-radius: 16px; }
-    .admin-header h1 { font-size: clamp(1.4rem, 7vw, 1.75rem); }
-    .admin-link { width: 100%; }
-    .admin-card, .dashboard-card-link { padding: 17px; border-radius: 15px; }
-    .list-item { align-items: flex-start; flex-wrap: wrap; }
-
-    .dashboard-body { margin-top: 20px; }
-    .section-heading { align-items: flex-start; flex-direction: column; margin-top: 24px; }
-    .list-row { align-items: flex-start; flex-wrap: wrap; }
-    .availability-card header { align-items: flex-start; flex-direction: column; }
-    .availability-card header a { width: 100%; text-align: center; }
-
-    .standings-wrap, .table-wrap, .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-    .standings-table, table { min-width: max-content; }
+    .topbar,.portal-head,.admin-header {
+        min-width:0;
+    }
+    .topbar>*,.portal-head>*,.admin-header>* {
+        min-width:0;
+    }
 }
-
-@media (max-width: 390px) {
-    .user-actions, .slot-picker { grid-template-columns: 1fr; }
-    .portal-head h1 { font-size: 1.38rem; }
-    .button, button { min-height: 43px; }
-    .card-foot > * { width: 100%; }
+/* Tablet and phone layout: applies at (max-width:900px) */
+@media (max-width:900px) {
+    .portal {
+        padding:24px 18px 42px;
+    }
+    .portal-head {
+        align-items:flex-start;
+        flex-wrap:wrap;
+    }
+    .portal-head h1 {
+        font-size:clamp(1.45rem,5vw,2rem);
+    }
+    .user-actions {
+        width:100%;
+        justify-content:flex-start;
+    }
+    .grid {
+        grid-template-columns:repeat(auto-fit,minmax(230px,1fr));
+    }
+    .modal {
+        padding:12px;
+    }
+    .modal-box {
+        max-height:calc(100vh - 24px);
+    }
+    .form-grid {
+        gap:10px;
+    }
+    .admin-page {
+        padding:22px 18px 42px;
+    }
+    .admin-header {
+        padding:22px;
+    }
+    .admin-nav {
+        flex-wrap:nowrap;
+        overflow-x:auto;
+        padding-bottom:4px;
+    }
+    .admin-nav a {
+        flex:0 0 auto;
+    }
 }
-
+/* Phone layout: applies at (max-width:640px) */
+@media (max-width:640px) {
+    body {
+        font-size:15px;
+    }
+    .portal {
+        padding:18px 14px 32px;
+    }
+    .portal-head {
+        gap:14px;
+        margin-bottom:18px;
+    }
+    .portal-head p {
+        font-size:.82rem;
+    }
+    .user-actions {
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        gap:8px;
+    }
+    .user-actions .button,.user-actions button {
+        justify-content:center;
+        padding:11px 8px;
+        text-align:center;
+    }
+    .grid {
+        grid-template-columns:1fr;
+        gap:12px;
+    }
+    .card,.panel {
+        padding:15px;
+        border-radius:12px;
+    }
+    .form-grid,.match-manager-row .form-grid {
+        grid-template-columns:1fr;
+    }
+    .form-grid .full {
+        grid-column:auto;
+    }
+    .tabs {
+        padding-bottom:3px;
+        margin-bottom:15px;
+    }
+    .tabs button {
+        min-height:42px;
+        padding:9px 12px;
+    }
+    .slot-picker {
+        grid-template-columns:1fr 1fr;
+    }
+    .slot-choice {
+        min-height:64px;
+        padding:10px;
+    }
+    .card-foot {
+        align-items:flex-start;
+        flex-wrap:wrap;
+        gap:9px;
+    }
+    .card-foot>* {
+        flex:1 1 auto;
+    }
+    .ticket {
+        gap:14px;
+    }
+    .notice {
+        font-size:.8rem;
+    }
+    .receipt {
+        width:100%;
+    }
+/* Keep action controls usable without forcing a horizontal page scroll. */
+    .portal-head>.user-actions,.portal-head>div:last-child:not(:first-child) {
+        width:100%;
+    }
+    .button,button,input[type="submit"],input[type="button"] {
+        min-height:44px;
+    }
+    .modal {
+        align-items:end;
+    }
+    .modal-box {
+        width:100%;
+        max-height:calc(100dvh - 16px);
+        border-radius:16px 16px 0 0;
+    }
+    .ticket img {
+        margin:0 auto;
+    }
+    .auth-page {
+        padding:14px;
+    }
+    .auth-card {
+        width:100%;
+    }
+    .admin-nav {
+        margin-left:-2px;
+        margin-right:-2px;
+    }
+/* Common compact layouts used by dashboards, booking and tournament pages. */
+    .stats,.income-stat-grid,.admin-grid,.panel-grid,.dashboard-hero,.split-grid,.ground-form,.profile-grid,.report-summary,.schedule-summary,.booking-summary {
+        grid-template-columns:1fr;
+    }
+    .booking-panel-heading,.daily-schedule-toolbar,.filter-toolbar,.toolbar,.report-toolbar {
+        align-items:stretch;
+        flex-direction:column;
+    }
+    .booking-panel-heading>*,.daily-schedule-toolbar>*,.filter-toolbar>*,.toolbar>*,.report-toolbar>* {
+        width:100%;
+    }
+    .fixture-row {
+        grid-template-columns:1fr;
+    }
+    .fixture-score {
+        text-align:left;
+    }
+    .tournament-overview {
+        gap:12px;
+    }
+    .admin-page {
+        padding:14px 12px 32px;
+    }
+    .admin-header {
+        gap:14px;
+        padding:18px;
+        border-radius:16px;
+    }
+    .admin-header h1 {
+        font-size:clamp(1.4rem,7vw,1.75rem);
+    }
+    .admin-link {
+        width:100%;
+    }
+    .admin-card,.dashboard-card-link {
+        padding:17px;
+        border-radius:15px;
+    }
+    .list-item {
+        align-items:flex-start;
+        flex-wrap:wrap;
+    }
+    .dashboard-body {
+        margin-top:20px;
+    }
+    .section-heading {
+        align-items:flex-start;
+        flex-direction:column;
+        margin-top:24px;
+    }
+    .list-row {
+        align-items:flex-start;
+        flex-wrap:wrap;
+    }
+    .availability-card header {
+        align-items:flex-start;
+        flex-direction:column;
+    }
+    .availability-card header a {
+        width:100%;
+        text-align:center;
+    }
+    .standings-wrap,.table-wrap,.table-responsive {
+        overflow-x:auto;
+        -webkit-overflow-scrolling:touch;
+    }
+    .standings-table,table {
+        min-width:max-content;
+    }
+}
+/* Phone layout: applies at (max-width:390px) */
+@media (max-width:390px) {
+    .user-actions,.slot-picker {
+        grid-template-columns:1fr;
+    }
+    .portal-head h1 {
+        font-size:1.38rem;
+    }
+    .button,button {
+        min-height:43px;
+    }
+    .card-foot>* {
+        width:100%;
+    }
+}
 /* ========================================================================
    TURF visual system — shared finishing layer
    This file loads after each page's feature stylesheet, so these rules keep
    the full product visually consistent without changing page behaviour.
    ======================================================================== */
 :root {
-    --ui-ink: #173426;
-    --ui-muted: #65766b;
-    --ui-green: #167a42;
-    --ui-green-strong: #0d6334;
-    --ui-green-soft: #e9f7ed;
-    --ui-green-wash: #f4fbf6;
-    --ui-surface: #ffffff;
-    --ui-offwhite: #f7faf7;
-    --ui-line: #dbe9df;
-    --ui-shadow: 0 14px 38px rgba(24, 74, 43, .08);
-    --ui-shadow-lg: 0 24px 64px rgba(17, 67, 38, .13);
+    --ui-ink:#173426;
+    --ui-muted:#65766b;
+    --ui-green:#167a42;
+    --ui-green-strong:#0d6334;
+    --ui-green-soft:#e9f7ed;
+    --ui-green-wash:#f4fbf6;
+    --ui-surface:#ffffff;
+    --ui-offwhite:#f7faf7;
+    --ui-line:#dbe9df;
+    --ui-shadow:0 14px 38px rgba(24,74,43,.08);
+    --ui-shadow-lg:0 24px 64px rgba(17,67,38,.13);
 }
-
-html { background: var(--ui-offwhite); }
+html {
+    background:var(--ui-offwhite);
+}
 body {
-    color: var(--ui-ink) !important;
-    background: radial-gradient(circle at 0 0, #e7f7eb 0, transparent 28rem), var(--ui-offwhite) !important;
-    font-family: Inter, Poppins, Arial, sans-serif !important;
-    line-height: 1.5;
+    color:var(--ui-ink) !important;
+    background:radial-gradient(circle at 0 0,#e7f7eb 0,transparent 28rem),var(--ui-offwhite) !important;
+    font-family:Inter,Poppins,Arial,sans-serif !important;
+    line-height:1.5;
 }
-
-::selection { background: #b9ecc6; color: #133d22; }
-:focus-visible { outline: 3px solid rgba(49, 163, 86, .45); outline-offset: 3px; }
-.portal, .dashboard-body, .chat-shell, .admin-page { animation: turf-enter .32s ease both; }
-@keyframes turf-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-
-a { color: var(--ui-green); }
-a:hover { color: var(--ui-green-strong); }
-button, .button, input[type="submit"], input[type="button"] {
-    border-radius: 10px !important;
-    background: linear-gradient(135deg, var(--ui-green), #249856) !important;
-    color: #fff !important;
-    box-shadow: 0 7px 16px rgba(22, 122, 66, .16);
-    transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
+::selection {
+    background:#b9ecc6;
+    color:#133d22;
 }
-button:hover, .button:hover, input[type="submit"]:hover, input[type="button"]:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 11px 22px rgba(22, 122, 66, .2);
+:focus-visible {
+    outline:3px solid rgba(49,163,86,.45);
+    outline-offset:3px;
 }
-button.alt, .button.alt, .logout-button, .close, .cancel, .back {
-    background: var(--ui-surface) !important;
-    color: var(--ui-green-strong) !important;
-    border: 1px solid #cde4d3 !important;
-    box-shadow: none !important;
+.portal,.dashboard-body,.chat-shell,.admin-page {
+    animation:turf-enter .32s ease both;
 }
-button.alt:hover, .button.alt:hover, .logout-button:hover, .close:hover, .cancel:hover, .back:hover {
-    background: var(--ui-green-soft) !important;
+@keyframes turf-enter {
+    from {
+        opacity:0;
+        transform:translateY(8px);
+    }
+    to {
+        opacity:1;
+        transform:translateY(0);
+    }
+}
+a {
+    color:var(--ui-green);
+}
+a:hover {
+    color:var(--ui-green-strong);
+}
+button,.button,input[type="submit"],input[type="button"] {
+    border-radius:10px !important;
+    background:linear-gradient(135deg,var(--ui-green),#249856) !important;
+    color:#fff !important;
+    box-shadow:0 7px 16px rgba(22,122,66,.16);
+    transition:transform .18s ease,box-shadow .18s ease,background .18s ease;
+}
+button:hover,.button:hover,input[type="submit"]:hover,input[type="button"]:hover {
+    transform:translateY(-1px);
+    box-shadow:0 11px 22px rgba(22,122,66,.2);
+}
+button.alt,.button.alt,.logout-button,.close,.cancel,.back {
+    background:var(--ui-surface) !important;
+    color:var(--ui-green-strong) !important;
+    border:1px solid #cde4d3 !important;
+    box-shadow:none !important;
+}
+button.alt:hover,.button.alt:hover,.logout-button:hover,.close:hover,.cancel:hover,.back:hover {
+    background:var(--ui-green-soft) !important;
 }
 /* Controls that select, reveal or navigate stay visually secondary. */
-.tabs button, .slot-choice, .conversation, .notification-button,
-.notification-menu header button, .notification-item, .password-toggle,
-#clear-search {
-    background: var(--ui-surface) !important;
-    color: var(--ui-ink) !important;
-    border-color: var(--ui-line) !important;
-    box-shadow: none !important;
+.tabs button,.slot-choice,.conversation,.notification-button,.notification-menu header button,.notification-item,.password-toggle,#clear-search {
+    background:var(--ui-surface) !important;
+    color:var(--ui-ink) !important;
+    border-color:var(--ui-line) !important;
+    box-shadow:none !important;
 }
-.tabs button:hover, .slot-choice:hover, .conversation:hover,
-.notification-button:hover, .notification-item:hover {
-    background: var(--ui-green-soft) !important;
+.tabs button:hover,.slot-choice:hover,.conversation:hover,.notification-button:hover,.notification-item:hover {
+    background:var(--ui-green-soft) !important;
 }
-.tabs button.active, .conversation.active, .slot-choice.selected {
-    background: var(--ui-green-soft) !important;
-    color: var(--ui-green-strong) !important;
+.tabs button.active,.conversation.active,.slot-choice.selected {
+    background:var(--ui-green-soft) !important;
+    color:var(--ui-green-strong) !important;
 }
 .slot-choice.booked {
-    background: #e8f5eb !important;
-    color: #397049 !important;
-    border-color: #b9dec3 !important;
+    background:#e8f5eb !important;
+    color:#397049 !important;
+    border-color:#b9dec3 !important;
 }
-.password-toggle, #clear-search, .notification-menu header button {
-    color: var(--ui-green-strong) !important;
+.password-toggle,#clear-search,.notification-menu header button {
+    color:var(--ui-green-strong) !important;
 }
-button:disabled, .button:disabled, input[type="submit"]:disabled,
-input[type="button"]:disabled { cursor: not-allowed; opacity: .62; transform: none !important; }
-input, select, textarea {
-    border-color: #cfe0d3 !important;
-    background: #fff !important;
-    color: var(--ui-ink) !important;
-    border-radius: 10px !important;
-    transition: border-color .18s ease, box-shadow .18s ease;
+button:disabled,.button:disabled,input[type="submit"]:disabled,input[type="button"]:disabled {
+    cursor:not-allowed;
+    opacity:.62;
+    transform:none !important;
 }
-input:focus, select:focus, textarea:focus {
-    outline: 0;
-    border-color: #4ba76c !important;
-    box-shadow: 0 0 0 4px rgba(61, 160, 92, .13) !important;
+input,select,textarea {
+    border-color:#cfe0d3 !important;
+    background:#fff !important;
+    color:var(--ui-ink) !important;
+    border-radius:10px !important;
+    transition:border-color .18s ease,box-shadow .18s ease;
 }
-::placeholder { color: #94a59a !important; opacity: 1; }
-
-.card, .panel, .admin-card, .dashboard-card-link, .auth-card, .receipt,
-.admin-header, .loading-card, .empty-state, .setup-ground, .ticker,
-.notification-menu, .modal-box, .checkout-card, .ground-details {
-    border-color: var(--ui-line) !important;
-    box-shadow: var(--ui-shadow) !important;
+input:focus,select:focus,textarea:focus {
+    outline:0;
+    border-color:#4ba76c !important;
+    box-shadow:0 0 0 4px rgba(61,160,92,.13) !important;
 }
-.card, .panel, .admin-card, .dashboard-card-link, .auth-card, .receipt,
-.admin-header, .loading-card, .empty-state, .setup-ground, .modal-box,
-.checkout-card, .ground-details { background: var(--ui-surface) !important; }
-.card, .panel, .admin-card, .dashboard-card-link, .auth-card, .receipt,
-.admin-header, .modal-box { border-radius: 18px !important; }
-.card:hover, .dashboard-card-link:hover, .admin-card:hover {
-    border-color: #b9dec3 !important;
-    box-shadow: 0 18px 40px rgba(24, 91, 48, .12) !important;
+::placeholder {
+    color:#94a59a !important;
+    opacity:1;
 }
-.card h2, .card h3, .panel h2, .panel h3 { color: var(--ui-ink); letter-spacing: -.025em; }
-.meta, .item-meta { color: var(--ui-muted) !important; }
-
-.navbar, .sidebar, .topbar, .admin-nav, .portal-head {
-    border-color: var(--ui-line) !important;
+.card,.panel,.admin-card,.dashboard-card-link,.auth-card,.receipt,.admin-header,.loading-card,.empty-state,.setup-ground,.ticker,.notification-menu,.modal-box,.checkout-card,.ground-details {
+    border-color:var(--ui-line) !important;
+    box-shadow:var(--ui-shadow) !important;
 }
-.navbar { background: rgba(255,255,255,.94) !important; }
-.side-nav { gap: 7px; }
+.card,.panel,.admin-card,.dashboard-card-link,.auth-card,.receipt,.admin-header,.loading-card,.empty-state,.setup-ground,.modal-box,.checkout-card,.ground-details {
+    background:var(--ui-surface) !important;
+}
+.card,.panel,.admin-card,.dashboard-card-link,.auth-card,.receipt,.admin-header,.modal-box {
+    border-radius:18px !important;
+}
+.card:hover,.dashboard-card-link:hover,.admin-card:hover {
+    border-color:#b9dec3 !important;
+    box-shadow:0 18px 40px rgba(24,91,48,.12) !important;
+}
+.card h2,.card h3,.panel h2,.panel h3 {
+    color:var(--ui-ink);
+    letter-spacing:-.025em;
+}
+.meta,.item-meta {
+    color:var(--ui-muted) !important;
+}
+.navbar,.sidebar,.topbar,.admin-nav,.portal-head {
+    border-color:var(--ui-line) !important;
+}
+.navbar {
+    background:rgba(255,255,255,.94) !important;
+}
+.side-nav {
+    gap:7px;
+}
 .side-nav a {
-    display: flex;
-    align-items: center;
-    gap: 11px;
-    min-height: 46px;
-    padding: 10px 12px !important;
-    border: 1px solid transparent;
-    border-radius: 12px !important;
-    color: #4b6152;
-    transition: background .18s ease, border-color .18s ease, color .18s ease, transform .18s ease;
+    display:flex;
+    align-items:center;
+    gap:11px;
+    min-height:46px;
+    padding:10px 12px !important;
+    border:1px solid transparent;
+    border-radius:12px !important;
+    color:#4b6152;
+    transition:background .18s ease,border-color .18s ease,color .18s ease,transform .18s ease;
 }
 .nav-icon {
-    display: grid;
-    place-items: center;
-    width: 25px;
-    height: 25px;
-    flex: 0 0 25px;
-    color: #5b7763;
+    display:grid;
+    place-items:center;
+    width:25px;
+    height:25px;
+    flex:0 0 25px;
+    color:#5b7763;
 }
 .nav-icon svg {
-    width: 18px;
-    height: 18px;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 1.8;
-    stroke-linecap: round;
-    stroke-linejoin: round;
+    width:18px;
+    height:18px;
+    fill:none;
+    stroke:currentColor;
+    stroke-width:1.8;
+    stroke-linecap:round;
+    stroke-linejoin:round;
 }
-.side-nav a.active, .side-nav a:hover, .admin-nav a.active, .admin-nav a:hover,
-.tabs button.active, .tab.active { background: var(--ui-green-soft) !important; color: var(--ui-green-strong) !important; }
-.side-nav a.active { border-color: #c8e6cf; }
-.side-nav a.active .nav-icon, .side-nav a:hover .nav-icon { color: var(--ui-green-strong); }
-.tabs button.active { border-color: #bfe0c8 !important; }
-.badge, .status, .page-badge, .admin-badge {
-    background: var(--ui-green-soft) !important;
-    color: var(--ui-green-strong) !important;
-    border: 1px solid #d2e9d8;
+.side-nav a.active,.side-nav a:hover,.admin-nav a.active,.admin-nav a:hover,.tabs button.active,.tab.active {
+    background:var(--ui-green-soft) !important;
+    color:var(--ui-green-strong) !important;
 }
-.status.pending { background: #fff8e7 !important; color: #8a650b !important; border-color: #f0deb2 !important; }
-.status.cancelled { background: #fff3f1 !important; color: #9b4539 !important; border-color: #f0ccc5 !important; }
-.notice { border-color: #c7e5ce !important; background: var(--ui-green-wash) !important; color: var(--ui-green-strong) !important; }
-.notice.error { background: #fff7f5 !important; border-color: #f0cbc3 !important; color: #953c2d !important; }
-
-.table-wrap, .table-responsive, .standings-wrap, .schedule-table-wrap,
-.booking-table-wrap, .report-table-wrap {
-    border: 1px solid var(--ui-line);
-    border-radius: 14px;
-    background: var(--ui-surface);
+.side-nav a.active {
+    border-color:#c8e6cf;
 }
-th { background: #eff8f1 !important; color: var(--ui-green-strong) !important; }
-td, th { border-color: #e3eee5 !important; }
-tr:hover td { background: #f8fcf8; }
-
-.hero, .page-hero, .admin-header, .dashboard-hero, .creator-heading {
-    border-color: #d5eadb !important;
+.side-nav a.active .nav-icon,.side-nav a:hover .nav-icon {
+    color:var(--ui-green-strong);
 }
-.page-hero, .dashboard-hero { background: linear-gradient(135deg, #eaf8ee, #fff) !important; }
-.footer { background: #f0f8f2 !important; border-top: 1px solid var(--ui-line); }
-
+.tabs button.active {
+    border-color:#bfe0c8 !important;
+}
+.badge,.status,.page-badge,.admin-badge {
+    background:var(--ui-green-soft) !important;
+    color:var(--ui-green-strong) !important;
+    border:1px solid #d2e9d8;
+}
+.status.pending {
+    background:#fff8e7 !important;
+    color:#8a650b !important;
+    border-color:#f0deb2 !important;
+}
+.status.cancelled {
+    background:#fff3f1 !important;
+    color:#9b4539 !important;
+    border-color:#f0ccc5 !important;
+}
+.notice {
+    border-color:#c7e5ce !important;
+    background:var(--ui-green-wash) !important;
+    color:var(--ui-green-strong) !important;
+}
+.notice.error {
+    background:#fff7f5 !important;
+    border-color:#f0cbc3 !important;
+    color:#953c2d !important;
+}
+.table-wrap,.table-responsive,.standings-wrap,.schedule-table-wrap,.booking-table-wrap,.report-table-wrap {
+    border:1px solid var(--ui-line);
+    border-radius:14px;
+    background:var(--ui-surface);
+}
+th {
+    background:#eff8f1 !important;
+    color:var(--ui-green-strong) !important;
+}
+td,th {
+    border-color:#e3eee5 !important;
+}
+tr:hover td {
+    background:#f8fcf8;
+}
+.hero,.page-hero,.admin-header,.dashboard-hero,.creator-heading {
+    border-color:#d5eadb !important;
+}
+.page-hero,.dashboard-hero {
+    background:linear-gradient(135deg,#eaf8ee,#fff) !important;
+}
+.footer {
+    background:#f0f8f2 !important;
+    border-top:1px solid var(--ui-line);
+}
 /* Cross-workspace product polish: these selectors intentionally reuse the
    same tokens across booking, admin, support, and account screens. */
-.portal-head, .topbar, .chat-top { position: relative; }
-.portal-head h1, .topbar h1, .chat-top h1, .page-hero h1 { text-wrap: balance; }
-.form-grid label, .ground-form label, .composer label { color: #3f5d49; font-weight: 700; }
-.form-grid input, .form-grid select, .form-grid textarea, .ground-form input, .ground-form select, .ground-form textarea { min-height: 46px; }
-.form-grid textarea, .ground-form textarea { min-height: 104px; }
-.stat-card, .income-stat-grid article, .availability-card, .action-card { border-color: #d5e8da !important; box-shadow: 0 10px 24px rgba(16, 74, 38, .055) !important; }
-.stat-card:hover, .income-stat-grid article:hover, .availability-card:hover { transform: translateY(-2px); box-shadow: 0 18px 36px rgba(16, 74, 38, .1) !important; }
-.chat-app { border-color: #d5e8da !important; box-shadow: var(--ui-shadow-lg) !important; }
-.thread-header { background: linear-gradient(135deg, #fbfefb, #f1faf3); }
-.message-list { background: linear-gradient(145deg, #fbfefb, #f0f8f2) !important; }
-.composer { background: rgba(255,255,255,.96); }
-.auth-card { box-shadow: var(--ui-shadow-lg) !important; }
-.auth-form__actions { align-items: center; }
-.notification-menu { box-shadow: var(--ui-shadow-lg) !important; }
-
+.portal-head,.topbar,.chat-top {
+    position:relative;
+}
+.portal-head h1,.topbar h1,.chat-top h1,.page-hero h1 {
+    text-wrap:balance;
+}
+.form-grid label,.ground-form label,.composer label {
+    color:#3f5d49;
+    font-weight:700;
+}
+.form-grid input,.form-grid select,.form-grid textarea,.ground-form input,.ground-form select,.ground-form textarea {
+    min-height:46px;
+}
+.form-grid textarea,.ground-form textarea {
+    min-height:104px;
+}
+.stat-card,.income-stat-grid article,.availability-card,.action-card {
+    border-color:#d5e8da !important;
+    box-shadow:0 10px 24px rgba(16,74,38,.055) !important;
+}
+.stat-card:hover,.income-stat-grid article:hover,.availability-card:hover {
+    transform:translateY(-2px);
+    box-shadow:0 18px 36px rgba(16,74,38,.1) !important;
+}
+.chat-app {
+    border-color:#d5e8da !important;
+    box-shadow:var(--ui-shadow-lg) !important;
+}
+.thread-header {
+    background:linear-gradient(135deg,#fbfefb,#f1faf3);
+}
+.message-list {
+    background:linear-gradient(145deg,#fbfefb,#f0f8f2) !important;
+}
+.composer {
+    background:rgba(255,255,255,.96);
+}
+.auth-card {
+    box-shadow:var(--ui-shadow-lg) !important;
+}
+.auth-form__actions {
+    align-items:center;
+}
+.notification-menu {
+    box-shadow:var(--ui-shadow-lg) !important;
+}
 /* Scanner controls keep a clear primary/secondary hierarchy even though the
    shared component layer gives ordinary buttons the primary treatment. */
 .scanner-page .secondary {
-    background: #eef5f0 !important;
-    color: #31513d !important;
-    border: 1px solid #d6e6da !important;
-    box-shadow: none !important;
+    background:#eef5f0 !important;
+    color:#31513d !important;
+    border:1px solid #d6e6da !important;
+    box-shadow:none !important;
 }
-.scanner-page .secondary:hover { background: #e2f1e6 !important; }
-
+.scanner-page .secondary:hover {
+    background:#e2f1e6 !important;
+}
 /* Device resilience: no page may demand more width than the viewport, while
    dense desktop layouts turn into deliberate, easy-to-tap mobile layouts. */
-@media (max-width: 1024px) {
-    .portal, .chat-shell, .scanner-page { width: min(100%, 100%); }
-    .portal-head, .topbar, .chat-top { gap: 14px; }
-    .portal-head h1, .topbar h1 { font-size: clamp(1.45rem, 4.6vw, 2.1rem); }
+/* Tablet and phone layout: applies at (max-width:1024px) */
+@media (max-width:1024px) {
+    .portal,.chat-shell,.scanner-page {
+        width:min(100%,100%);
+    }
+    .portal-head,.topbar,.chat-top {
+        gap:14px;
+    }
+    .portal-head h1,.topbar h1 {
+        font-size:clamp(1.45rem,4.6vw,2.1rem);
+    }
 }
-
-@media (max-width: 760px) {
-    html { scroll-padding-top: 76px; }
-    body { font-size: 15px; }
-    .portal-head, .topbar, .chat-top { align-items: flex-start; }
-    .portal-head .user-actions, .user-actions, .card-foot, .venue-contact-actions { flex-wrap: wrap; }
-    .portal-head .user-actions > *, .user-actions > *, .card-foot > * { min-width: min(100%, 148px); }
-    .modal { padding: 8px; }
-    .modal-box { overscroll-behavior: contain; }
-    .notification-menu { max-height: min(70dvh, 520px); overflow-y: auto; }
-    .chat-app, .message-list, .conversation-sidebar { overscroll-behavior: contain; }
+/* Phone layout: applies at (max-width:760px) */
+@media (max-width:760px) {
+    html {
+        scroll-padding-top:76px;
+    }
+    body {
+        font-size:15px;
+    }
+    .portal-head,.topbar,.chat-top {
+        align-items:flex-start;
+    }
+    .portal-head .user-actions,.user-actions,.card-foot,.venue-contact-actions {
+        flex-wrap:wrap;
+    }
+    .portal-head .user-actions>*,.user-actions>*,.card-foot>* {
+        min-width:min(100%,148px);
+    }
+    .modal {
+        padding:8px;
+    }
+    .modal-box {
+        overscroll-behavior:contain;
+    }
+    .notification-menu {
+        max-height:min(70dvh,520px);
+        overflow-y:auto;
+    }
+    .chat-app,.message-list,.conversation-sidebar {
+        overscroll-behavior:contain;
+    }
 }
-
-@media (max-width: 480px) {
-    .portal, .chat-shell { padding-left: 12px; padding-right: 12px; }
-    .portal-head h1, .topbar h1, .chat-top h1 { letter-spacing: -.04em; }
-    .button, button, input[type="submit"], input[type="button"] { min-height: 46px; }
-    .card-foot, .venue-contact-actions, .cancellation-actions { display: grid; grid-template-columns: 1fr; }
-    .card-foot > *, .venue-contact-actions > *, .cancellation-actions > * { width: 100%; }
-    .hero-buttons .btn-green, .hero-buttons .btn-white { width: 100%; }
+/* Phone layout: applies at (max-width:480px) */
+@media (max-width:480px) {
+    .portal,.chat-shell {
+        padding-left:12px;
+        padding-right:12px;
+    }
+    .portal-head h1,.topbar h1,.chat-top h1 {
+        letter-spacing:-.04em;
+    }
+    .button,button,input[type="submit"],input[type="button"] {
+        min-height:46px;
+    }
+    .card-foot,.venue-contact-actions,.cancellation-actions {
+        display:grid;
+        grid-template-columns:1fr;
+    }
+    .card-foot>*,.venue-contact-actions>*,.cancellation-actions>* {
+        width:100%;
+    }
+    .hero-buttons .btn-green,.hero-buttons .btn-white {
+        width:100%;
+    }
 }
-
-@media (hover: none) {
-    .card:hover, .dashboard-card-link:hover, .admin-card:hover, .action-card:hover,
-    .availability-card:hover, .stat-card:hover, .income-stat-grid article:hover,
-    button:hover, .button:hover { transform: none; }
+@media (hover:none) {
+    .card:hover,.dashboard-card-link:hover,.admin-card:hover,.action-card:hover,.availability-card:hover,.stat-card:hover,.income-stat-grid article:hover,button:hover,.button:hover {
+        transform:none;
+    }
 }
-
-@media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
+@media (prefers-reduced-motion:reduce) {
+    *,*::before,*::after {
+        animation-duration:.01ms !important;
+        animation-iteration-count:1 !important;
+        scroll-behavior:auto !important;
+        transition-duration:.01ms !important;
+    }
 }
-
-@media (max-width: 640px) {
-    button, .button, input[type="submit"], input[type="button"] { border-radius: 9px !important; }
-    .card, .panel, .admin-card, .dashboard-card-link, .auth-card, .receipt,
-    .admin-header, .modal-box { border-radius: 15px !important; }
-    .side-nav a { justify-content: flex-start; text-align: left !important; }
-
-    /* The dashboard uses its navigation as a compact two-column control on
+/* Phone layout: applies at (max-width:640px) */
+@media (max-width:640px) {
+    button,.button,input[type="submit"],input[type="button"] {
+        border-radius:9px !important;
+    }
+    .card,.panel,.admin-card,.dashboard-card-link,.auth-card,.receipt,.admin-header,.modal-box {
+        border-radius:15px !important;
+    }
+    .side-nav a {
+        justify-content:flex-start;
+        text-align:left !important;
+    }
+/* The dashboard uses its navigation as a compact two-column control on
        phones. Keep its labels centered while other side navigation remains
        left aligned for readability. */
-    .dashboard-shell .side-nav { scrollbar-width: none; }
-    .dashboard-shell .side-nav::-webkit-scrollbar { display: none; }
-    .dashboard-shell .side-nav a { justify-content: center; text-align: center !important; }
-    .dashboard-shell .topbar-tools { flex-wrap: wrap; justify-content: flex-end; }
-    .dashboard-shell .notification-menu { width: calc(100vw - 28px); }
-
-    .scanner-page .scanner-card-head, .scanner-page .result-heading { flex-wrap: wrap; }
-    .scanner-page .camera-controls { gap: 9px; }
+    .dashboard-shell .side-nav {
+        scrollbar-width:none;
+    }
+    .dashboard-shell .side-nav::-webkit-scrollbar {
+        display:none;
+    }
+    .dashboard-shell .side-nav a {
+        justify-content:center;
+        text-align:center !important;
+    }
+    .dashboard-shell .topbar-tools {
+        flex-wrap:wrap;
+        justify-content:flex-end;
+    }
+    .dashboard-shell .notification-menu {
+        width:calc(100vw - 28px);
+    }
+    .scanner-page .scanner-card-head,.scanner-page .result-heading {
+        flex-wrap:wrap;
+    }
+    .scanner-page .camera-controls {
+        gap:9px;
+    }
 }
-
 /* On narrow phones, preserve enough room for a readable message thread while
    still keeping the conversation list visible at a glance. */
-@media (max-width: 480px) {
-    .chat-shell { padding-left: 0; padding-right: 0; }
-    .chat-top { padding-left: 14px; padding-right: 14px; }
-    .chat-app { grid-template-columns: 108px minmax(0, 1fr); }
-    .conversation { grid-template-columns: 1fr; justify-items: center; gap: 5px; padding: 11px 6px; }
-    .conversation-avatar { width: 34px; height: 34px; }
-    .conversation-copy { width: 100%; }
-    .conversation-copy strong { font-size: .64rem; text-align: center; white-space: nowrap; }
-    .thread-header { padding: 13px 11px; }
-    .message-list { padding: 13px 11px; }
-    .composer { padding: 9px; }
+/* Phone layout: applies at (max-width:480px) */
+@media (max-width:480px) {
+    .chat-shell {
+        padding-left:0;
+        padding-right:0;
+    }
+    .chat-top {
+        padding-left:14px;
+        padding-right:14px;
+    }
+    .chat-app {
+        grid-template-columns:108px minmax(0,1fr);
+    }
+    .conversation {
+        grid-template-columns:1fr;
+        justify-items:center;
+        gap:5px;
+        padding:11px 6px;
+    }
+    .conversation-avatar {
+        width:34px;
+        height:34px;
+    }
+    .conversation-copy {
+        width:100%;
+    }
+    .conversation-copy strong {
+        font-size:.64rem;
+        text-align:center;
+        white-space:nowrap;
+    }
+    .thread-header {
+        padding:13px 11px;
+    }
+    .message-list {
+        padding:13px 11px;
+    }
+    .composer {
+        padding:9px;
+    }
 }
 /* Shared responsive rules that keep all TURF pages usable on small screens. */

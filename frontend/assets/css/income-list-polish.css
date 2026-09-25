@@ -1,5 +1,5 @@
 /* Give income entries a comfortable inset so their names never sit on the panel edge. */
-.income-dashboard .income-panel>.list-row{
+.income-dashboard .income-panel>.list-row {
     min-height:78px;
     margin:9px 14px;
     padding:15px 16px;
@@ -7,16 +7,23 @@
     border-radius:12px;
     background:linear-gradient(110deg,#ffffff,#f8fcf9);
 }
-.income-dashboard .income-panel>.list-row:first-of-type{margin-top:14px}
-.income-dashboard .income-panel>.list-row:last-child{margin-bottom:14px}
-.income-dashboard .income-panel>.list-row:hover{
+.income-dashboard .income-panel>.list-row:first-of-type {
+    margin-top:14px
+}
+.income-dashboard .income-panel>.list-row:last-child {
+    margin-bottom:14px
+}
+.income-dashboard .income-panel>.list-row:hover {
     border-color:#b8ddc2;
     background:#f2fbf4;
     transform:translateY(-1px);
     box-shadow:0 8px 18px rgba(11,75,35,.06);
 }
-.income-dashboard .income-panel>.list-row>div{min-width:0;padding-right:12px}
-.income-dashboard .income-panel .item-title{
+.income-dashboard .income-panel>.list-row>div {
+    min-width:0;
+    padding-right:12px
+}
+.income-dashboard .income-panel .item-title {
     overflow:hidden;
     color:#173d23;
     font-size:.88rem;
@@ -24,7 +31,7 @@
     text-overflow:ellipsis;
     white-space:nowrap;
 }
-.income-dashboard .income-panel .item-meta{
+.income-dashboard .income-panel .item-meta {
     display:flex;
     align-items:flex-start;
     gap:5px;
@@ -34,13 +41,13 @@
     font-size:.73rem;
     line-height:1.45;
 }
-.income-dashboard .income-panel .item-meta:before{
+.income-dashboard .income-panel .item-meta:before {
     content:"◷";
     flex:0 0 auto;
     color:#178044;
     font-size:.7rem;
 }
-.income-dashboard .income-panel .status{
+.income-dashboard .income-panel .status {
     flex:0 0 auto;
     padding:8px 11px;
     border:1px solid #d6efdc;
@@ -49,14 +56,21 @@
     box-shadow:0 0 0 4px #f5fbf6;
     font-size:.75rem;
 }
-.income-dashboard .tournament-income-panel .status{
+.income-dashboard .tournament-income-panel .status {
     border-color:#f6e2ac;
     background:#fff6dc;
     color:#956700;
     box-shadow:0 0 0 4px #fffaf0;
 }
-@media(max-width:480px){
-    .income-dashboard .income-panel>.list-row{margin-left:10px;margin-right:10px;padding:14px 13px}
-    .income-dashboard .income-panel .status{padding:7px 8px}
+/* Phone layout: applies at (max-width:480px) */
+@media(max-width:480px) {
+    .income-dashboard .income-panel>.list-row {
+        margin-left:10px;
+        margin-right:10px;
+        padding:14px 13px
+    }
+    .income-dashboard .income-panel .status {
+        padding:7px 8px
+    }
 }
 /* Small visual refinements for income-list rows and their text spacing. */

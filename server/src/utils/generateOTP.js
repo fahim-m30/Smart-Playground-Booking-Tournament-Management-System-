@@ -12,6 +12,7 @@
 
 const otpGenerator = require("otp-generator");
 
+// Generates a one-time password for account verification.
 const generateOTP = () => {
     return otpGenerator.generate(6, {
         upperCaseAlphabets: false,

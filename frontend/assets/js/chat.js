@@ -12,13 +12,21 @@ const token = localStorage.getItem("authToken");
 let user;
 try { user = JSON.parse(localStorage.getItem("authUser") || "null"); } catch (_) { user = null; }
 
+// Selects the first DOM element that matches a CSS selector.
 const $ = (selector) => document.querySelector(selector);
+// Escapes dynamic text before it is inserted into an HTML template.
 const escapeHTML = (value) => String(value ?? "").replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[character]));
+// Handles the id of workflow.
 const idOf = (value) => String(value?._id || value?.id || value || "");
+// Handles the initial workflow.
 const initial = (value) => String(value || "T").trim().charAt(0).toUpperCase();
+// Shows the interface for display role.
 const displayRole = (value) => String(value || "contact").replace("-", " ");
+// Handles the venue of workflow.
 const venueOf = (item) => item?.playground || contactOf(item)?.playground || null;
+// Handles the venue name workflow.
 const venueName = (item) => venueOf(item)?.name || "";
+// Handles the maps url for workflow.
 const mapsUrlFor = (item) => {
     const venue = venueOf(item);
     if (!venue) return "";
@@ -27,6 +35,7 @@ const mapsUrlFor = (item) => {
     const query = [venue.name, venue.address].filter(Boolean).join(", ");
     return query ? "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(query) : "";
 };
+// Handles the contact context workflow.
 const contactContext = (item) => {
     const contact = contactOf(item);
     const venue = venueName(item);
@@ -39,12 +48,14 @@ const contactContext = (item) => {
     if (contact?.role === "super-admin") return { label: "Service", value: "TURF Platform Support" };
     return { label: "Role", value: displayRole(contact?.role) };
 };
+// Formats a stored date or time for display in the interface.
 const time = (value) => value ? new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit" }).format(new Date(value)) : "";
 const visibleContactRoles = {
     customer: ["playground-admin", "super-admin"],
     "playground-admin": ["customer", "super-admin"],
     "super-admin": ["customer", "playground-admin"],
 };
+// Sends an authenticated request to the backend API and handles failed responses.
 const request = async (path, options = {}) => {
     const response = await fetch(API + path, { ...options, headers: { Authorization: "Bearer " + token, ...(options.headers || {}) } });
     const body = await response.json().catch(() => ({}));
@@ -64,12 +75,18 @@ let refreshTimer;
 let activeMessages = [];
 let realtimeSocket;
 
+// Handles the contact of workflow.
 const contactOf = (item) => item?.contact || item;
+// Handles the contact id of workflow.
 const contactIdOf = (item) => idOf(contactOf(item)?.id);
+// Handles the record for workflow.
 const recordFor = (contact, extra = {}) => ({ ...extra, contact: { ...contact, id: idOf(contact?.id) } });
+// Handles the chat key for workflow.
 const chatKeyFor = (first, second) => [idOf(first), idOf(second)].sort().join(":");
+// Checks whether can display contact is true.
 const canDisplayContact = (contact) => visibleContactRoles[user?.role]?.includes(contact?.role);
 
+// Handles the available records workflow.
 function availableRecords() {
     const permittedConversations = conversations.filter((item) => canDisplayContact(contactOf(item)));
     const conversationContactIds = new Set(permittedConversations.map(contactIdOf));
@@ -79,6 +96,7 @@ function availableRecords() {
     return [...permittedConversations, ...newContacts];
 }
 
+// Checks whether matches search is true.
 function matchesSearch(item) {
     if (!searchTerm) return true;
     const contact = contactOf(item);
@@ -90,6 +108,7 @@ function matchesSearch(item) {
     return haystack.includes(searchTerm);
 }
 
+// Builds the interface for render conversations.
 function renderConversations() {
     const list = $("#conversation-list");
     const items = availableRecords().filter(matchesSearch);
@@ -124,6 +143,7 @@ function renderConversations() {
     });
 }
 
+// Builds the interface for render thread.
 function renderThread(messages = activeMessages) {
     activeMessages = messages;
     const contact = activeContact;
@@ -155,6 +175,7 @@ function renderThread(messages = activeMessages) {
     list.scrollTop = list.scrollHeight;
 }
 
+// Handles the select by id workflow.
 async function selectById(contactId, { keepThreadVisible = false } = {}) {
     const item = availableRecords().find((record) => contactIdOf(record) === String(contactId));
     if (!item) return;
@@ -189,6 +210,7 @@ async function selectById(contactId, { keepThreadVisible = false } = {}) {
     }
 }
 
+// Loads the data needed for load.
 async function load(refreshThread = false) {
     try {
         const result = await Promise.all([request("/chat/contacts"), request("/chat/conversations")]);
@@ -218,6 +240,7 @@ function refreshFromRealtime({ refreshThread = true } = {}) {
     refreshTimer = setTimeout(() => load(refreshThread && Boolean(activeContact)), 150);
 }
 
+// Handles the connect realtime workflow.
 function connectRealtime() {
     if (typeof io === "undefined" || !token) return;
     realtimeSocket = io(SERVER_URL, {

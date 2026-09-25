@@ -10,6 +10,7 @@
 const jwt = require("jsonwebtoken");
 const User = require("../modules/user/user.model");
 
+// Checks the incoming request before allowing the protected action.
 const verifyToken = async (req, res, next) => {
     try {
         const authHeader = req.headers.authorization;

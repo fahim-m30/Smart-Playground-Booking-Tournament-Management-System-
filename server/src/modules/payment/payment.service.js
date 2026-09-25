@@ -25,6 +25,7 @@ const { emitToUser, emitDashboardUpdate } = require("../../config/socket");
 // Confirm Payment (Dummy API - Always Success)
 // ===================================================
 
+// Marks an unpaid booking or tournament payment as paid and performs its fulfilment work.
 const confirmPayment = async (paymentId, paymentMethod, transactionId = null) => {
     const payment = await Payment.findById(paymentId);
 
@@ -139,6 +140,7 @@ const confirmPayment = async (paymentId, paymentMethod, transactionId = null) =>
 // Create Payment
 // ===================================================
 
+// Validates a requested booking or tournament registration before creating its payment record.
 const preparePayment = async (payload, customerId) => {
     let amount = 0;
     let booking = null;
@@ -240,6 +242,7 @@ const preparePayment = async (payload, customerId) => {
 
 };
 
+// Creates a pending payment that the selected checkout flow can later complete.
 const createPayment = async (payload, customerId) => {
     const payment = await preparePayment(payload, customerId);
     await confirmPayment(payment._id, payload.paymentMethod);
@@ -261,6 +264,7 @@ const createPayment = async (payload, customerId) => {
 
 const DEMO_METHODS = ["bKash", "Nagad", "Rocket", "Card"];
 
+// Starts the local demo checkout and returns the temporary payment details to the UI.
 const startDemoCheckout = async (payload, customerId) => {
     if (!DEMO_METHODS.includes(payload.paymentMethod)) {
         throw new Error("Choose a supported payment method.");
@@ -302,6 +306,7 @@ const startDemoCheckout = async (payload, customerId) => {
     };
 };
 
+// Returns a customer's own pending demo payment without exposing another customer's data.
 const getDemoCheckout = async (paymentId, customerId) => {
     const payment = await Payment.findOne({
         _id: paymentId,
@@ -329,6 +334,7 @@ const getDemoCheckout = async (paymentId, customerId) => {
     };
 };
 
+// Performs basic validation for the simulated card, mobile banking, or cash payment form.
 const validateDemoCredentials = (paymentMethod, credentials = {}) => {
     if (paymentMethod === "Card") {
         const cardNumber = String(credentials.cardNumber || "").replace(/\D/g, "");
@@ -346,6 +352,7 @@ const validateDemoCredentials = (paymentMethod, credentials = {}) => {
     if (!/^\d{6}$/.test(String(credentials.otp || ""))) throw new Error("Enter the 6-digit demo verification code.");
 };
 
+// Validates demo checkout input and then delegates to the real payment-confirmation workflow.
 const completeDemoCheckout = async (paymentId, customerId, credentials) => {
     const payment = await Payment.findOne({
         _id: paymentId,
@@ -367,6 +374,7 @@ const completeDemoCheckout = async (paymentId, customerId, credentials) => {
         .populate("tournamentTeam");
 };
 
+// Cancels a customer's still-pending demo payment and releases any linked reservation.
 const cancelDemoCheckout = async (paymentId, customerId) => {
     const payment = await Payment.findOne({ _id: paymentId, customer: customerId, isDeleted: false });
     if (!payment) throw new Error("Payment checkout was not found.");
@@ -389,6 +397,7 @@ const cancelDemoCheckout = async (paymentId, customerId) => {
 // Render a compact QR while returning every paid ticket. Earlier QR payloads
 // included display-only fields, which made the code too dense at receipt size
 // for some phone cameras. Validation still uses the signed ID and live data.
+// Creates a missing QR ticket for a paid booking without regenerating an existing ticket.
 const ensurePaymentTicketQR = async (payment) => {
     if (payment.paymentStatus !== "Paid") return payment;
 
@@ -402,16 +411,21 @@ const ensurePaymentTicketQR = async (payment) => {
         }
     } else if (payment.tournamentTeam) {
         const team = payment.tournamentTeam;
-        if (team.qrExpiresAt && !team.qrCode) {
-            const qrCode = await generateQR({ type: "TournamentTicket", id: team._id.toString(), expiresAt: new Date(team.qrExpiresAt).toISOString() });
+        const expiresAt = team.qrExpiresAt || (team.tournament?.endDate
+            ? zonedDateTime(dateOnlyParts(team.tournament.endDate), "23:59")
+            : null);
+        if (expiresAt && !team.qrCode) {
+            const qrCode = await generateQR({ type: "TournamentTicket", id: team._id.toString(), expiresAt: new Date(expiresAt).toISOString() });
             team.qrCode = qrCode;
-            await TournamentTeam.updateOne({ _id: team._id }, { $set: { qrCode } });
+            team.qrExpiresAt = expiresAt;
+            await TournamentTeam.updateOne({ _id: team._id }, { $set: { qrCode, qrExpiresAt: expiresAt } });
         }
     }
 
     return payment;
 };
 
+// Lists a customer's payments and optionally makes sure each paid booking has a usable ticket QR.
 const getMyPayments = async (customerId, { includeTickets = true } = {}) => {
     // The bookings overview only needs to know whether a checkout is still
     // pending. Do not populate every historical ticket or render QR images
@@ -443,7 +457,7 @@ const getMyPayments = async (customerId, { includeTickets = true } = {}) => {
             path: "tournamentTeam",
             populate: {
                 path: "tournament",
-                select: "name sportType",
+                select: "name sportType endDate",
             },
         })
         .sort({ createdAt: -1 });
@@ -455,6 +469,7 @@ const getMyPayments = async (customerId, { includeTickets = true } = {}) => {
 // Get Single Payment
 // ===================================================
 
+// Retrieves one payment only when it belongs to the requesting customer.
 const getSinglePayment = async (paymentId, customerId) => {
     const payment = await Payment.findOne({
         _id: paymentId,
@@ -488,6 +503,7 @@ const getSinglePayment = async (paymentId, customerId) => {
 // Verify QR Code
 // ===================================================
 
+// Verifies a venue-scanned QR and confirms that the scanning admin owns the relevant venue.
 const verifyQR = async (qrDataString, adminId) => {
     const parsed = baseVerifyQR(qrDataString);
 
@@ -566,6 +582,7 @@ const verifyQR = async (qrDataString, adminId) => {
             .populate("teamA", "teamName")
             .populate("teamB", "teamName")
             .sort({ matchDate: 1, startTime: 1 });
+        // Handles the match summary workflow.
         const matchSummary = (match) => {
             if (!match) return null;
             const isTeamA = String(match.teamA?._id || match.teamA) === String(team._id);
@@ -639,6 +656,7 @@ const verifyQR = async (qrDataString, adminId) => {
 // Refund Payment
 // ===================================================
 
+// Starts a refund, updates the linked booking or team, and notifies the customer of the next step.
 const refundPayment = async (paymentId, refundAmount, reason) => {
     const payment = await Payment.findById(paymentId).populate("customer", "name phone");
 
@@ -690,6 +708,7 @@ const refundPayment = async (paymentId, refundAmount, reason) => {
     return payment;
 };
 
+// Records that an authorised venue or platform operator has handed over an office refund.
 const completeOfficeRefund = async (paymentId, actor) => {
     const payment = await Payment.findById(paymentId).populate("customer", "name phone");
     if (!payment) throw new Error("Refund payment not found.");
@@ -727,6 +746,7 @@ const completeOfficeRefund = async (paymentId, actor) => {
     return payment;
 };
 
+// Calculates paid slot and tournament income for venues owned by one playground admin.
 const getPlaygroundAdminIncome = async (adminId) => {
     const grounds = await Playground.find({ playgroundAdmin: adminId, isDeleted: false }).select("_id name");
     const groundIds = grounds.map((ground) => ground._id);
@@ -740,6 +760,7 @@ const getPlaygroundAdminIncome = async (adminId) => {
             .populate({ path: "tournament", select: "playground name", populate: { path: "playground", select: "name" } })
             .populate("tournamentTeam", "teamName"),
     ]);
+    // Handles the owns ground workflow.
     const ownsGround = (id) => groundIds.some((groundId) => String(groundId) === String(id));
     const slots = slotPayments.filter((payment) => payment.booking && ownsGround(payment.booking.playground)).map((payment) => ({
         paymentId: payment._id, amount: payment.amount, paidAt: payment.paidAt, method: payment.paymentMethod,

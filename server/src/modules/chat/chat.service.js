@@ -8,6 +8,7 @@ const User = require("../user/user.model");
 const { createNotification } = require("../notification/notification.service");
 const { emitToUser } = require("../../config/socket");
 
+// Handles the clean message workflow.
 const cleanMessage = (message) => {
     const value = String(message || "").trim();
     if (!value) throw new Error("Write a message before sending.");
@@ -15,8 +16,11 @@ const cleanMessage = (message) => {
     return value;
 };
 
+// Handles the id of workflow.
 const idOf = (value) => String(value?._id || value);
+// Handles the conversation key workflow.
 const conversationKey = (first, second) => [idOf(first), idOf(second)].sort().join(":");
+// Handles the realtime chat message workflow.
 const realtimeChatMessage = (chat) => ({
     _id: String(chat._id),
     sender: chat.sender ? String(chat.sender) : null,
@@ -33,9 +37,11 @@ const messageableRoles = {
     "playground-admin": ["customer", "super-admin"],
     "super-admin": ["customer", "playground-admin"],
 };
+// Checks whether can message role is true.
 const canMessageRole = (senderRole, recipientRole) =>
     Boolean(messageableRoles[senderRole]?.includes(recipientRole));
 
+// Handles the concierge flow workflow.
 const conciergeFlow = (senderRole, recipientRole) =>
     senderRole === "customer"
     || senderRole === "super-admin"
@@ -49,6 +55,7 @@ const bangladeshDayBounds = (now = new Date()) => {
     return { start, end: new Date(start.getTime() + 24 * 60 * 60 * 1000) };
 };
 
+// Creates or starts the workflow for create concierge reply.
 const createConciergeReply = async ({ senderId, senderRole, recipient, key, playground }) => {
     if (!conciergeFlow(senderRole, recipient.role)) return null;
     const { start, end } = bangladeshDayBounds();
@@ -77,8 +84,10 @@ const createConciergeReply = async ({ senderId, senderRole, recipient, key, play
     });
 };
 
+// Handles the legacy concierge response for workflow.
 const legacyConciergeResponseFor = (rawMessage, serviceName) => {
     const message = String(rawMessage || "").toLowerCase();
+    // Checks whether has is true.
     const has = (...terms) => terms.some((term) => message.includes(term));
     const cancellation = has("cancel", "cencel", "cancellation", "refund", "বাতিল", " ফেরত");
     const tournament = has("tournament", "team registration", "tournament registration", "lottery", "draw", "fixture", "group stage");
@@ -95,11 +104,15 @@ const legacyConciergeResponseFor = (rawMessage, serviceName) => {
     return null;
 };
 
+// Formats an amount for display in Bangladeshi Taka.
 const money = (value) => `৳${Number(value || 0).toLocaleString("en-BD")}`;
+// Handles the short date workflow.
 const shortDate = (value) => value ? new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" }).format(new Date(value)) : "Date to be confirmed";
+// Handles the bot has workflow.
 const botHas = (message, ...terms) => terms.some((term) => message.includes(term));
 const handoffResponse = "Thanks for your message. A TURF representative will contact you shortly. Your request has been sent to the responsible support team for review.";
 
+// Handles the venue information workflow.
 const venueInformation = (playground) => {
     if (!playground) return "Please select a playground or message its administrator so I can provide venue information.";
     const location = [playground.address, playground.area, playground.district].filter(Boolean).join(", ") || "Location not listed";
@@ -109,6 +122,7 @@ const venueInformation = (playground) => {
     return `${playground.name} is a ${playground.sportType || "sports"} venue at ${location}. Hours: ${hours}. Capacity: up to ${playground.maxPlayers || "—"} players. Facilities: ${facilities}.${mapHint}`;
 };
 
+// Handles the slot information workflow.
 const slotInformation = async (playground) => {
     if (!playground) return "Please select a playground first so I can show its active slots and prices.";
     const slots = await Slot.find({ playground: playground._id, isActive: true, isDeleted: false })
@@ -120,6 +134,7 @@ const slotInformation = async (playground) => {
     return `${playground.name} active slot prices: ${schedule}. Availability changes by date, so share your preferred date to confirm an open slot.`;
 };
 
+// Handles the tournament information workflow.
 const tournamentInformation = async (playground) => {
     if (!playground) return "Please select a playground first so I can show its tournament information.";
     const tournaments = await Tournament.find({ playground: playground._id, isDeleted: false, status: { $nin: ["Cancelled", "Completed"] } })
@@ -131,6 +146,7 @@ const tournamentInformation = async (playground) => {
     return `Tournament information for ${playground.name}: ${details}. Open Tournament Centre for registration and official fixtures.`;
 };
 
+// Handles the legacy data concierge response workflow.
 const legacyDataConciergeResponse = async (rawMessage, playground) => {
     const message = String(rawMessage || "").toLowerCase();
     const cancellation = botHas(message, "cancel", "cencel", "cancellation", "refund", "বাতিল", "ফেরত");
@@ -155,13 +171,18 @@ const assistantQuestion = (value) => String(value || "")
     .replace(/[০-৯]/g, (digit) => "০১২৩৪৫৬৭৮৯".indexOf(digit))
     .replace(/[^\p{L}\p{N}/-]+/gu, " ")
     .trim();
+// Handles the includes any workflow.
 const includesAny = (value, terms) => terms.some((term) => value.includes(term));
+// Handles the assistant money workflow.
 const assistantMoney = (value) => `BDT ${Number(value || 0).toLocaleString("en-BD")}`;
+// Handles the assistant date workflow.
 const assistantDate = (value) => value
     ? new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" }).format(new Date(value))
     : "date to be confirmed";
+// Handles the assistant date key workflow.
 const assistantDateKey = (date) => new Date(date).toISOString().slice(0, 10);
 
+// Handles the date asked in workflow.
 const dateAskedIn = (rawMessage) => {
     const message = assistantQuestion(rawMessage);
     if (message.includes("today") || message.includes("আজ")) return assistantDateKey(new Date());
@@ -172,6 +193,7 @@ const dateAskedIn = (rawMessage) => {
     return local ? `${local[3]}-${local[2].padStart(2, "0")}-${local[1].padStart(2, "0")}` : null;
 };
 
+// Handles the detailed venue answer workflow.
 const detailedVenueAnswer = (playground) => {
     if (!playground) return "Please select a playground or message its administrator so I can provide venue information.";
     const location = [playground.address, playground.area, playground.district, playground.division].filter(Boolean).join(", ") || "not listed";
@@ -183,6 +205,7 @@ const detailedVenueAnswer = (playground) => {
     return `${playground.name} is a ${playground.sportType || "sports"} venue. Location: ${location}. Opening hours: ${hours}. Capacity: ${playground.maxPlayers || "not listed"} players. Facilities: ${facilities}.${priceList ? ` Standard pricing: ${priceList}.` : ""} Contact: ${playground.phone || "not listed"}.`;
 };
 
+// Handles the detailed slot answer workflow.
 const detailedSlotAnswer = async (playground, rawMessage) => {
     if (!playground) return "Please select a playground first so I can check its slots.";
     const date = dateAskedIn(rawMessage);
@@ -212,6 +235,7 @@ const detailedSlotAnswer = async (playground, rawMessage) => {
     return `Available slots at ${playground.name} for ${assistantDate(start)}: ${open.map((slot) => `${slot.startTime}–${slot.endTime} (${assistantMoney(slot.price)})`).join(" · ")}. Availability is checked again when the booking is submitted.`;
 };
 
+// Handles the detailed tournament answer workflow.
 const detailedTournamentAnswer = async (playground) => {
     if (!playground) return "Please select a playground first so I can provide tournament information.";
     const tournaments = await Tournament.find({
@@ -227,6 +251,7 @@ const detailedTournamentAnswer = async (playground) => {
     return `Tournament information for ${playground.name}: ${listing}.`;
 };
 
+// Handles the platform answer workflow.
 const platformAnswer = async (message) => {
     const asksSuspension = includesAny(message, ["suspend", "suspended", "block", "blocked", "ban", "suspension", "সাসপেন্ড", "ব্যান"]);
     const asksCounts = includesAny(message, ["user", "users", "playground", "playgrounds", "ইউজার", "প্লেগ্রাউন্ড"])
@@ -246,6 +271,7 @@ const platformAnswer = async (message) => {
     return `Platform summary: ${users} total user(s) (${customers} customer(s), ${admins} playground admin(s)); ${playgrounds} playground(s), including ${activePlaygrounds} active approved venue(s); ${suspended} suspended account(s).${asksSuspension ? " Suspensions can result from platform-rule or safety violations, or repeated resolved reports; individual details are confirmed by a representative." : ""}`;
 };
 
+// Handles the concierge response for workflow.
 const conciergeResponseFor = async (rawMessage, playground, senderRole) => {
     const message = assistantQuestion(rawMessage);
     const tournament = includesAny(message, ["tournament", "fixture", "draw", "registration", "team", "টুর্নামেন্ট", "ফিক্সচার", "রেজিস্ট্রেশন"]);
@@ -264,6 +290,7 @@ const conciergeResponseFor = async (rawMessage, playground, senderRole) => {
     return handoffResponse;
 };
 
+// Creates or starts the workflow for create professional concierge reply.
 const createProfessionalConciergeReply = async ({ senderId, senderRole, recipient, key, playground, customerMessage }) => {
     if (!conciergeFlow(senderRole, recipient.role)) return null;
     const response = await conciergeResponseFor(customerMessage, playground, senderRole);
@@ -320,12 +347,15 @@ const migrateLegacyMessages = async (userId) => {
     }));
 };
 
+// Handles the own playground ids workflow.
 const ownPlaygroundIds = async (adminId) => (await Playground.find({
     playgroundAdmin: adminId,
     isDeleted: false,
 }).select("_id")).map((playground) => playground._id);
 
+// Handles the unique contacts workflow.
 const uniqueContacts = (contacts) => Array.from(new Map(contacts.map((contact) => [idOf(contact.id), contact])).values());
+// Handles the playground summary workflow.
 const playgroundSummary = (playground) => playground ? {
     id: playground._id,
     name: playground.name,
@@ -334,6 +364,7 @@ const playgroundSummary = (playground) => playground ? {
     googleMapLocation: playground.googleMapLocation,
 } : null;
 
+// Retrieves the data needed for get contacts.
 const getContacts = async (userId, userRole, search = "") => {
     const term = String(search).trim();
     const query = {
@@ -387,6 +418,7 @@ const getContacts = async (userId, userRole, search = "") => {
     }));
 };
 
+// Handles the assert recipient allowed workflow.
 const assertRecipientAllowed = async (senderId, senderRole, recipient) => {
     const adminId = recipient.role === "playground-admin"
         ? recipient._id
@@ -407,6 +439,7 @@ const assertRecipientAllowed = async (senderId, senderRole, recipient) => {
     return booking?.playground || null;
 };
 
+// Sends the notification or response for send message.
 const sendMessage = async (payload, senderId, senderRole) => {
     const message = cleanMessage(payload.message);
     const recipient = await User.findOne({ _id: payload.recipient, isDeleted: false }).select("name role");
@@ -468,6 +501,7 @@ const sendMessage = async (payload, senderId, senderRole) => {
     return { chat, botReply };
 };
 
+// Retrieves the data needed for get conversations.
 const getConversations = async (userId, userRole) => {
     await migrateLegacyMessages(userId);
     const chats = await Chat.find({ participants: userId, isDeleted: false, sender: { $ne: null } })
@@ -499,6 +533,7 @@ const getConversations = async (userId, userRole) => {
     return [...conversations.values()];
 };
 
+// Retrieves the data needed for get messages.
 const getMessages = async (userId, userRole, contactId) => {
     await migrateLegacyMessages(userId);
     const contact = await User.findOne({ _id: contactId, isDeleted: false }).select("name role email phone");

@@ -6,8 +6,10 @@
 
 const TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
+// Checks whether is valid time is true.
 const isValidTime = (value) => typeof value === "string" && TIME_PATTERN.test(value);
 
+// Handles the time to minutes workflow.
 const timeToMinutes = (value) => {
     if (!isValidTime(value)) {
         throw new Error("Time must use the HH:mm format.");
@@ -17,6 +19,7 @@ const timeToMinutes = (value) => {
     return hours * 60 + minutes;
 };
 
+// Handles the minutes to time workflow.
 const minutesToTime = (value) => {
     const total = Number(value);
     if (!Number.isFinite(total) || total < 0 || total >= 24 * 60) {
@@ -28,6 +31,7 @@ const minutesToTime = (value) => {
     return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
 };
 
+// Normalizes or formats the value used for normalize date.
 const normalizeDate = (value) => {
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) {
@@ -38,6 +42,7 @@ const normalizeDate = (value) => {
     return date;
 };
 
+// Handles the ranges overlap workflow.
 const rangesOverlap = (startA, endA, startB, endB) => {
     return timeToMinutes(startA) < timeToMinutes(endB)
         && timeToMinutes(endA) > timeToMinutes(startB);

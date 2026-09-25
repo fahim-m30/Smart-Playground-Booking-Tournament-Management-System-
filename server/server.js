@@ -7,7 +7,10 @@
  * ==============================================================
  */
 
-require("dotenv").config();
+const path = require("path");
+// Resolve the environment file from this server directory so `node
+// server/server.js` works the same as running npm from inside `server`.
+require("dotenv").config({ path: path.join(__dirname, ".env") });
 
 
 // ===============================
@@ -40,7 +43,11 @@ const startServer = async () => {
             // Create Default Super Admin
             await createSuperAdmin();
             await rescheduleUpcomingDrawsToNoon();
-
+        } else {
+            // Keep the local HTTP server available for static/UI development.
+            // Database routes will remain unavailable, and the scheduler is
+            // deliberately kept off until MongoDB can connect.
+            console.warn("Database is unavailable; API data and notifications are temporarily disabled.");
         }
 
         const httpServer = http.createServer(app);
@@ -55,7 +62,7 @@ const startServer = async () => {
                 console.log("⚠️ Database Not Connected");
             }
 
-            startNotificationScheduler();
+            if (dbConnected) startNotificationScheduler();
 
             console.log("=================================");
         });

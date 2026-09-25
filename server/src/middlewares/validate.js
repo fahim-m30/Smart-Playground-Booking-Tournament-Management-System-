@@ -9,6 +9,7 @@
 
 const Joi = require("joi");
 
+// Checks the incoming request before allowing the protected action.
 const validate = (schema) => {
     return (req, res, next) => {
         const { error } = schema.validate(req.body, { abortEarly: false });

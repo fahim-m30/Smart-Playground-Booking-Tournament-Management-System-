@@ -19,14 +19,18 @@ const {
     deactivatePlayground,
 } = require("./playground.service");
 const axios = require("axios");
+// Handles the file to data url workflow.
 const fileToDataUrl = (file) => file?.buffer ? `data:${file.mimetype || "image/jpeg"};base64,${file.buffer.toString("base64")}` : null;
+// Handles the with images workflow.
 const withImages = (req) => ({ ...req.body, ...(typeof req.body.pricing === "string" ? { pricing: JSON.parse(req.body.pricing) } : {}), ...(typeof req.body.facilities === "string" ? { facilities: req.body.facilities.split(",").map((item) => item.trim()).filter(Boolean) } : {}), ...(req.files?.coverImage?.[0] ? { coverImage: fileToDataUrl(req.files.coverImage[0]) } : {}), ...(req.files?.galleryImages ? { galleryImages: req.files.galleryImages.map(fileToDataUrl) } : {}) });
+// Checks whether is google maps url is true.
 const isGoogleMapsUrl = (value) => {
     try {
         const host = new URL(value).hostname.toLowerCase();
         return host === "google.com" || host.endsWith(".google.com") || host === "goo.gl" || host.endsWith(".goo.gl");
     } catch (_) { return false; }
 };
+// Handles the coordinates from url workflow.
 const coordinatesFromUrl = (value) => {
     const link = String(value || "");
     const match = link.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/)
@@ -80,6 +84,7 @@ const getAllPlaygroundsController = async (req, res) => {
     }
 };
 
+// Retrieves the data needed for get all playgrounds for admin controller.
 const getAllPlaygroundsForAdminController = async (req, res) => {
     try {
         const playgrounds = await getAllPlaygroundsForAdmin();

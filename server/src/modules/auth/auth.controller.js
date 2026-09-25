@@ -51,6 +51,7 @@ const registerPlayground = async (req, res) => {
     }
 };
 
+// Creates or starts the workflow for register.
 const register = async (req, res) => {
     console.log("✅ Register API Hit");
     console.log(req.body);
@@ -221,6 +222,7 @@ const changePasswordController = async (req, res) => {
         });
     }
 };
+// Handles the request sensitive otp controller workflow.
 const requestSensitiveOTPController = async (req, res) => {
     try {
         const result = await requestSensitiveOTP({
@@ -234,6 +236,7 @@ const requestSensitiveOTPController = async (req, res) => {
     }
 };
 
+// Handles the change email controller workflow.
 const changeEmailController = async (req, res) => {
     try {
         const result = await changeEmail({

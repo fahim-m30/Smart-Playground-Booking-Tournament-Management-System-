@@ -21,6 +21,7 @@ const QR_VERSION = "TURF1";
 // on existing environments; a dedicated QR_SIGNING_SECRET takes precedence.
 const signingSecret = () => process.env.QR_SIGNING_SECRET || process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET;
 
+// Handles the encode qr payload workflow.
 const encodeQRPayload = (data) => {
     const secret = signingSecret();
     if (!secret) throw new Error("QR signing is unavailable because no signing secret is configured.");
@@ -30,6 +31,7 @@ const encodeQRPayload = (data) => {
     return `${QR_VERSION}.${payload}.${signature}`;
 };
 
+// Generates a signed QR code for a booking or tournament ticket.
 const generateQR = async (data) => {
     try {
         const qrData = encodeQRPayload(data);
@@ -53,6 +55,7 @@ const generateQR = async (data) => {
     }
 };
 
+// Validates the data used for verify qr.
 const verifyQR = (qrData) => {
     try {
         if (typeof qrData !== "string" || qrData.length > 5000) {

@@ -69,7 +69,18 @@
             </section>
         </main>
     </div>
-    <script src="https://smart-playground-booking-tournament.onrender.com/socket.io/socket.io.js"></script>
+    <script>
+        (function () {
+            const hostname = window.location.hostname;
+            const isLocal = ["localhost", "127.0.0.1", "::1"].includes(hostname)
+                && new URLSearchParams(window.location.search).get("api") === "local";
+            const protocol = window.location.protocol === "https:" ? "https:" : "http:";
+            window.TURF_SERVER_URL = window.TURF_SERVER_URL || (isLocal
+                ? `${protocol}//${hostname}:5000`
+                : "https://smart-playground-booking-tournament.onrender.com");
+            document.write(`<script src="${window.TURF_SERVER_URL}/socket.io/socket.io.js"><\/script>`);
+        }());
+    </script>
     <script src="assets/js/ui-dialog.js"></script>
     <script src="assets/js/dashboard.js"></script>
 </body>

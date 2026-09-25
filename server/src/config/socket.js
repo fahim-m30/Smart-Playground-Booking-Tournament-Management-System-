@@ -3,6 +3,7 @@ const jwt = require("jsonwebtoken");
 
 let io;
 
+// Handles the initialize socket workflow.
 const initializeSocket = (httpServer) => {
     io = new Server(httpServer, { cors: { origin: true, credentials: true } });
     io.use((socket, next) => {
@@ -20,7 +21,9 @@ const initializeSocket = (httpServer) => {
     return io;
 };
 
+// Sends the notification or response for emit to user.
 const emitToUser = (userId, event, payload) => io?.to(`user:${userId}`).emit(event, payload);
+// Sends the notification or response for emit dashboard update.
 const emitDashboardUpdate = (payload) => io?.to("dashboard").emit("dashboard:update", payload);
 
 module.exports = { initializeSocket, emitToUser, emitDashboardUpdate };

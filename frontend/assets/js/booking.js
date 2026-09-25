@@ -80,6 +80,7 @@
         const modal = document.createElement("div");
         modal.className = "modal show cancellation-confirmation";
         modal.innerHTML = `<section class="modal-box cancellation-box" role="dialog" aria-modal="true" aria-labelledby="cancellation-title"><button class="close" type="button" aria-label="Close">Close</button><span class="eyebrow">CANCELLATION CONFIRMATION</span><h2 id="cancellation-title">${escapeHtml(title)}</h2><p class="meta">${escapeHtml(summary)}</p><p class="cancellation-question">Are you sure you want to cancel this booking? This action cannot be undone.</p><div class="cancellation-actions"><button class="alt keep-booking" type="button">Keep booking</button><button class="confirm-cancellation" type="button">Yes, cancel & request refund</button></div><p class="cancellation-error" hidden></p></section>`;
+        // Closes the workflow for close.
         const close = () => modal.remove();
         modal.querySelector(".close").onclick = close;
         modal.querySelector(".keep-booking").onclick = close;
@@ -127,6 +128,7 @@
             map.innerHTML = '<div><strong>Live venue location</strong><a href="' + escapeHtml(savedMapUrl) + '" target="_blank" rel="noopener">Open in Google Maps ↗</a></div><iframe title="' + escapeHtml(ground.name) + ' location map" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://www.google.com/maps?q=' + encodeURIComponent(mapEmbedQuery) + '&output=embed"></iframe>';
             modal.querySelector(".facility-list").after(map);
         }
+        // Closes the workflow for close.
         const close = () => modal.remove();
         modal.querySelector(".close").addEventListener("click", close);
         modal.addEventListener("click", (event) => { if (event.target === modal) close(); });

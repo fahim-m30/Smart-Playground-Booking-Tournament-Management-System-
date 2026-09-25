@@ -1,5 +1,6 @@
 const { sendMessage, getContacts, getConversations, getMessages } = require("./chat.service");
 
+// Handles the respond workflow.
 const respond = (handler) => async (req, res) => {
     try {
         const data = await handler(req);
