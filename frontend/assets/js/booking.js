@@ -172,7 +172,10 @@
         }
         slotBoard.innerHTML = '<p class="meta">Loading available slots…</p>';
         try {
-            const data = await request(`/slots/availability?playground=${encodeURIComponent(groundSelect.value)}&date=${encodeURIComponent(dateInput.value)}`);
+            // Availability is a public endpoint.  Use the same simple request
+            // as the venue list so a cross-origin Authorization preflight
+            // cannot delay or block the slot board.
+            const data = await publicRequest(`/slots/availability?playground=${encodeURIComponent(groundSelect.value)}&date=${encodeURIComponent(dateInput.value)}`);
             renderSlots(data.slots || []);
         } catch (error) {
             slotBoard.innerHTML = `<p class="meta">${escapeHtml(error.message)}</p>`;
