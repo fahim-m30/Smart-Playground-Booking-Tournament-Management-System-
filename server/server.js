@@ -52,7 +52,10 @@ const startServer = async () => {
 
         const httpServer = http.createServer(app);
         initializeSocket(httpServer);
-        httpServer.listen(PORT, () => {
+        // Bind to every network interface so Render's public proxy can reach
+        // the process. Binding only to localhost makes a healthy process
+        // unreachable from outside the container.
+        httpServer.listen(PORT, "0.0.0.0", () => {
             console.log("=================================");
             console.log(`🚀 Server Running on http://localhost:${PORT}`);
 
