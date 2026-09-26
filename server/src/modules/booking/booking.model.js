@@ -195,6 +195,11 @@ const bookingSchema = new mongoose.Schema(
     }
 );
 
+// Powers the customer availability board's lookup of active bookings for one
+// venue and calendar day.  Without this index MongoDB must scan unrelated
+// booking history before the slot board can be returned.
+bookingSchema.index({ playground: 1, bookingDate: 1, bookingStatus: 1, isDeleted: 1 });
+
 const Booking = mongoose.model(
     "Booking",
     bookingSchema

@@ -18,6 +18,9 @@
     const groundSelect = $("#ground"), dateInput = $("#date"), slotBoard = $("#slot-board");
     const reserve = $("#reserve"), method = $("#method"), content = $("#content");
     const summary = $("#selected-summary");
+    // A Render free instance or its database may need more than a few seconds
+    // to wake up.  Do not abort a valid availability request prematurely.
+    const REQUEST_TIMEOUT_MS = 65000;
     let selectedSlot = null;
 
     // Escapes dynamic text before it is inserted into HTML cards or modals.
@@ -25,7 +28,7 @@
     // Sends an authenticated API request and returns only the useful data field.
     const request = async (path, options = {}) => {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 10000);
+        const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
         let response;
         try {
             response = await fetch(API_ROOT + path, {
@@ -45,7 +48,7 @@
     // simple also avoids an unnecessary cross-origin preflight in Live Server.
     const publicRequest = async (path) => {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 10000);
+        const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
         let response;
         try { response = await fetch(API_ROOT + path, { signal: controller.signal }); }
         catch (error) {

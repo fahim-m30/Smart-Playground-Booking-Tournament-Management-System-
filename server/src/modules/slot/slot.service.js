@@ -306,16 +306,22 @@ const getAvailability = async (playgroundId, dateValue) => {
     const playground = await Playground.findOne({ _id: playgroundId, isDeleted: false, isApproved: true, status: "Active" });
     if (!playground) throw new Error("Playground not found or unavailable.");
 
-    const configuredSlots = await Slot.find({ playground: playgroundId, dayOfWeek: date.getUTCDay(), isActive: true, isDeleted: false }).sort({ startTime: 1 });
-    const slots = configuredSlots.filter((slot) => !(slot.unavailableDates || []).includes(dateValue));
     const dayEnd = new Date(date);
     dayEnd.setDate(dayEnd.getDate() + 1);
-    const bookings = await Booking.find({
-        playground: playgroundId,
-        bookingDate: { $gte: date, $lt: dayEnd },
-        bookingStatus: { $in: ["Pending", "Confirmed"] },
-        isDeleted: false,
-    }).select("startTime endTime bookingStatus");
+    // These independent reads are the hot path for the customer slot board.
+    // Running them together keeps an Atlas round trip from delaying the UI.
+    const [configuredSlots, bookings] = await Promise.all([
+        Slot.find({ playground: playgroundId, dayOfWeek: date.getUTCDay(), isActive: true, isDeleted: false })
+            .sort({ startTime: 1 })
+            .lean(),
+        Booking.find({
+            playground: playgroundId,
+            bookingDate: { $gte: date, $lt: dayEnd },
+            bookingStatus: { $in: ["Pending", "Confirmed"] },
+            isDeleted: false,
+        }).select("startTime endTime bookingStatus").lean(),
+    ]);
+    const slots = configuredSlots.filter((slot) => !(slot.unavailableDates || []).includes(dateValue));
 
     const now = new Date();
     const isToday = date.getTime() === today.start.getTime();
