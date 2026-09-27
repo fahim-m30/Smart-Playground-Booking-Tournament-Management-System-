@@ -1,6 +1,8 @@
+import "./Header.css";
+
 export default function Header({ page, user, navigate, logout }) {
   return <header className="topbar">
-    <button className="brand" onClick={() => navigate("home")}><span className="brand-mark">⚽</span><span><b>TURF</b><small>Smart Playground Booking & Tournament Management System</small></span></button>
+    <button className="brand" onClick={() => navigate("home")}><img className="brand-mark" src="/legacy/assets/images/favicon.png" alt="TURF"/><span><b>TURF</b><small>Smart Playground Booking & Tournament Management System</small></span></button>
     <nav>
       <button className={page === "home" ? "active" : ""} onClick={() => navigate("home")}>Home</button>
       <button className={page === "venues" ? "active" : ""} onClick={() => navigate("venues")}>Playgrounds</button>
