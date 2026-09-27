@@ -44,28 +44,18 @@ const startServer = async () => {
             await createSuperAdmin();
             await rescheduleUpcomingDrawsToNoon();
         } else {
-            // Keep the local HTTP server available for static/UI development.
-            // Database routes will remain unavailable, and the scheduler is
-            // deliberately kept off until MongoDB can connect.
-            console.warn("Database is unavailable; API data and notifications are temporarily disabled.");
+            throw new Error("Database connection failed. Set DATABASE_URL before deploying the API.");
         }
 
         const httpServer = http.createServer(app);
         initializeSocket(httpServer);
-        // Bind to every network interface so Render's public proxy can reach
-        // the process. Binding only to localhost makes a healthy process
-        // unreachable from outside the container.
+        // Render's public proxy reaches the application through this binding.
         httpServer.listen(PORT, "0.0.0.0", () => {
             console.log("=================================");
-            console.log(`🚀 Server Running on http://localhost:${PORT}`);
+            console.log(`TURF API listening on port ${PORT}`);
 
-            if (dbConnected) {
-                console.log("✅ Database Connected Successfully");
-            } else {
-                console.log("⚠️ Database Not Connected");
-            }
-
-            if (dbConnected) startNotificationScheduler();
+            console.log("Database connected successfully");
+            startNotificationScheduler();
 
             console.log("=================================");
         });

@@ -30,12 +30,28 @@ const globalErrorHandler = require("./middlewares/globalErrorHandler");
 
 const app = express();
 
+const allowedOrigins = String(process.env.CLIENT_URL || "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
 // ===============================
 // Global Middlewares
 // ===============================
 
 // Allow Cross-Origin Requests
-app.use(cors());
+app.use(cors({
+    origin(origin, callback) {
+        // Requests without an Origin header include Render health checks and
+        // non-browser clients. Browser requests must come from the deployed
+        // Vercel URL configured in CLIENT_URL.
+        if (!origin || !allowedOrigins.length || allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+        return callback(new Error("This origin is not allowed to access the API."));
+    },
+    credentials: true,
+}));
 
 // Parse JSON Data
 app.use(express.json());

@@ -49,10 +49,7 @@ const repairPaymentReferenceIndexes = async () => {
 
 // Handles the connect db workflow.
 const connectDB = async () => {
-    const mongoURI =
-        process.env.DATABASE_URL ||
-        process.env.MONGO_URI ||
-        "mongodb://127.0.0.1:27017/turf";
+    const mongoURI = process.env.DATABASE_URL || process.env.MONGO_URI;
 
     if (!mongoURI) {
         console.error(
@@ -71,16 +68,7 @@ const connectDB = async () => {
         console.log("Database Name:", mongoose.connection.db.databaseName);
         console.log("Host:", mongoose.connection.host);
 
-        const isLocal =
-            mongoURI.startsWith("mongodb://127.0.0.1") ||
-            mongoURI.startsWith("mongodb://localhost");
-
-        console.log(
-            "MongoDB:",
-            isLocal
-                ? mongoURI
-                : "<remote - credentials hidden>"
-        );
+        console.log("MongoDB: <connected; credentials hidden>");
 
         console.log("=======================================");
 

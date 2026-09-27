@@ -1,122 +1,76 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useEffect, useState } from "react";
+import "./App.css";
 
-function App() {
-  const [count, setCount] = useState(0)
+const API = import.meta.env.VITE_API_URL || "/api/v1";
+const fallbackImage = "https://images.unsplash.com/photo-1579952363873-27f3bade9f55?auto=format&fit=crop&w=1200&q=80";
+const money = (value) => new Intl.NumberFormat("en-BD", { style: "currency", currency: "BDT", maximumFractionDigits: 0 }).format(value || 0);
+const isoDate = (date = new Date()) => new Date(date).toISOString().slice(0, 10);
+const prettyDate = (date) => date ? new Intl.DateTimeFormat("en-BD", { dateStyle: "medium" }).format(new Date(date)) : "—";
+const toMinutes = (time) => time.split(":").reduce((h, m) => Number(h) * 60 + Number(m));
 
-  return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+async function request(path, { method = "GET", body, token } = {}) {
+  const response = await fetch(`${API}${path}`, { method, headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: body ? JSON.stringify(body) : undefined });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || data.success === false) throw new Error(data.message || "Something went wrong. Please try again.");
+  return data.data;
 }
 
-export default App
+function App() {
+  const [page, setPage] = useState("home");
+  const [venues, setVenues] = useState([]);
+  const [selectedVenue, setSelectedVenue] = useState(null);
+  const [query, setQuery] = useState(""); const [sport, setSport] = useState("");
+  const [user, setUser] = useState(() => JSON.parse(localStorage.getItem("turf_user") || "null"));
+  const [token, setToken] = useState(() => localStorage.getItem("turf_token") || "");
+  const [notice, setNotice] = useState(null);
+  const showNotice = (message, type = "success") => { setNotice({ message, type }); window.setTimeout(() => setNotice(null), 4500); };
+  const navigate = (target) => { setPage(target); window.scrollTo({ top: 0, behavior: "smooth" }); };
+  const logout = () => { localStorage.removeItem("turf_token"); localStorage.removeItem("turf_user"); setToken(""); setUser(null); navigate("home"); showNotice("You have been signed out."); };
+  const openVenue = async (venue) => { setSelectedVenue(venue); navigate("venue"); try { setSelectedVenue(await request(`/playgrounds/${venue._id}`)); } catch { /* The summary card is a usable fallback. */ } };
+  useEffect(() => {
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => { try { const params = new URLSearchParams({ limit: "24" }); if (query) params.set("search", query); if (sport) params.set("sportType", sport); const response = await fetch(`${API}/playgrounds?${params}`, { signal: controller.signal }); const data = await response.json(); if (data.success) setVenues(data.data || []); } catch (error) { if (error.name !== "AbortError") setVenues([]); } }, 220);
+    return () => { controller.abort(); clearTimeout(timer); };
+  }, [query, sport]);
+  const login = (session) => { localStorage.setItem("turf_token", session.accessToken); localStorage.setItem("turf_user", JSON.stringify(session.user)); setToken(session.accessToken); setUser(session.user); showNotice(`Welcome back, ${session.user.name}!`); navigate("home"); };
+  return <div className="app-shell"><Header page={page} user={user} navigate={navigate} logout={logout}/>{notice && <div className={`toast ${notice.type}`}>{notice.message}</div>}
+    {page === "home" && <Home venues={venues.slice(0, 6)} query={query} setQuery={setQuery} sport={sport} setSport={setSport} openVenue={openVenue} navigate={navigate}/>} {page === "venues" && <VenueExplorer venues={venues} query={query} setQuery={setQuery} sport={sport} setSport={setSport} openVenue={openVenue}/>} {page === "venue" && <VenueDetail venue={selectedVenue} token={token} user={user} openAuth={() => navigate("auth")} showNotice={showNotice}/>} {page === "auth" && <Auth onLogin={login} showNotice={showNotice}/>} {page === "dashboard" && <Dashboard token={token} user={user} openAuth={() => navigate("auth")} showNotice={showNotice}/>} {page === "tournaments" && <Tournaments token={token} user={user} openAuth={() => navigate("auth")}/>}<Footer navigate={navigate}/></div>;
+}
+
+function Header({ page, user, navigate, logout }) { return <header className="topbar"><button className="brand" onClick={() => navigate("home")}><span>▰</span> TURF</button><nav><button className={page === "venues" ? "active" : ""} onClick={() => navigate("venues")}>Explore venues</button><button className={page === "tournaments" ? "active" : ""} onClick={() => navigate("tournaments")}>Tournaments</button>{user && <button className={page === "dashboard" ? "active" : ""} onClick={() => navigate("dashboard")}>My dashboard</button>}</nav><div className="nav-actions">{user ? <><span className="avatar">{user.name?.[0]}</span><button className="text-button" onClick={logout}>Sign out</button></> : <button className="primary small" onClick={() => navigate("auth")}>Sign in</button>}</div></header>; }
+function Search({ query, setQuery, sport, setSport }) { return <div className="searchbox"><label><span>⌕</span><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search by venue or area" /></label><select value={sport} onChange={(e) => setSport(e.target.value)}><option value="">All sports</option><option>Football</option><option>Cricket</option><option>Badminton</option></select></div>; }
+function Step({ n, title, text }) { return <article className="step"><span>{n}</span><h3>{title}</h3><p>{text}</p></article>; }
+function Home({ venues, query, setQuery, sport, setSport, openVenue, navigate }) { return <main><section className="hero-section"><div className="hero-copy"><p className="eyebrow">YOUR GAME. YOUR TIME.</p><h1>Find the perfect<br/><em>place to play.</em></h1><p className="lead">Discover trusted sports venues, reserve a slot in seconds, and get back to what matters: the game.</p><Search {...{query,setQuery,sport,setSport}}/><button className="link-button" onClick={() => navigate("venues")}>Browse all venues <span>→</span></button></div><div className="hero-art"><div className="ball">●</div><div className="hero-stat"><strong>500+</strong><span>active players today</span></div></div></section><section className="section"><div className="section-heading"><div><p className="eyebrow">PLAY WHERE YOU LOVE</p><h2>Popular venues near you</h2></div><button className="text-button" onClick={() => navigate("venues")}>View all →</button></div><VenueGrid venues={venues} openVenue={openVenue}/></section><section className="how-section"><p className="eyebrow">SIMPLE FROM START TO FINISH</p><h2>Book your game in three moves.</h2><div className="steps"><Step n="01" title="Choose a venue" text="Search by sport, location, and the time that works for your squad."/><Step n="02" title="Pick your slot" text="See live availability and lock in a slot before someone else does."/><Step n="03" title="Show up & play" text="Your digital ticket is ready after secure payment. Game on."/></div></section></main>; }
+function VenueExplorer({ venues, query, setQuery, sport, setSport, openVenue }) { return <main className="page section"><p className="eyebrow">EXPLORE</p><h1 className="page-title">Find your next game.</h1><Search {...{query,setQuery,sport,setSport}}/><p className="result-count">{venues.length} venue{venues.length === 1 ? "" : "s"} available</p><VenueGrid venues={venues} openVenue={openVenue}/></main>; }
+function VenueGrid({ venues, openVenue }) { return <div className="venue-grid">{venues.length ? venues.map((venue) => <VenueCard key={venue._id} venue={venue} openVenue={openVenue}/>) : <div className="empty"><strong>No venues found yet.</strong><p>Try a different sport or search term.</p></div>}</div>; }
+function VenueCard({ venue, openVenue }) { const image = venue.coverImage || venue.galleryImages?.[0] || fallbackImage; return <article className="venue-card"><img src={image} alt={venue.name} onError={(e) => { e.currentTarget.src = fallbackImage; }}/><div className="card-body"><div className="card-meta"><span>{venue.sportType || "Sports"}</span><span>★ {(venue.averageRating || 0).toFixed(1)}</span></div><h3>{venue.name}</h3><p className="muted">⌖ {venue.area || venue.address || "Bangladesh"}</p><div className="card-bottom"><strong>From {money(venue.pricing?.morning)}<small>/hr</small></strong><button className="round-button" aria-label={`View ${venue.name}`} onClick={() => openVenue(venue)}>→</button></div></div></article>; }
+
+function VenueDetail({ venue, token, user, openAuth, showNotice }) {
+  const [date, setDate] = useState(isoDate()); const [slots, setSlots] = useState([]); const [loading, setLoading] = useState(false); const [selectedSlot, setSelectedSlot] = useState(null); const [paying, setPaying] = useState(false);
+  useEffect(() => { setSelectedSlot(null); if (!venue?._id) return; setLoading(true); request(`/slots/availability?playground=${venue._id}&date=${date}`).then((data) => setSlots(data || [])).catch((e) => showNotice(e.message, "error")).finally(() => setLoading(false)); }, [venue?._id, date]);
+  if (!venue) return <main className="page empty"><strong>Select a venue to get started.</strong></main>;
+  const reserve = async () => { if (!user || !token) return openAuth(); if (user.role !== "customer") return showNotice("Bookings can be made from a customer account.", "error"); if (!selectedSlot) return showNotice("Choose an available slot first.", "error"); try { setPaying(true); const duration = (toMinutes(selectedSlot.endTime) - toMinutes(selectedSlot.startTime)) / 60; const booking = await request("/bookings", { method: "POST", token, body: { playground: venue._id, bookingDate: date, startTime: selectedSlot.startTime, endTime: selectedSlot.endTime, duration } }); await request("/payments", { method: "POST", token, body: { booking: booking._id, paymentMethod: "bKash" } }); showNotice("Booking confirmed and your digital ticket is ready!"); setSelectedSlot(null); } catch (e) { showNotice(e.message, "error"); } finally { setPaying(false); } };
+  return <main className="venue-page"><section className="venue-hero" style={{ backgroundImage: `linear-gradient(90deg, rgba(8,20,18,.85), rgba(8,20,18,.15)), url(${venue.coverImage || fallbackImage})` }}><div><p className="eyebrow">{venue.sportType} VENUE</p><h1>{venue.name}</h1><p>⌖ {venue.address}, {venue.area}</p></div></section><section className="booking-layout"><div className="venue-info"><div className="rating">★ {(venue.averageRating || 0).toFixed(1)} <span>({venue.totalReviews || 0} reviews)</span></div><h2>Built for your best game.</h2><p>{venue.description || "A great local venue for your next match."}</p><div className="facility-list">{(venue.facilities || ["Changing room", "Parking", "Floodlights"]).map((item) => <span key={item}>✓ {item}</span>)}</div><div className="venue-contact"><span>Open {venue.openingTime} — {venue.closingTime}</span><a href={`tel:${venue.phone}`}>Call venue</a></div></div><aside className="booking-panel"><p className="eyebrow">RESERVE A SLOT</p><h2>When do you want to play?</h2><input aria-label="Booking date" type="date" min={isoDate()} value={date} onChange={(e) => setDate(e.target.value)} /><div className="slot-list">{loading ? <p className="muted">Loading slots…</p> : slots.length ? slots.map((slot) => <button disabled={!slot.available} className={`slot ${selectedSlot?._id === slot._id ? "selected" : ""}`} key={slot._id} onClick={() => setSelectedSlot(slot)}><span>{slot.startTime} — {slot.endTime}</span><strong>{slot.available ? money(slot.price || venue.pricing?.evening) : "Booked"}</strong></button>) : <p className="muted">No published slots for this date.</p>}</div><button className="primary reserve" disabled={paying || !selectedSlot} onClick={reserve}>{paying ? "Confirming…" : selectedSlot ? `Book for ${money(selectedSlot.price || venue.pricing?.evening)}` : "Select a slot"}</button><small>Demo bKash payment is used in this version.</small></aside></section></main>;
+}
+
+function Auth({ onLogin, showNotice }) {
+  const [mode, setMode] = useState("login"); const [form, setForm] = useState({ name: "", phone: "", email: "", password: "" }); const [busy, setBusy] = useState(false); const [pending, setPending] = useState(false);
+  const submit = async (event) => { event.preventDefault(); try { setBusy(true); if (mode === "login") return onLogin(await request("/auth/login", { method: "POST", body: { email: form.email, password: form.password } })); await request("/auth/register", { method: "POST", body: form }); setPending(true); showNotice("We sent a verification code to your email."); } catch (e) { showNotice(e.message, "error"); } finally { setBusy(false); } };
+  return <main className="auth-page"><section className="auth-aside"><p className="eyebrow">TURF COMMUNITY</p><h1>More playing.<br/><em>Less planning.</em></h1><p>Join players and venue owners building a better local sports scene.</p></section><section className="auth-card"><div className="tabs"><button className={mode === "login" ? "active" : ""} onClick={() => { setMode("login"); setPending(false); }}>Sign in</button><button className={mode === "register" ? "active" : ""} onClick={() => { setMode("register"); setPending(false); }}>Create account</button></div>{pending ? <OtpVerify email={form.email} showNotice={showNotice} /> : <form onSubmit={submit}>{mode === "register" && <><label>Full name<input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}/></label><label>Mobile number<input required value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })}/></label></>}<label>Email address<input required type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })}/></label><label>Password<input required minLength="6" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })}/></label><button className="primary wide" disabled={busy}>{busy ? "Please wait…" : mode === "login" ? "Sign in" : "Create account"}</button></form>}<p className="form-footnote">{mode === "login" ? "Use your verified customer or venue-owner account." : "By creating an account, you agree to use TURF responsibly."}</p></section></main>;
+}
+function OtpVerify({ email, showNotice }) { const [otp, setOtp] = useState(""); const [busy, setBusy] = useState(false); const verify = async (e) => { e.preventDefault(); try { setBusy(true); await request("/auth/verify-otp", { method: "POST", body: { email, otp } }); showNotice("Email verified. You can sign in now."); } catch (err) { showNotice(err.message, "error"); } finally { setBusy(false); } }; return <form onSubmit={verify}><h2>Verify your email</h2><p className="muted">Enter the six-digit code sent to {email}.</p><label>Verification code<input required inputMode="numeric" maxLength="6" value={otp} onChange={(e) => setOtp(e.target.value)}/></label><button className="primary wide" disabled={busy}>{busy ? "Verifying…" : "Verify account"}</button></form>; }
+
+function Dashboard({ token, user, openAuth, showNotice }) {
+  const [bookings, setBookings] = useState([]); const [loading, setLoading] = useState(true);
+  useEffect(() => { if (!token || user?.role !== "customer") { setLoading(false); return; } request("/bookings/my-bookings", { token }).then(setBookings).catch((e) => showNotice(e.message, "error")).finally(() => setLoading(false)); }, [token, user?.role]);
+  if (!user) return <main className="page login-prompt"><h1>Your game plan, all in one place.</h1><p>Sign in to see bookings, tickets, and upcoming matches.</p><button className="primary" onClick={openAuth}>Sign in to continue</button></main>;
+  if (user.role !== "customer") return <AdminDashboard token={token} user={user} showNotice={showNotice}/>;
+  const cancel = async (id) => { try { await request(`/bookings/${id}/cancel`, { method: "PATCH", token }); setBookings((old) => old.map((b) => b._id === id ? { ...b, bookingStatus: "Cancelled" } : b)); showNotice("Booking cancelled successfully."); } catch (e) { showNotice(e.message, "error"); } };
+  return <main className="page dashboard"><p className="eyebrow">PLAYER DASHBOARD</p><h1>Hi, {user.name?.split(" ")[0]}.</h1><div className="dash-stats"><Stat title="Upcoming games" value={bookings.filter((b) => b.bookingStatus === "Confirmed").length}/><Stat title="Total bookings" value={bookings.length}/><Stat title="Member since" value="TURF"/></div><h2>Your bookings</h2>{loading ? <p>Loading your bookings...</p> : <div className="booking-list">{bookings.length ? bookings.map((booking) => <article className="booking-row" key={booking._id}><div><strong>{booking.playground?.name || "Playground"}</strong><p>{prettyDate(booking.bookingDate)} / {booking.startTime}-{booking.endTime}</p></div><span className={`status ${booking.bookingStatus?.toLowerCase()}`}>{booking.bookingStatus}</span>{["Pending", "Confirmed"].includes(booking.bookingStatus) && <button className="text-button danger" onClick={() => cancel(booking._id)}>Cancel</button>}</article>) : <div className="empty"><strong>No bookings yet.</strong><p>Choose a venue and reserve your first slot.</p></div>}</div>}</main>;
+}
+function Stat({ title, value }) { return <div className="stat"><span>{title}</span><strong>{value}</strong></div>; }
+function AdminDashboard({ token, user, showNotice }) { const [income, setIncome] = useState(null); useEffect(() => { if (user.role === "playground-admin") request("/payments/playground-admin/income", { token }).then(setIncome).catch((e) => showNotice(e.message, "error")); }, []); return <main className="page dashboard"><p className="eyebrow">{user.role.replace("-", " ").toUpperCase()}</p><h1>Welcome, {user.name}.</h1><p className="lead">Your operations dashboard is connected to the same API. Manage venues, slots and tournaments through the existing admin workflows.</p>{user.role === "playground-admin" && <div className="dash-stats"><Stat title="Slot income" value={money(income?.slotTotal)}/><Stat title="Tournament income" value={money(income?.tournamentTotal)}/><Stat title="Total collected" value={money(income?.total)}/></div>}<div className="empty"><strong>Venue management is ready on the API.</strong><p>Use your venue-admin account to create slots and manage all bookings.</p></div></main>; }
+function Tournaments({ token, user, openAuth }) { const [items, setItems] = useState([]); const [loading, setLoading] = useState(true); useEffect(() => { if (!token) { setLoading(false); return; } request("/tournaments", { token }).then((data) => setItems(data || [])).catch(() => setItems([])).finally(() => setLoading(false)); }, [token]); return <main className="page section"><p className="eyebrow">COMPETE TOGETHER</p><h1 className="page-title">Upcoming tournaments.</h1>{!user ? <div className="empty"><strong>Sign in to explore tournaments.</strong><button className="primary" onClick={openAuth}>Sign in</button></div> : loading ? <p>Loading tournaments…</p> : <div className="tournament-grid">{items.length ? items.map((item) => <article className="tournament" key={item._id}><span>{item.sportType || "SPORTS"}</span><h2>{item.name}</h2><p>{prettyDate(item.startDate)} — {prettyDate(item.endDate)}</p><strong>{money(item.registrationFee)} entry</strong></article>) : <div className="empty"><strong>No tournaments are open right now.</strong><p>Check back shortly for the next fixture.</p></div>}</div>}</main>; }
+function Footer({ navigate }) { return <footer><button className="brand" onClick={() => navigate("home")}><span>▰</span> TURF</button><p>Make time for the game.</p><div><button onClick={() => navigate("venues")}>Venues</button><button onClick={() => navigate("tournaments")}>Tournaments</button></div></footer>; }
+
+export default App;

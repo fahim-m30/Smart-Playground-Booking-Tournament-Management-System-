@@ -36,14 +36,4 @@ const sslcommerz =
 
     );
 
-// ==========================================
-// Debug
-// ==========================================
-
-console.log("=================================");
-console.log("SSL STORE");
-console.log("STORE_ID :", store_id);
-console.log("IS_LIVE  :", is_live);
-console.log("=================================");
-
 module.exports = sslcommerz;

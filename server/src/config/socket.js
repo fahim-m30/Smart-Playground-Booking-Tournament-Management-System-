@@ -3,9 +3,16 @@ const jwt = require("jsonwebtoken");
 
 let io;
 
+const allowedOrigins = String(process.env.CLIENT_URL || "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
 // Handles the initialize socket workflow.
 const initializeSocket = (httpServer) => {
-    io = new Server(httpServer, { cors: { origin: true, credentials: true } });
+    io = new Server(httpServer, {
+        cors: { origin: allowedOrigins.length ? allowedOrigins : true, credentials: true },
+    });
     io.use((socket, next) => {
         try {
             const token = socket.handshake.auth?.token;
