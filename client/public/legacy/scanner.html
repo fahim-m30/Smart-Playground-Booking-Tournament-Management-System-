@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>TURF | QR Ticket Scanner</title>
+  <link rel="icon" type="image/png" href="assets/images/favicon.png">
+  <link rel="stylesheet" href="assets/css/scanner.css?v=20260831result3">
+  <link rel="stylesheet" href="assets/css/universal-responsive.css">
+</head>
+<body>
+  <main class="scanner-page" id="scanner-page">
+    <header class="scanner-head">
+      <a class="back-link" href="dashboard.html">← Back to dashboard</a>
+      <div><p class="eyebrow">Venue gate control</p><h1>Scan &amp; validate tickets</h1></div>
+    </header>
+
+    <section class="scanner-layout">
+      <article class="scanner-card">
+        <header class="scanner-card-head"><div><h2>Camera scanner</h2><p id="camera-status">Tap the button below to allow camera access.</p></div><span id="scanner-state" class="state idle">Ready</span></header>
+        <button id="start-camera" class="start-scan" type="button"><span>⌁</span> Start QR scanner</button>
+        <p class="permission-note">For mobile scanning, open this page on the deployed <strong>HTTPS</strong> site and tap <strong>Allow</strong> when your browser asks for camera access.</p>
+        <div id="qr-reader" class="scanner-reader" aria-label="Camera QR scanner" tabindex="0"><div class="reader-placeholder"><span>⌁</span><strong>Camera is off</strong><small>Tap “Start QR scanner” to scan a ticket</small></div></div>
+        <div class="camera-controls">
+          <label>Camera<select id="camera-select" aria-label="Choose camera"><option value="">Back camera (recommended)</option></select></label>
+          <button id="stop-camera" class="secondary" type="button" disabled>Stop camera</button>
+        </div>
+        <div class="alternate-scan"><label class="file-button">Scan a saved QR image<input id="qr-image" type="file" accept="image/*" capture="environment"></label><span>Use a screenshot or photo if camera access is unavailable.</span></div>
+      </article>
+
+      <aside class="result-card" aria-live="polite">
+        <div class="result-heading"><p class="eyebrow">Live validation</p><span class="secure-badge">Admin protected</span></div>
+        <div id="result" class="result idle"><strong>Ready for a ticket</strong><p>Start the camera, then hold the QR code inside the frame.</p></div>
+        <button id="scan-next" class="scan-next" type="button" hidden>Scan next ticket</button>
+        <details class="manual-entry"><summary>Paste QR data manually</summary><form id="manual-form"><textarea id="qr-data" rows="4" placeholder="Paste the complete QR value"></textarea><button type="submit">Validate ticket</button></form></details>
+        <section class="scanner-policy"><strong>How validation works</strong><p>Slot QR remains valid until its end time. Tournament QR remains valid only while the team is still in that tournament. Tickets for another venue are not accepted.</p></section>
+      </aside>
+    </section>
+  </main>
+  <script defer src="https://unpkg.com/qr-scanner@1.4.2/qr-scanner.legacy.min.js"></script>
+  <script defer src="assets/js/scanner.js?v=20260831scanner9"></script>
+</body>
+</html>

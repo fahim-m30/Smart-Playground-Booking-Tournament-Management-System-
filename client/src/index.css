@@ -1,2 +1,2 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
-*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;min-width:320px;background:#f8fafc;color:#1e293b;font-family:Poppins,Arial,sans-serif}button,input,select{font:inherit}button{cursor:pointer}a{text-decoration:none}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;min-width:320px;background:#f8fafc;color:#1e293b;font-family:Poppins,Arial,sans-serif}button,input,select{font:inherit}button{cursor:pointer}a{text-decoration:none}footer a{color:#15803d;font-size:13px;font-weight:600}

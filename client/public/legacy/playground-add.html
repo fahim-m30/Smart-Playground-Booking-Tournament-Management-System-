@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TURF | Add Playground</title>
+    <link rel="icon" type="image/png" href="assets/images/favicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/playground-add.css">
+    <link rel="stylesheet" href="assets/css/universal-responsive.css">
+</head>
+<body>
+    <div class="page-shell">
+        <aside class="side-panel" hidden>
+            <a class="brand" href="index.html"><img src="assets/images/favicon.png" alt="TURF"><span>TURF</span></a>
+            <p class="workspace-label">VENUE WORKSPACE</p>
+            <nav class="side-links">
+                <a href="dashboard.html">Dashboard</a>
+                <a class="active" href="playground-add.html">Add playground</a>
+                <a href="slot-add.html">Manage slots</a>
+                <a href="management.html?tab=Bookings">Bookings</a>
+            </nav>
+            <a class="back-link" href="dashboard.html">← Back to dashboard</a>
+        </aside>
+
+        <main class="main-area">
+            <header class="top-bar">
+                <div>
+                    <a class="topbar-back" href="dashboard.html">&larr; Back to dashboard</a>
+                    <p class="eyebrow">PLAYGROUND SETUP</p>
+                    <h1>Add New Playground</h1>
+                    <p class="subtitle">Fill in the details below to register a new venue on TURF.</p>
+                </div>
+            </header>
+
+            <div class="form-card">
+                <header class="form-card-header"><div><span>VENUE SETUP</span><h2 id="setup-title">Tell customers about your playground</h2><p id="setup-subtitle">Add the venue details and confirm its location on Google Maps.</p></div><b id="setup-count">1 / 2</b></header>
+                <form id="playground-form" class="form-grid" novalidate>
+                    <section class="setup-step is-active" id="details-step" data-step="1">
+                    <div class="form-group full">
+                        <label for="name">Playground Name</label>
+                        <input type="text" id="name" name="name" placeholder="e.g. Dhaka Turf Arena" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="sportType">Sport Type</label>
+                        <select id="sportType" name="sportType" required>
+                            <option value="">Select sport</option>
+                            <option value="Football">Football</option>
+                            <option value="Cricket">Cricket</option>
+                            <option value="Badminton">Badminton</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="maxPlayers">Maximum Players</label>
+                        <input type="number" id="maxPlayers" name="maxPlayers" min="1" placeholder="e.g. 11" required>
+                    </div>
+
+                    <div class="form-group full">
+                        <label for="address">Full Address</label>
+                        <input type="text" id="address" name="address" placeholder="Street, area, landmark" required>
+                    </div>
+
+                    <div class="form-group full venue-map-picker">
+                        <div class="map-picker-heading"><div><label for="map-share-link">Venue location on Google Maps</label><p>Choose the exact turf pin in Google Maps and paste its full share link. The address fields will fill automatically when coordinates are available.</p></div><span id="map-status">Location pending</span></div>
+                        <div class="map-picker-actions"><button id="preview-map" type="button" class="map-preview-button">Preview map</button><a id="open-google-map" class="map-external-link" href="https://www.google.com/maps" target="_blank" rel="noopener">Choose exact pin in Google Maps ↗</a></div>
+                        <iframe id="venue-map-preview" title="Venue location preview" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+                        <label class="map-link-label" for="map-share-link">Google Maps full share link <span class="optional">Use a link containing the selected pin</span></label>
+                        <input type="url" id="map-share-link" placeholder="Paste the full Google Maps link to auto-fill the address">
+                        <input type="hidden" id="googleMapLocation" name="googleMapLocation">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="division">Division</label>
+                        <input type="text" id="division" name="division" placeholder="e.g. Dhaka" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="district">District</label>
+                        <input type="text" id="district" name="district" placeholder="e.g. Dhaka" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="area">Area</label>
+                        <input type="text" id="area" name="area" placeholder="e.g. Dhanmondi" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="openingTime">Opening Time</label>
+                        <input type="time" id="openingTime" name="openingTime" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="closingTime">Closing Time</label>
+                        <input type="time" id="closingTime" name="closingTime" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="morning">Morning Price (BDT)</label>
+                        <input type="number" id="morning" name="morning" min="0" placeholder="0" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="evening">Evening Price (BDT)</label>
+                        <input type="number" id="evening" name="evening" min="0" placeholder="0" required>
+                    </div>
+
+                    <div class="form-group full">
+                        <label for="facilities">Facilities</label>
+                        <input type="text" id="facilities" name="facilities" placeholder="Changing room, Parking, Washroom, Floodlight (comma separated)">
+                    </div>
+
+                    <div class="form-group full">
+                        <label for="description">Description</label>
+                        <textarea id="description" name="description" rows="4" placeholder="Short description about the playground..." required></textarea>
+                    </div>
+
+                    <div class="form-actions step-actions"><p class="form-message">Step 1 of 2 · Your address will be saved as the customer map location.</p><button id="continue-to-images" type="button" class="btn-primary">Continue to photos <span aria-hidden="true">→</span></button></div>
+                    </section>
+
+                    <section class="setup-step" id="photos-step" data-step="2">
+                    <div class="step-intro full"><span>STEP 2 OF 2</span><h3>Add venue photos</h3><p>A clear cover photo helps customers recognise the playground before booking.</p></div>
+                    <div class="form-group full">
+                        <label class="upload-label">Cover Photo</label>
+                        <div class="upload-box">
+                            <input type="file" id="coverImage" name="coverImage" accept="image/*" required>
+                            <span>Click or drag image here</span>
+                        </div>
+                        <div class="image-preview image-preview-cover" id="cover-preview" aria-live="polite"></div>
+                    </div>
+
+                    <div class="form-group full">
+                        <label class="upload-label">Gallery Photos (up to 5)</label>
+                        <div class="upload-box">
+                            <input type="file" id="galleryImages" name="galleryImages" accept="image/*" multiple>
+                            <span>Click or drag images here</span>
+                        </div>
+                        <div class="image-preview" id="gallery-preview" aria-live="polite"></div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button id="back-to-details" type="button" class="btn-secondary">← Back to venue details</button>
+                        <button type="submit" class="btn-primary">Save Playground</button>
+                        <p id="form-message" class="form-message"></p>
+                    </div>
+                    </section>
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <script src="assets/js/playground-add.js"></script>
+</body>
+</html>
