@@ -833,7 +833,7 @@ const buildRoundRobinMatchdays = (teams) => {
 
 // Only paid registrations are eligible for the official draw. Keep at least
 // two teams in every active group, so an underfilled competition can still
-// run professionally from the four-team minimum.
+// run professionally from the four-team minimum suffle.
 const shuffleTeams = (teams) => {
     const shuffled = [...teams];
     for (let index = shuffled.length - 1; index > 0; index -= 1) {

@@ -9,10 +9,15 @@ export const prettyDate = (date) => date ? new Intl.DateTimeFormat("en-BD", { da
 export const toMinutes = (time) => time.split(":").reduce((hours, minutes) => Number(hours) * 60 + Number(minutes));
 
 export async function request(path, { method = "GET", body, token } = {}) {
+  const isForm = typeof FormData !== "undefined" && body instanceof FormData;
+  const headers = {
+    ...(isForm ? {} : { "Content-Type": "application/json" }),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
   const response = await fetch(`${API}${path}`, {
     method,
-    headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-    body: body ? JSON.stringify(body) : undefined,
+    headers,
+    body: isForm ? body : (body !== undefined ? JSON.stringify(body) : undefined),
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok || data.success === false) throw new Error(data.message || "Something went wrong. Please try again.");

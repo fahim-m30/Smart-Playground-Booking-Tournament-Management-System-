@@ -718,7 +718,7 @@ const completeOfficeRefund = async (paymentId, actor) => {
     if (payment.refundStatus === "Completed") throw new Error("This refund has already been completed.");
     if (payment.refundStatus !== "Pending") throw new Error("This refund is not ready for collection yet.");
 
-    let venueName = "TURF";
+    let venueName = "TURF";` `
     let venueAdminId = null;
     let reference = "your refund";
     if (payment.booking) {

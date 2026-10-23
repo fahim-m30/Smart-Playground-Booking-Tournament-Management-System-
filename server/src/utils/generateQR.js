@@ -21,7 +21,7 @@ const QR_VERSION = "TURF1";
 // on existing environments; a dedicated QR_SIGNING_SECRET takes precedence.
 const signingSecret = () => process.env.QR_SIGNING_SECRET || process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET;
 
-// Handles the encode qr payload workflow.
+// Handles the encode qr payload token workflow.
 const encodeQRPayload = (data) => {
     const secret = signingSecret();
     if (!secret) throw new Error("QR signing is unavailable because no signing secret is configured.");
