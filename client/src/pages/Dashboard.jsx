@@ -1,32 +1,52 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import "./Dashboard.css";
 import { API, money, prettyDate, isoDate, request } from "../services/api";
 
 // ===================================================
-// Inline SVG Icons
+// Authentic SVG Icons (from legacy dashboard.js)
 // ===================================================
 function NavIcon({ name }) {
   const icons = {
-    overview: <svg viewBox="0 0 24 24"><path d="M4 13h6V4H4v9Zm0 7h6v-4H4v4Zm10 0h6v-9h-6v9Zm0-16v4h6V4h-6Z"/></svg>,
-    playgrounds: <svg viewBox="0 0 24 24"><path d="M4 19V8l8-5 8 5v11h-5v-5H9v5H4Zm3-8h2V9H7v2Zm0 3h2v-2H7v2Zm8-3h2V9h-2v2Zm0 3h2v-2h-2v2Z"/></svg>,
-    booking: <svg viewBox="0 0 24 24"><path d="M7 2v3m10-3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Zm4 8h3m-3 3h6"/></svg>,
-    bookings: <svg viewBox="0 0 24 24"><path d="M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Zm3 5h8M8 13h8m-8 4h5"/></svg>,
-    tournament: <svg viewBox="0 0 24 24"><path d="M8 3h8v4a4 4 0 0 1-8 0V3Zm0 2H4v2a4 4 0 0 0 4 4m8-6h4v2a4 4 0 0 1-4 4m-4 0v5m-3 5h6m-8 0h10"/></svg>,
-    account: <svg viewBox="0 0 24 24"><path d="M20 21a8 8 0 0 0-16 0m12-14a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z"/></svg>,
-    reports: <svg viewBox="0 0 24 24"><path d="M7 3h8l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Zm7 0v5h5M9 13h6m-6 4h6"/></svg>,
-    slots: <svg viewBox="0 0 24 24"><path d="M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Zm3 5h8m-8 4h4m4 0h.01M8 17h4"/></svg>,
-    income: <svg viewBox="0 0 24 24"><path d="M12 3v18m4-14.5c-.7-.8-1.9-1.3-3.5-1.3-2.3 0-3.8 1.1-3.8 2.8 0 1.7 1.4 2.4 3.8 3 2.4.6 3.8 1.4 3.8 3.2 0 1.8-1.5 3-4 3-1.8 0-3.2-.6-4.1-1.7"/></svg>,
-    users: <svg viewBox="0 0 24 24"><path d="M16 20v-1.5a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4V20m11-9a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm3 3.8a4 4 0 0 1 4 3.7V20"/></svg>,
-    scanner: <svg viewBox="0 0 24 24"><path d="M3 4h6V2H3a2 2 0 0 0-2 2v6h2V4Zm0 16H1v-6h2v6a2 2 0 0 0 2 2h4v-2H5a2 2 0 0 1-2-2Zm18-16v6h2V4a2 2 0 0 0-2-2h-6v2h6ZM7 7h10v10H7V7Zm2 2v6h6V9H9Zm12 7h-2v4a2 2 0 0 1-2 2h-4v2h6a2 2 0 0 0 2-2v-6Z"/></svg>
+    overview: <svg viewBox="0 0 24 24"><path d="M4 13h6V4H4v9Zm0 7h6v-4H4v4Zm10 0h6v-9h-6v9Zm0-16v4h6V4h-6Z" /></svg>,
+    playgrounds: <svg viewBox="0 0 24 24"><path d="M4 19V8l8-5 8 5v11h-5v-5H9v5H4Zm3-8h2V9H7v2Zm0 3h2v-2H7v2Zm8-3h2V9h-2v2Zm0 3h2v-2h-2v2Z" /></svg>,
+    booking: <svg viewBox="0 0 24 24"><path d="M7 2v3m10-3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Zm4 8h3m-3 3h6" /></svg>,
+    bookings: <svg viewBox="0 0 24 24"><path d="M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Zm3 5h8M8 13h8m-8 4h5" /></svg>,
+    messages: <svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 1-8 8 8.8 8.8 0 0 1-3.7-.8L4 20l1.4-3.6A8 8 0 1 1 20 11ZM8 11h.01M12 11h.01M16 11h.01" /></svg>,
+    tournament: <svg viewBox="0 0 24 24"><path d="M8 3h8v4a4 4 0 0 1-8 0V3Zm0 2H4v2a4 4 0 0 0 4 4m8-6h4v2a4 4 0 0 1-4 4m-4 0v5m-3 5h6m-8 0h10" /></svg>,
+    account: <svg viewBox="0 0 24 24"><path d="M20 21a8 8 0 0 0-16 0m12-14a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z" /></svg>,
+    reports: <svg viewBox="0 0 24 24"><path d="M7 3h8l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Zm7 0v5h5M9 13h6m-6 4h6" /></svg>,
+    venue: <svg viewBox="0 0 24 24"><path d="M4 20V6l8-3 8 3v14M4 20h16M8 9h2m4 0h2m-8 4h2m4 0h2m-8 4h2m4 0h2" /></svg>,
+    slots: <svg viewBox="0 0 24 24"><path d="M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Zm3 5h8m-8 4h4m4 0h.01M8 17h4" /></svg>,
+    income: <svg viewBox="0 0 24 24"><path d="M12 3v18m4-14.5c-.7-.8-1.9-1.3-3.5-1.3-2.3 0-3.8 1.1-3.8 2.8 0 1.7 1.4 2.4 3.8 3 2.4.6 3.8 1.4 3.8 3.2 0 1.8-1.5 3-4 3-1.8 0-3.2-.6-4.1-1.7" /></svg>,
+    users: <svg viewBox="0 0 24 24"><path d="M16 20v-1.5a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4V20m11-9a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm3 3.8a4 4 0 0 1 4 3.7V20" /></svg>
   };
   return <span className="nav-icon">{icons[name] || icons.overview}</span>;
 }
 
+// Sound effect for QR verification
+function playBeep(success = true) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.frequency.value = success ? 880 : 260;
+    gain.gain.setValueAtTime(0.06, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.18);
+  } catch (_) { /* audio feedback optional */ }
+}
+
+// ===================================================
+// MASTER DASHBOARD COMPONENT
+// ===================================================
 export default function Dashboard({ token, user, setUser, navigate, logout, openAuth, showNotice }) {
   const [tab, setTab] = useState("overview");
   const [loading, setLoading] = useState(true);
 
-  // Common Platform Data
+  // Platform Data
   const [tournaments, setTournaments] = useState([]);
   const [matches, setMatches] = useState([]);
   const [playgrounds, setPlaygrounds] = useState([]);
@@ -37,67 +57,69 @@ export default function Dashboard({ token, user, setUser, navigate, logout, open
   const [incomeData, setIncomeData] = useState(null);
   const [slotsList, setSlotsList] = useState([]);
   const [reportableCustomers, setReportableCustomers] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
 
-  // Modals & Interactive States
+  // Interactive Modals & Confirm Dialogs
   const [activeModal, setActiveModal] = useState(null);
   const [modalData, setModalData] = useState(null);
+  const [confirmDialog, setConfirmDialog] = useState(null);
   const [slotDate, setSlotDate] = useState(() => isoDate());
 
-  // Date and Time Helpers
   const role = user?.role || "customer";
 
-  // Navigation Items by Role
+  // Build role-based side nav items matching dashboard.js
   const navItems = useMemo(() => {
-    const common = [{ id: "overview", label: "Overview", icon: "overview" }];
+    const items = [
+      { id: "overview", label: "Overview", icon: "overview" },
+      { id: "tournaments", label: "Tournaments", icon: "tournament", action: () => navigate("tournaments") },
+      { id: "account", label: "Account centre", icon: "account" }
+    ];
     if (role === "customer") {
-      return [
-        ...common,
-        { id: "my-bookings", label: "My Bookings", icon: "bookings" },
-        { id: "reports", label: "Report Issue", icon: "reports" },
-        { id: "profile", label: "Account Centre", icon: "account" }
-      ];
+      items.splice(1, 0,
+        { id: "find-playgrounds", label: "Find playgrounds", icon: "playgrounds", action: () => navigate("venues") },
+        { id: "my-bookings", label: "My bookings", icon: "bookings" }
+      );
     }
     if (role === "playground-admin") {
-      return [
-        ...common,
-        { id: "playgrounds", label: "Venue Management", icon: "playgrounds" },
-        { id: "slots", label: "Slot Schedules", icon: "slots" },
-        { id: "bookings", label: "All Bookings", icon: "bookings" },
-        { id: "scanner", label: "QR Scanner", icon: "scanner" },
-        { id: "income", label: "Income & Refunds", icon: "income" },
-        { id: "reports", label: "Customer Reports", icon: "reports" },
-        { id: "profile", label: "Account Centre", icon: "account" }
-      ];
+      items.splice(2, 0,
+        { id: "playgrounds", label: "Venue management", icon: "venue" },
+        { id: "slots", label: "Slots", icon: "slots" },
+        { id: "bookings", label: "Bookings", icon: "bookings" },
+        { id: "scanner", label: "QR scanner", icon: "booking" },
+        { id: "income", label: "Income", icon: "income" }
+      );
     }
+    items.splice(items.length - 1, 0, { id: "reports", label: "Reports", icon: "reports" });
     if (role === "super-admin") {
-      return [
-        ...common,
-        { id: "playgrounds", label: "Playground Control", icon: "playgrounds" },
-        { id: "users", label: "User Control", icon: "users" },
-        { id: "reports", label: "Report Queue", icon: "reports" },
-        { id: "profile", label: "Account Centre", icon: "account" }
-      ];
+      items.splice(items.length - 2, 0,
+        { id: "playgrounds", label: "Playground control", icon: "venue" },
+        { id: "users", label: "User control", icon: "users" }
+      );
     }
-    return common;
-  }, [role]);
+    return items;
+  }, [role, navigate]);
 
-  // Load Main Role-Based Data
+  // Load All Workspace Data
   const loadData = async () => {
     if (!token) return;
     setLoading(true);
     try {
-      // 1. Tournaments
+      // 1. Tournaments & Live Matches
       const tourneys = await request("/tournaments").catch(() => []);
       setTournaments(tourneys || []);
 
-      // 2. Tournament Matches for Live Scoreboard
       if (tourneys?.length) {
         const matchPromises = tourneys.slice(0, 6).map((t) => request(`/tournaments/${t._id}/matches`).catch(() => []));
-        const resolvedMatches = await Promise.all(matchPromises);
-        setMatches(resolvedMatches.flat());
+        const resMatches = await Promise.all(matchPromises);
+        setMatches(resMatches.flat());
       }
 
-      // 3. Customer Data
+      // 2. Notifications
+      const notifs = await request("/notifications", { token }).catch(() => []);
+      setNotifications(notifs || []);
+
+      // 3. Customer Role Data
       if (role === "customer") {
         const [myB, myR, allP] = await Promise.all([
           request("/bookings/my-bookings", { token }).catch(() => []),
@@ -122,16 +144,19 @@ export default function Dashboard({ token, user, setUser, navigate, logout, open
         setReportableCustomers(repCust || []);
         setMyReports(myR || []);
 
-        // Load slots and bookings for each playground
         if (myGrounds?.length) {
-          const slotsPromises = myGrounds.map(async (g) => {
-            const groundSlots = await request(`/slots/playground/${g._id}`, { token }).catch(() => []);
-            const groundBookings = await request(`/bookings/playground/${g._id}`, { token }).catch(() => []);
-            return { ground: g, slots: groundSlots || [], bookings: groundBookings || [] };
+          const slotPromises = myGrounds.map(async (ground) => {
+            const groundSlots = await request(`/slots/playground/${ground._id}`, { token }).catch(() => []);
+            const groundBookings = await request(`/bookings/playground/${ground._id}`, { token }).catch(() => []);
+            return {
+              ground,
+              slots: (groundSlots || []).map((s) => ({ ...s, groundName: ground.name })),
+              bookings: groundBookings || []
+            };
           });
-          const groundDetails = await Promise.all(slotsPromises);
-          setSlotsList(groundDetails);
-          const allB = groundDetails.flatMap((d) => d.bookings.map((b) => ({ ...b, playground: d.ground })));
+          const details = await Promise.all(slotPromises);
+          setSlotsList(details);
+          const allB = details.flatMap((d) => d.bookings.map((b) => ({ ...b, playground: d.ground })));
           setBookings(allB);
         }
       }
@@ -158,36 +183,48 @@ export default function Dashboard({ token, user, setUser, navigate, logout, open
     loadData();
   }, [token, role]);
 
+  const markAllNotificationsRead = async () => {
+    try {
+      await request("/notifications/read-all", { method: "PATCH", token });
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      showNotice("All notifications marked as read.");
+    } catch (err) {
+      showNotice(err.message, "error");
+    }
+  };
+
   if (!user) {
     return (
-      <main className="login-prompt page">
+      <main className="portal login-prompt">
         <h1>Your game plan, all in one place.</h1>
         <p>Sign in to view your dashboard, bookings, venue controls, and matches.</p>
-        <button className="btn btn-primary" onClick={openAuth}>Sign in to continue</button>
+        <button className="button" onClick={openAuth}>Sign in to continue</button>
       </main>
     );
   }
 
+  const unreadNotifs = notifications.filter((n) => !n.isRead).length;
+
   return (
     <div className="dashboard-shell">
       {/* Sidebar */}
-      <aside className="dash-sidebar">
-        <button className="dash-brand" onClick={() => navigate("home")}>
+      <aside className="sidebar">
+        <a className="brand" href="#" onClick={(e) => { e.preventDefault(); navigate("home"); }}>
           <img src="/legacy/assets/images/favicon.png" alt="TURF" />
-          <span>
-            <b>TURF</b>
-            <small>Workspace</small>
-          </span>
-        </button>
+          <span>TURF</span>
+        </a>
 
-        <p className="workspace-label">{role.replace("-", " ")} WORKSPACE</p>
+        <p className="workspace-label">{role.replace("-", " ")} workspace</p>
 
         <nav className="side-nav">
           {navItems.map((item) => (
             <button
               key={item.id}
               className={tab === item.id ? "active" : ""}
-              onClick={() => setTab(item.id)}
+              onClick={() => {
+                if (item.action) item.action();
+                else setTab(item.id);
+              }}
             >
               <NavIcon name={item.icon} />
               <span>{item.label}</span>
@@ -195,21 +232,22 @@ export default function Dashboard({ token, user, setUser, navigate, logout, open
           ))}
         </nav>
 
-        <button className="back-home" onClick={() => navigate("home")}>
+        <a className="back-home" href="#" onClick={(e) => { e.preventDefault(); navigate("home"); }}>
           ← Back to website
-        </button>
+        </a>
       </aside>
 
-      {/* Main Workspace */}
-      <main className="dash-main">
+      {/* Main Content */}
+      <main className="main-content">
         {/* Topbar */}
-        <header className="dash-topbar">
+        <header className="topbar">
           <div>
-            <p className="dash-eyebrow">{role.replace("-", " ").toUpperCase()}</p>
-            <h1>Welcome back, {user.name?.split(" ")[0]}</h1>
+            <p className="eyebrow">{role.replace("-", " ").toUpperCase()}</p>
+            <h1>Welcome back, {user.name?.split(" ")[0] || "there"}</h1>
           </div>
 
           <div className="topbar-tools">
+            {/* Live Weather / Date Widget */}
             <div className="weather-date">
               <span className="weather-icon">☀</span>
               <div>
@@ -218,161 +256,213 @@ export default function Dashboard({ token, user, setUser, navigate, logout, open
               </div>
             </div>
 
+            {/* Notifications Menu */}
+            <div className="notification-wrap">
+              <button
+                className="notification-button"
+                type="button"
+                aria-label="Open notifications"
+                onClick={() => setShowNotifications(!showNotifications)}
+              >
+                ♢{unreadNotifs > 0 && <span>{unreadNotifs}</span>}
+              </button>
+
+              {showNotifications && (
+                <section className="notification-menu">
+                  <header>
+                    <div>
+                      <strong>Notifications</strong>
+                      <span>Stay up to date</span>
+                    </div>
+                    {unreadNotifs > 0 && (
+                      <button type="button" onClick={markAllNotificationsRead}>Mark all read</button>
+                    )}
+                  </header>
+                  <div>
+                    {notifications.length ? (
+                      notifications.slice(0, 8).map((n) => (
+                        <div key={n._id} className={`notification-item ${n.isRead ? "" : "unread"}`}>
+                          <strong>{n.title || "Notification"}</strong>
+                          <p>{n.message}</p>
+                          <span>{prettyDate(n.createdAt)}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="notification-empty">No notifications yet.</p>
+                    )}
+                  </div>
+                </section>
+              )}
+            </div>
+
+            {/* Account Menu */}
             <div className="account-menu">
-              <div
+              <label
                 className="avatar"
                 style={user.profileImage ? { backgroundImage: `url(${user.profileImage})` } : {}}
+                onClick={() => setTab("account")}
+                title="Account Settings"
               >
                 {!user.profileImage && (user.name?.[0] || "U").toUpperCase()}
-              </div>
+              </label>
               <div className="account-copy">
                 <strong>{user.name}</strong>
                 <span>{user.email}</span>
               </div>
-              <button className="logout-button" onClick={logout}>Log out</button>
+              <button className="logout-button" type="button" onClick={logout}>Log out</button>
             </div>
           </div>
         </header>
 
-        {loading ? (
-          <div className="card"><p className="item-meta">Loading workspace data...</p></div>
-        ) : (
-          <>
-            {/* 1. OVERVIEW TAB */}
-            {tab === "overview" && (
-              <OverviewTab
-                role={role}
-                user={user}
-                bookings={bookings}
-                tournaments={tournaments}
-                playgrounds={playgrounds}
-                slotsList={slotsList}
-                incomeData={incomeData}
-                allUsers={allUsers}
-                matches={matches}
-                setTab={setTab}
-                setActiveModal={setActiveModal}
-                setModalData={setModalData}
-                navigate={navigate}
-              />
-            )}
+        {/* Dashboard Body Area */}
+        <div className="dashboard-body">
+          {loading ? (
+            <div className="loading-card">Preparing your workspace…</div>
+          ) : (
+            <>
+              {/* TAB 1: OVERVIEW */}
+              {tab === "overview" && (
+                <OverviewTab
+                  role={role}
+                  user={user}
+                  bookings={bookings}
+                  tournaments={tournaments}
+                  playgrounds={playgrounds}
+                  slotsList={slotsList}
+                  incomeData={incomeData}
+                  allUsers={allUsers}
+                  matches={matches}
+                  setTab={setTab}
+                  setActiveModal={setActiveModal}
+                  setModalData={setModalData}
+                  navigate={navigate}
+                />
+              )}
 
-            {/* 2. CUSTOMER: MY BOOKINGS */}
-            {tab === "my-bookings" && (
-              <CustomerBookingsTab
-                bookings={bookings}
-                token={token}
-                showNotice={showNotice}
-                reload={loadData}
-                setActiveModal={setActiveModal}
-                setModalData={setModalData}
-              />
-            )}
+              {/* TAB 2: MY BOOKINGS (CUSTOMER) */}
+              {tab === "my-bookings" && (
+                <CustomerBookingsTab
+                  bookings={bookings}
+                  token={token}
+                  showNotice={showNotice}
+                  reload={loadData}
+                  setActiveModal={setActiveModal}
+                  setModalData={setModalData}
+                  setConfirmDialog={setConfirmDialog}
+                />
+              )}
 
-            {/* 3. PLAYGROUND ADMIN: VENUE MANAGEMENT */}
-            {tab === "playgrounds" && role === "playground-admin" && (
-              <VenueManagementTab
-                playgrounds={playgrounds}
-                token={token}
-                showNotice={showNotice}
-                reload={loadData}
-                setActiveModal={setActiveModal}
-                setModalData={setModalData}
-              />
-            )}
+              {/* TAB 3: VENUE MANAGEMENT (PLAYGROUND ADMIN) */}
+              {tab === "playgrounds" && role === "playground-admin" && (
+                <VenueManagementTab
+                  playgrounds={playgrounds}
+                  token={token}
+                  showNotice={showNotice}
+                  reload={loadData}
+                  setActiveModal={setActiveModal}
+                  setModalData={setModalData}
+                  setConfirmDialog={setConfirmDialog}
+                />
+              )}
 
-            {/* 4. SUPER ADMIN: PLAYGROUND APPROVAL */}
-            {tab === "playgrounds" && role === "super-admin" && (
-              <SuperAdminPlaygroundsTab
-                playgrounds={playgrounds}
-                token={token}
-                showNotice={showNotice}
-                reload={loadData}
-                setActiveModal={setActiveModal}
-                setModalData={setModalData}
-              />
-            )}
+              {/* TAB 4: PLAYGROUND CONTROL (SUPER ADMIN) */}
+              {tab === "playgrounds" && role === "super-admin" && (
+                <SuperAdminPlaygroundsTab
+                  playgrounds={playgrounds}
+                  token={token}
+                  showNotice={showNotice}
+                  reload={loadData}
+                  setActiveModal={setActiveModal}
+                  setModalData={setModalData}
+                  setConfirmDialog={setConfirmDialog}
+                />
+              )}
 
-            {/* 5. SLOTS MANAGEMENT (PLAYGROUND ADMIN) */}
-            {tab === "slots" && (
-              <SlotsManagementTab
-                playgrounds={playgrounds}
-                slotsList={slotsList}
-                slotDate={slotDate}
-                setSlotDate={setSlotDate}
-                token={token}
-                showNotice={showNotice}
-                reload={loadData}
-                setActiveModal={setActiveModal}
-                setModalData={setModalData}
-              />
-            )}
+              {/* TAB 5: SLOTS (PLAYGROUND ADMIN) */}
+              {tab === "slots" && (
+                <SlotsManagementTab
+                  playgrounds={playgrounds}
+                  slotsList={slotsList}
+                  slotDate={slotDate}
+                  setSlotDate={setSlotDate}
+                  token={token}
+                  showNotice={showNotice}
+                  reload={loadData}
+                  setActiveModal={setActiveModal}
+                  setModalData={setModalData}
+                  setConfirmDialog={setConfirmDialog}
+                />
+              )}
 
-            {/* 6. ADMIN BOOKINGS */}
-            {tab === "bookings" && role === "playground-admin" && (
-              <AdminBookingsTab
-                bookings={bookings}
-                token={token}
-                showNotice={showNotice}
-                reload={loadData}
-                setActiveModal={setActiveModal}
-                setModalData={setModalData}
-              />
-            )}
+              {/* TAB 6: BOOKINGS (PLAYGROUND ADMIN) */}
+              {tab === "bookings" && role === "playground-admin" && (
+                <AdminBookingsTab
+                  bookings={bookings}
+                  token={token}
+                  showNotice={showNotice}
+                  reload={loadData}
+                  setActiveModal={setActiveModal}
+                  setModalData={setModalData}
+                  setConfirmDialog={setConfirmDialog}
+                />
+              )}
 
-            {/* 7. QR SCANNER (PLAYGROUND ADMIN) */}
-            {tab === "scanner" && (
-              <QRScannerTab token={token} showNotice={showNotice} />
-            )}
+              {/* TAB 7: QR SCANNER (PLAYGROUND ADMIN) */}
+              {tab === "scanner" && (
+                <QRScannerTab token={token} showNotice={showNotice} />
+              )}
 
-            {/* 8. INCOME & REFUNDS (PLAYGROUND ADMIN) */}
-            {tab === "income" && (
-              <IncomeTab
-                incomeData={incomeData}
-                token={token}
-                showNotice={showNotice}
-                reload={loadData}
-              />
-            )}
+              {/* TAB 8: INCOME (PLAYGROUND ADMIN) */}
+              {tab === "income" && (
+                <IncomeTab
+                  incomeData={incomeData}
+                  token={token}
+                  showNotice={showNotice}
+                  reload={loadData}
+                  setConfirmDialog={setConfirmDialog}
+                />
+              )}
 
-            {/* 9. USER CONTROL (SUPER ADMIN) */}
-            {tab === "users" && (
-              <UserControlTab
-                users={allUsers}
-                token={token}
-                showNotice={showNotice}
-                reload={loadData}
-              />
-            )}
+              {/* TAB 9: USER CONTROL (SUPER ADMIN) */}
+              {tab === "users" && (
+                <UserControlTab
+                  users={allUsers}
+                  token={token}
+                  showNotice={showNotice}
+                  reload={loadData}
+                  setConfirmDialog={setConfirmDialog}
+                />
+              )}
 
-            {/* 10. REPORTS */}
-            {tab === "reports" && (
-              <ReportsTab
-                role={role}
-                myReports={myReports}
-                allReports={allReports}
-                playgrounds={playgrounds}
-                reportableCustomers={reportableCustomers}
-                token={token}
-                showNotice={showNotice}
-                reload={loadData}
-              />
-            )}
+              {/* TAB 10: REPORTS */}
+              {tab === "reports" && (
+                <ReportsTab
+                  role={role}
+                  myReports={myReports}
+                  allReports={allReports}
+                  playgrounds={playgrounds}
+                  reportableCustomers={reportableCustomers}
+                  token={token}
+                  showNotice={showNotice}
+                  reload={loadData}
+                />
+              )}
 
-            {/* 11. PROFILE / ACCOUNT CENTRE */}
-            {tab === "profile" && (
-              <AccountCentreTab
-                user={user}
-                setUser={setUser}
-                token={token}
-                showNotice={showNotice}
-              />
-            )}
-          </>
-        )}
+              {/* TAB 11: ACCOUNT CENTRE / PROFILE */}
+              {tab === "account" && (
+                <AccountCentreTab
+                  user={user}
+                  setUser={setUser}
+                  token={token}
+                  showNotice={showNotice}
+                />
+              )}
+            </>
+          )}
+        </div>
       </main>
 
-      {/* Global Modals Container */}
+      {/* Global Modals */}
       {activeModal && (
         <Modals
           modal={activeModal}
@@ -384,16 +474,22 @@ export default function Dashboard({ token, user, setUser, navigate, logout, open
           playgrounds={playgrounds}
         />
       )}
+
+      {/* TurfDialog Confirmation Box (matching legacy ui-dialog.js) */}
+      {confirmDialog && (
+        <TurfDialogModal dialog={confirmDialog} close={() => setConfirmDialog(null)} />
+      )}
     </div>
   );
 }
 
 // ===================================================
-// SUB-TAB 1: OVERVIEW TAB (Role-Adaptive)
+// SECTION 1: OVERVIEW TAB
 // ===================================================
 function OverviewTab({
   role, user, bookings, tournaments, playgrounds, slotsList, incomeData, allUsers, matches, setTab, setActiveModal, setModalData, navigate
 }) {
+  const superAdmin = role === "super-admin";
   const activeBookings = bookings.filter((b) => !["Cancelled", "Completed"].includes(b.bookingStatus));
   const activeSlotsCount = slotsList.flatMap((d) => d.slots).filter((s) => s.isActive).length;
 
@@ -403,165 +499,272 @@ function OverviewTab({
       <section className="stats">
         {role === "customer" && (
           <>
-            <article className="stat-card"><span>Active Bookings</span><strong>{activeBookings.length}</strong></article>
-            <article className="stat-card"><span>Live Tournaments</span><strong>{tournaments.length}</strong></article>
-            <article className="stat-card"><span>Booking History</span><strong>{bookings.length}</strong></article>
+            <article className="stat-card"><span>Active bookings</span><strong>{activeBookings.length}</strong></article>
+            <article className="stat-card"><span>Available tournaments</span><strong>{tournaments.length}</strong></article>
+            <article className="stat-card"><span>Booking history</span><strong>{bookings.length}</strong></article>
           </>
         )}
         {role === "playground-admin" && (
           <>
-            <article className="stat-card"><span>My Playgrounds</span><strong>{playgrounds.length}</strong></article>
-            <article className="stat-card"><span>Active Slot Schedules</span><strong>{activeSlotsCount}</strong></article>
-            <article className="stat-card"><span>Total Earnings</span><strong>{money(incomeData?.total)}</strong></article>
+            <article className="stat-card"><span>Live tournaments</span><strong>{tournaments.length}</strong></article>
+            <article className="stat-card"><span>My playgrounds</span><strong>{playgrounds.length}</strong></article>
+            <article className="stat-card"><span>Active slot schedules</span><strong>{activeSlotsCount}</strong></article>
           </>
         )}
         {role === "super-admin" && (
           <>
-            <article className="stat-card"><span>Total Customers</span><strong>{allUsers.filter((u) => u.role === "customer").length}</strong></article>
-            <article className="stat-card"><span>Total Playgrounds</span><strong>{playgrounds.length}</strong></article>
-            <article className="stat-card"><span>Playground Admins</span><strong>{allUsers.filter((u) => u.role === "playground-admin").length}</strong></article>
+            <article className="stat-card"><span>Customers</span><strong>{allUsers.filter((u) => u.role === "customer").length}</strong></article>
+            <article className="stat-card"><span>Playgrounds</span><strong>{playgrounds.length}</strong></article>
+            <article className="stat-card"><span>Playground admins</span><strong>{allUsers.filter((u) => u.role === "playground-admin").length}</strong></article>
           </>
         )}
       </section>
 
-      {/* Live Tournament Ticker */}
+      {/* Live & Upcoming Tournaments Ticker */}
       {tournaments.length > 0 && (
         <div className="ticker">
           <span className="ticker-label">LIVE & UPCOMING</span>
           <div className="ticker-track">
-            {tournaments.map((t) => (
-              <div key={t._id} className="ticker-item">
-                <strong>{t.name}</strong>
-                <small>• {t.sportType} · Starts {prettyDate(t.startDate)}</small>
-              </div>
-            ))}
+            {tournaments.map((t) => {
+              const ground = t.playgrounds?.[0] || t.playground || {};
+              return (
+                <div key={t._id} className="ticker-item">
+                  <strong>{t.name}</strong>
+                  <small>• {ground.name || t.sportType} · {prettyDate(t.startDate)}</small>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
 
-      {/* Customer Quick Pinned Bookings */}
+      {/* Customer Pinned Bookings */}
       {role === "customer" && (
         <>
           <div className="section-heading">
             <div>
               <h2>Pinned for you</h2>
-              <p>Your upcoming reservations appear here for quick access.</p>
+              <p>Your upcoming bookings stay at the top.</p>
             </div>
-            <button className="text-link" onClick={() => setTab("my-bookings")}>View all bookings →</button>
+            <button className="text-link" onClick={() => setTab("my-bookings")}>Manage bookings →</button>
           </div>
-          <div className="pinned-grid">
+          <section className="pinned-grid">
             {activeBookings.length ? (
               activeBookings.slice(0, 3).map((b) => (
                 <article key={b._id} className="pin-card">
-                  <h3>{b.playground?.name || "Playground Reservation"}</h3>
+                  <h3>{b.playground?.name || "Playground booking"}</h3>
                   <p>
-                    {prettyDate(b.bookingDate)} · {b.startTime} - {b.endTime}<br />
-                    {b.playground?.address || "Address pending"}
+                    {prettyDate(b.bookingDate)} · {b.startTime}–{b.endTime}<br />
+                    {b.playground?.address || b.playground?.area || "Location details will be shared"}
                   </p>
                 </article>
               ))
             ) : (
-              <div className="card"><p className="item-meta">No upcoming bookings. Choose a playground to reserve your slot.</p></div>
+              <div className="empty-state">No active booking yet. Book a slot and it will appear here.</div>
             )}
-          </div>
+          </section>
         </>
       )}
 
-      {/* Playground Admin Quick Setup Cards */}
+      {/* Playground Admin Quick Setup & Income Overview */}
       {role === "playground-admin" && (
         <>
+          {incomeData && (
+            <section className="income-dashboard">
+              <div className="section-heading">
+                <div>
+                  <h2>Income overview</h2>
+                  <p>Paid earnings from your own playgrounds.</p>
+                </div>
+                <button className="text-link" onClick={() => setTab("income")}>Full income report →</button>
+              </div>
+
+              <div className="income-stat-grid">
+                <article>
+                  <span className="income-icon slot-icon">◷</span>
+                  <div>
+                    <span>Slot income</span>
+                    <strong>৳{new Intl.NumberFormat("en-BD").format(incomeData.slotTotal || 0)}</strong>
+                  </div>
+                </article>
+                <article>
+                  <span className="income-icon tournament-icon">★</span>
+                  <div>
+                    <span>Tournament income</span>
+                    <strong>৳{new Intl.NumberFormat("en-BD").format(incomeData.tournamentTotal || 0)}</strong>
+                  </div>
+                </article>
+                <article className="income-grand-total">
+                  <span>Total income</span>
+                  <strong>৳{new Intl.NumberFormat("en-BD").format(incomeData.total || 0)}</strong>
+                </article>
+              </div>
+            </section>
+          )}
+
           <div className="section-heading">
             <div>
-              <h2>Quick Setup</h2>
-              <p>Register new venues and configure automated schedule generation.</p>
+              <h2>Availability by playground</h2>
+              <p>Each venue has a separate schedule for clearer operations.</p>
             </div>
+            <button className="text-link" onClick={() => setTab("slots")}>Manage schedules →</button>
           </div>
-          <div className="pinned-grid">
-            <article className="pin-card" style={{ cursor: "pointer" }} onClick={() => { setActiveModal("add-playground"); }}>
-              <h3>+ Add Playground</h3>
-              <p>Register a new venue with sport type, pricing, location and photos.</p>
-            </article>
-            <article className="pin-card" style={{ cursor: "pointer" }} onClick={() => { setActiveModal("add-slots"); }}>
-              <h3>⏱ Generate Slots</h3>
-              <p>Auto-generate daily slots with opening hours, break times, and duration.</p>
-            </article>
-          </div>
+
+          <section className="availability-grid">
+            {slotsList.length ? (
+              slotsList.map(({ ground, slots }) => {
+                const active = slots.filter((s) => s.isActive);
+                return (
+                  <article key={ground._id} className="availability-card">
+                    <header>
+                      <div>
+                        <span className="venue-kicker">VENUE AVAILABILITY</span>
+                        <h3>{ground.name}</h3>
+                        <p>{ground.address || ground.area || "Address pending"}</p>
+                      </div>
+                      <a href="#" onClick={(e) => { e.preventDefault(); setTab("slots"); }}>Manage</a>
+                    </header>
+                    <div className="availability-summary">
+                      <strong>{active.length}</strong>
+                      <span>active weekly slots</span>
+                    </div>
+                    <div className="availability-times">
+                      {active.length ? (
+                        active.slice(0, 5).map((s) => (
+                          <span key={s._id}>{s.startTime}–{s.endTime}</span>
+                        ))
+                      ) : (
+                        <em>No active slots configured</em>
+                      )}
+                    </div>
+                  </article>
+                );
+              })
+            ) : (
+              <div className="empty-state">Add your first playground from Venue management to set availability.</div>
+            )}
+          </section>
+
+          <section className="quick-actions">
+            <h2>Quick Actions</h2>
+            <p className="subtitle">Get started by registering a playground or configuring time slots.</p>
+            <div className="action-grid">
+              <a href="#" className="action-card" onClick={(e) => { e.preventDefault(); setActiveModal("add-playground"); }}>
+                <div className="action-icon">+</div>
+                <div>
+                  <h3>Add Playground</h3>
+                  <p>Register a new venue with sport type, pricing, and schedule.</p>
+                </div>
+              </a>
+              <a href="#" className="action-card" onClick={(e) => { e.preventDefault(); setActiveModal("add-slots"); }}>
+                <div className="action-icon">⏱</div>
+                <div>
+                  <h3>Add Slots</h3>
+                  <p>Configure daily slots, duration, and availability per sport.</p>
+                </div>
+              </a>
+            </div>
+          </section>
         </>
       )}
 
-      {/* Live Scores & Match Results */}
+      {/* Match Results & Live Scoreboard */}
       {matches.length > 0 && (
         <section className="match-results-section">
           <div className="section-heading">
             <div>
-              <h2>Live scores & upcoming fixtures</h2>
-              <p>Official match status published across platform tournaments.</p>
+              <span className="eyebrow">MATCH UPDATES</span>
+              <h2>Scores & fixtures</h2>
+              <p>Live games, next fixtures and official results — refreshed automatically.</p>
             </div>
+            <button className="text-link" onClick={() => navigate("tournaments")}>Open fixtures →</button>
           </div>
           <div className="match-results-grid">
-            {matches.slice(0, 4).map((m) => (
-              <article key={m._id} className={`match-result-card ${m.matchStatus === "Live" ? "live" : ""}`}>
-                <div className="match-result-meta">
-                  <span className={`status ${m.matchStatus?.toLowerCase()}`}>{m.matchStatus || "Scheduled"}</span>
-                  <span>{prettyDate(m.matchDate)} · {m.startTime}</span>
-                </div>
-                <div className="match-score">
-                  <strong>{m.teamA?.teamName || "Team A"}</strong>
-                  <b>{m.matchStatus === "Scheduled" ? "VS" : `${m.teamAScore || 0} - ${m.teamBScore || 0}`}</b>
-                  <strong>{m.teamB?.teamName || "Team B"}</strong>
-                </div>
-                <p className="item-meta">{m.playground?.name || "Venue"} · {m.stage || "Group Match"}</p>
-              </article>
-            ))}
+            {matches.slice(0, 4).map((m) => {
+              const live = m.matchStatus === "Live";
+              const completed = m.matchStatus === "Completed";
+              const cricket = m.tournament?.sportType === "Cricket";
+              return (
+                <article key={m._id} className={`match-result-card ${live ? "live" : ""}`}>
+                  <div className="match-result-meta">
+                    <span className={`status ${live ? "live" : ""}`}>{live ? "LIVE NOW" : completed ? "FULL TIME" : "UP NEXT"}</span>
+                    <span>{prettyDate(m.matchDate)} · {m.startTime}</span>
+                  </div>
+                  <div className="match-score">
+                    <strong>{m.teamA?.teamName || "Team A"}</strong>
+                    <b>{live || completed ? `${m.teamAScore || 0} – ${m.teamBScore || 0}` : "VS"}</b>
+                    <strong>{m.teamB?.teamName || "Team B"}</strong>
+                  </div>
+                  <p>{m.playground?.name || "Tournament venue"} · {m.stage || "Match"}</p>
+                </article>
+              );
+            })}
           </div>
         </section>
       )}
 
-      {/* Split Activity Panels */}
+      {/* Activity Panels */}
       <section className="split-grid">
-        <article className="panel">
-          <h2 className="panel-title">
-            {role === "customer" ? "Recent Bookings" : role === "playground-admin" ? "Recent Venue Bookings" : "Platform Venues"}
-          </h2>
+        <article className="panel activity-bookings">
+          <h2 className="panel-title">{superAdmin ? "Platform tournaments" : "Upcoming bookings"}</h2>
+          <p className="activity-intro">{superAdmin ? "Latest tournament registrations across the platform." : "Your next confirmed and pending playground slots."}</p>
           <div className="list">
-            {role !== "super-admin" ? (
-              bookings.slice(0, 5).map((b) => (
+            {superAdmin ? (
+              tournaments.slice(0, 5).map((t) => (
+                <div key={t._id} className="list-row">
+                  <div>
+                    <div className="item-title">{t.name}</div>
+                    <p className="item-meta">{t.sportType} · {prettyDate(t.startDate)}</p>
+                  </div>
+                  <span className="status">{t.status || "Upcoming"}</span>
+                </div>
+              ))
+            ) : activeBookings.length ? (
+              activeBookings.slice(0, 5).map((b) => (
                 <div key={b._id} className="list-row">
                   <div>
-                    <div className="item-title">{b.playground?.name || "Playground"}</div>
-                    <p className="item-meta">{prettyDate(b.bookingDate)} · {b.startTime} - {b.endTime}</p>
+                    <div className="item-title">{b.playground?.name || "Playground booking"}</div>
+                    <p className="item-meta">{prettyDate(b.bookingDate)} · {b.startTime}–{b.endTime}</p>
                   </div>
                   <span className={`status ${b.bookingStatus?.toLowerCase()}`}>{b.bookingStatus}</span>
                 </div>
               ))
             ) : (
+              <p className="item-meta" style={{ padding: "14px 0" }}>No upcoming bookings yet.</p>
+            )}
+          </div>
+        </article>
+
+        <article className="panel activity-tournaments">
+          <h2 className="panel-title">{superAdmin ? "Venue overview" : "Tournament updates"}</h2>
+          <p className="activity-intro">{superAdmin ? "All venues active on the platform." : "Competition status, fixtures and important updates."}</p>
+          <div className="list">
+            {superAdmin ? (
               playgrounds.slice(0, 5).map((g) => (
                 <div key={g._id} className="list-row">
                   <div>
                     <div className="item-title">{g.name}</div>
-                    <p className="item-meta">{g.area}, {g.district} · {g.sportType}</p>
+                    <p className="item-meta">{g.area || g.address || "Location pending"}</p>
                   </div>
-                  <span className={`status ${g.isApproved ? "confirmed" : "pending"}`}>{g.isApproved ? "Approved" : "Pending"}</span>
+                  <span className={`status ${g.isApproved ? "confirmed" : "pending"}`}>{g.status || "Active"}</span>
                 </div>
               ))
+            ) : tournaments.length ? (
+              tournaments.slice(0, 5).map((t) => {
+                const ground = t.playgrounds?.[0] || t.playground || {};
+                return (
+                  <div key={t._id} className="list-row">
+                    <div>
+                      <div className="item-title">{t.name}</div>
+                      <p className="item-meta">{ground.name || "Venue TBD"} · {prettyDate(t.startDate)}</p>
+                    </div>
+                    <span className="status">{t.status || "Upcoming"}</span>
+                  </div>
+                );
+              })
+            ) : (
+              <p className="item-meta" style={{ padding: "14px 0" }}>No tournament updates.</p>
             )}
-            {!bookings.length && role !== "super-admin" && <p className="item-meta">No booking records yet.</p>}
-          </div>
-        </article>
-
-        <article className="panel">
-          <h2 className="panel-title">Tournaments & Competitions</h2>
-          <div className="list">
-            {tournaments.slice(0, 5).map((t) => (
-              <div key={t._id} className="list-row">
-                <div>
-                  <div className="item-title">{t.name}</div>
-                  <p className="item-meta">{t.sportType} · Starts {prettyDate(t.startDate)}</p>
-                </div>
-                <span className="status confirmed">{t.status || "Upcoming"}</span>
-              </div>
-            ))}
-            {!tournaments.length && <p className="item-meta">No active tournaments listed.</p>}
           </div>
         </article>
       </section>
@@ -570,49 +773,83 @@ function OverviewTab({
 }
 
 // ===================================================
-// SUB-TAB 2: CUSTOMER MY BOOKINGS (with QR Ticket & Cancel)
+// SECTION 2: CUSTOMER MY BOOKINGS & QR PASSES
 // ===================================================
-function CustomerBookingsTab({ bookings, token, showNotice, reload, setActiveModal, setModalData }) {
+function CustomerBookingsTab({ bookings, token, showNotice, reload, setActiveModal, setModalData, setConfirmDialog }) {
+  const [filter, setFilter] = useState("All");
+
+  const filtered = filter === "All" ? bookings : bookings.filter((b) => b.bookingStatus === filter);
+
+  const handleCancelClick = (booking) => {
+    setConfirmDialog({
+      title: "Cancel this booking?",
+      message: `Cancel reservation for ${booking.playground?.name || "Playground"} on ${prettyDate(booking.bookingDate)} (${booking.startTime}–${booking.endTime})? Any paid amount will be refunded according to venue policy.`,
+      confirmLabel: "Cancel & refund",
+      danger: true,
+      onConfirm: async () => {
+        try {
+          await request(`/bookings/${booking._id}/cancel`, { method: "PATCH", token });
+          showNotice("Booking cancelled successfully.");
+          reload();
+        } catch (err) {
+          showNotice(err.message, "error");
+        }
+      }
+    });
+  };
+
   return (
     <div>
       <div className="section-heading">
         <div>
-          <h2>My Bookings & QR Tickets</h2>
+          <h2>My bookings & passes</h2>
           <p>Access your reserved ground slots, digital tickets and cancellation options.</p>
         </div>
       </div>
 
-      <div className="card-grid">
-        {bookings.length ? (
-          bookings.map((b) => (
+      <div className="nav-subtabs">
+        {["All", "Confirmed", "Pending", "Cancelled"].map((f) => (
+          <button key={f} className={filter === f ? "active" : ""} onClick={() => setFilter(f)}>
+            {f}
+          </button>
+        ))}
+      </div>
+
+      <div className="pinned-grid">
+        {filtered.length ? (
+          filtered.map((b) => (
             <article key={b._id} className="card">
-              <span className={`status ${b.bookingStatus?.toLowerCase()}`}>{b.bookingStatus} · {b.paymentStatus || "Unpaid"}</span>
-              <h3>{b.playground?.name || "Playground Booking"}</h3>
+              <span className={`status ${b.bookingStatus?.toLowerCase()}`}>
+                {b.bookingStatus} · {b.paymentStatus || "Unpaid"}
+              </span>
+              <h3>{b.playground?.name || "Playground booking"}</h3>
               <p>
                 <strong>Date:</strong> {prettyDate(b.bookingDate)}<br />
-                <strong>Time:</strong> {b.startTime} - {b.endTime}<br />
-                <strong>Amount:</strong> {money(b.totalAmount || b.pricing)}
+                <strong>Time:</strong> {b.startTime} – {b.endTime}<br />
+                <strong>Amount:</strong> ৳{new Intl.NumberFormat("en-BD").format(b.totalAmount || b.pricing || 0)}
               </p>
               <div className="card-foot">
                 <button
-                  className="btn btn-primary"
+                  type="button"
+                  className="button"
                   onClick={() => { setActiveModal("view-ticket"); setModalData(b); }}
                 >
-                  View QR Ticket
+                  View QR pass
                 </button>
                 {["Pending", "Confirmed"].includes(b.bookingStatus) && (
                   <button
-                    className="btn btn-danger"
-                    onClick={() => { setActiveModal("customer-cancel"); setModalData(b); }}
+                    type="button"
+                    className="button alt"
+                    onClick={() => handleCancelClick(b)}
                   >
-                    Cancel Slot
+                    Cancel
                   </button>
                 )}
               </div>
             </article>
           ))
         ) : (
-          <div className="card"><p className="item-meta">You have no active or previous bookings.</p></div>
+          <div className="empty-state">No bookings found under this filter.</div>
         )}
       </div>
     </div>
@@ -620,51 +857,61 @@ function CustomerBookingsTab({ bookings, token, showNotice, reload, setActiveMod
 }
 
 // ===================================================
-// SUB-TAB 3: PLAYGROUND ADMIN: VENUE MANAGEMENT
+// SECTION 3: PLAYGROUND ADMIN VENUE MANAGEMENT
 // ===================================================
-function VenueManagementTab({ playgrounds, token, showNotice, reload, setActiveModal, setModalData }) {
-  const handleDelete = async (id, name) => {
-    if (!window.confirm(`Are you sure you want to delete "${name}"? This action cannot be undone.`)) return;
-    try {
-      await request(`/playgrounds/${id}`, { method: "DELETE", token });
-      showNotice("Playground deleted successfully.");
-      reload();
-    } catch (err) {
-      showNotice(err.message, "error");
-    }
+function VenueManagementTab({ playgrounds, token, showNotice, reload, setActiveModal, setModalData, setConfirmDialog }) {
+  const handleDeleteGround = (ground) => {
+    setConfirmDialog({
+      title: `Delete ${ground.name}?`,
+      message: "This will permanently remove the playground and its public listing. Active bookings will be affected.",
+      confirmLabel: "Delete playground",
+      danger: true,
+      onConfirm: async () => {
+        try {
+          await request(`/playgrounds/${ground._id}`, { method: "DELETE", token });
+          showNotice("Playground deleted.");
+          reload();
+        } catch (err) {
+          showNotice(err.message, "error");
+        }
+      }
+    });
   };
 
   return (
     <div>
       <div className="section-heading">
         <div>
-          <h2>My Playgrounds</h2>
+          <h2>My playgrounds</h2>
           <p>Manage your registered venues, update details, pricing and photos.</p>
         </div>
-        <button className="btn btn-primary" onClick={() => setActiveModal("add-playground")}>+ Add Playground</button>
+        <button className="button" onClick={() => setActiveModal("add-playground")}>+ Add playground</button>
       </div>
 
-      <div className="card-grid">
+      <div className="pinned-grid">
         {playgrounds.length ? (
-          playgrounds.map((g) => (
-            <article key={g._id} className="card">
-              <span className={`status ${g.isApproved ? "confirmed" : "pending"}`}>
-                {g.isApproved ? "Approved" : "Pending Review"} · {g.status || "Active"}
+          playgrounds.map((ground) => (
+            <article key={ground._id} className="card">
+              <span className={`status ${ground.isApproved ? "confirmed" : "pending"}`}>
+                {ground.status || "Active"} · {ground.isApproved ? "Approved" : "Pending approval"}
               </span>
-              <h3>{g.name}</h3>
+              <h3>{ground.name}</h3>
               <p>
-                <strong>Sport:</strong> {g.sportType} · <strong>Capacity:</strong> {g.maxPlayers || "N/A"} players<br />
-                <strong>Location:</strong> {g.address || `${g.area}, ${g.district}`}<br />
-                <strong>Morning:</strong> {money(g.pricing?.morning)} · <strong>Evening:</strong> {money(g.pricing?.evening)}
+                {ground.sportType} · {ground.address || `${ground.area}, ${ground.district}`}<br />
+                Morning ৳{ground.pricing?.morning ?? "—"}, Evening ৳{ground.pricing?.evening ?? "—"}
               </p>
               <div className="card-foot">
-                <button className="btn btn-alt" onClick={() => { setActiveModal("edit-playground"); setModalData(g); }}>Edit Details</button>
-                <button className="btn btn-danger" onClick={() => handleDelete(g._id, g.name)}>Delete</button>
+                <button type="button" className="button" onClick={() => { setActiveModal("edit-playground"); setModalData(ground); }}>
+                  Edit details
+                </button>
+                <button type="button" className="button alt" onClick={() => handleDeleteGround(ground)}>
+                  Delete
+                </button>
               </div>
             </article>
           ))
         ) : (
-          <div className="card"><p className="item-meta">No venues added yet. Click &ldquo;Add Playground&rdquo; above to create your first venue listing.</p></div>
+          <div className="empty-state">You have not registered any playgrounds yet. Click &ldquo;+ Add playground&rdquo; above.</div>
         )}
       </div>
     </div>
@@ -672,251 +919,317 @@ function VenueManagementTab({ playgrounds, token, showNotice, reload, setActiveM
 }
 
 // ===================================================
-// SUB-TAB 4: SUPER ADMIN: PLAYGROUND APPROVAL CENTRE
+// SECTION 4: SUPER ADMIN PLAYGROUND GOVERNANCE
 // ===================================================
-function SuperAdminPlaygroundsTab({ playgrounds, token, showNotice, reload, setActiveModal, setModalData }) {
+function SuperAdminPlaygroundsTab({ playgrounds, token, showNotice, reload, setActiveModal, setModalData, setConfirmDialog }) {
+  const pending = playgrounds.filter((g) => !g.isApproved).length;
+  const active = playgrounds.filter((g) => g.isApproved && g.status === "Active").length;
+  const inactive = playgrounds.filter((g) => g.isApproved && g.status !== "Active").length;
+
+  const initials = (name) => String(name || "V").trim().split(/\s+/).slice(0, 2).map((p) => p[0]).join("").toUpperCase();
+
   const handleAction = async (id, action) => {
     try {
       await request(`/playgrounds/${id}/${action}`, { method: "PATCH", token });
-      showNotice(`Playground ${action}d successfully.`);
+      showNotice(`Playground ${action}d.`);
       reload();
     } catch (err) {
       showNotice(err.message, "error");
     }
   };
 
-  const pending = playgrounds.filter((p) => !p.isApproved).length;
-  const live = playgrounds.filter((p) => p.isApproved && p.status === "Active").length;
-
   return (
-    <div>
-      <div className="section-heading">
+    <section className="super-venue-workspace">
+      <header className="super-venue-hero">
         <div>
-          <h2>Venue Governance & Approvals</h2>
-          <p>Review new playground applications, grant public approvals and toggle listings.</p>
+          <span className="eyebrow">VENUE GOVERNANCE</span>
+          <h2>Playground approval centre</h2>
+          <p>Review venue information, approve new listings and control public availability.</p>
         </div>
-      </div>
+        <div className="super-venue-stats">
+          <article><strong>{pending}</strong><span>Pending review</span></article>
+          <article><strong>{active}</strong><span>Live venues</span></article>
+          <article><strong>{inactive}</strong><span>Inactive venues</span></article>
+        </div>
+      </header>
 
-      <section className="stats">
-        <article className="stat-card"><span>Pending Reviews</span><strong>{pending}</strong></article>
-        <article className="stat-card"><span>Live Venues</span><strong>{live}</strong></article>
-        <article className="stat-card"><span>Total Platform Grounds</span><strong>{playgrounds.length}</strong></article>
+      <section className="pinned-grid">
+        {playgrounds.length ? (
+          playgrounds.map((ground) => {
+            const approved = Boolean(ground.isApproved);
+            const live = approved && ground.status === "Active";
+            const owner = ground.playgroundAdmin?.name || "Venue owner";
+            const location = [ground.area, ground.district].filter(Boolean).join(", ") || ground.address || "Address pending";
+            return (
+              <article key={ground._id} className="card">
+                <span className={`status ${!approved ? "pending" : live ? "confirmed" : "cancelled"}`}>
+                  {!approved ? "Pending review" : live ? "Approved · Live" : "Approved · Inactive"}
+                </span>
+                <h3>{ground.name}</h3>
+                <p>
+                  <strong>Owner:</strong> {owner} ({initials(owner)})<br />
+                  <strong>Location:</strong> {location}<br />
+                  <strong>Sport:</strong> {ground.sportType || "Sports"} · <strong>Capacity:</strong> {ground.maxPlayers} players
+                </p>
+                <div className="card-foot">
+                  <button type="button" className="button alt" onClick={() => { setActiveModal("view-ground"); setModalData(ground); }}>
+                    View details
+                  </button>
+                  {!approved && (
+                    <button type="button" className="button" onClick={() => handleAction(ground._id, "approve")}>
+                      Approve venue
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="button alt"
+                    onClick={() => handleAction(ground._id, live ? "deactivate" : "activate")}
+                  >
+                    {live ? "Deactivate" : "Activate"}
+                  </button>
+                </div>
+              </article>
+            );
+          })
+        ) : (
+          <div className="empty-state">No playgrounds waiting for review.</div>
+        )}
       </section>
-
-      <div className="card-grid">
-        {playgrounds.map((g) => (
-          <article key={g._id} className="card">
-            <span className={`status ${g.isApproved ? "confirmed" : "pending"}`}>
-              {g.isApproved ? "Approved" : "Pending Approval"} · {g.status}
-            </span>
-            <h3>{g.name}</h3>
-            <p>
-              <strong>Owner:</strong> {g.playgroundAdmin?.name || "Admin"} ({g.playgroundAdmin?.email})<br />
-              <strong>Location:</strong> {g.address || `${g.area}, ${g.district}`}<br />
-              <strong>Sport:</strong> {g.sportType} · <strong>Hours:</strong> {g.openingTime} - {g.closingTime}
-            </p>
-            <div className="card-foot">
-              <button className="btn btn-alt" onClick={() => { setActiveModal("view-ground"); setModalData(g); }}>View Details</button>
-              {!g.isApproved && (
-                <button className="btn btn-primary" onClick={() => handleAction(g._id, "approve")}>Approve</button>
-              )}
-              <button
-                className="btn btn-alt"
-                onClick={() => handleAction(g._id, g.status === "Active" ? "deactivate" : "activate")}
-              >
-                {g.status === "Active" ? "Deactivate" : "Activate"}
-              </button>
-            </div>
-          </article>
-        ))}
-      </div>
-    </div>
+    </section>
   );
 }
 
 // ===================================================
-// SUB-TAB 5: SLOTS MANAGEMENT (PLAYGROUND ADMIN)
+// SECTION 5: SLOTS MANAGEMENT (PLAYGROUND ADMIN)
 // ===================================================
 function SlotsManagementTab({
-  playgrounds, slotsList, slotDate, setSlotDate, token, showNotice, reload, setActiveModal, setModalData
+  playgrounds, slotsList, slotDate, setSlotDate, token, showNotice, reload, setActiveModal, setModalData, setConfirmDialog
 }) {
-  const selectedDateObj = new Date(slotDate + "T12:00:00");
-  const dayOfWeek = selectedDateObj.getDay();
+  const [subTab, setSubTab] = useState("daily");
+  const selectedDate = new Date(slotDate + "T12:00:00");
+  const dayOfWeek = selectedDate.getDay();
 
-  const handleToggleDateAvailability = async (slotId, makeAvailable) => {
-    try {
-      await request(`/slots/${slotId}/date-availability`, {
-        method: "PATCH",
-        body: { date: slotDate, available: makeAvailable },
-        token
-      });
-      showNotice(makeAvailable ? "Slot opened for this date." : "Slot blocked for this date.");
-      reload();
-    } catch (err) {
-      showNotice(err.message, "error");
-    }
+  const handleToggleSlotDate = (slotId, available) => {
+    setConfirmDialog({
+      title: available ? "Make this slot available?" : "Block this slot for one day?",
+      message: available
+        ? `Customers will be able to book this slot on ${slotDate}.`
+        : `Customers will not be able to book this slot on ${slotDate}. The weekly schedule will stay unchanged.`,
+      confirmLabel: available ? "Make available" : "Block this date",
+      danger: !available,
+      onConfirm: async () => {
+        try {
+          await request(`/slots/${slotId}/date-availability`, {
+            method: "PATCH",
+            body: { date: slotDate, available },
+            token
+          });
+          showNotice(available ? "Slot is available again for this date." : "Slot blocked for this date.");
+          reload();
+        } catch (err) {
+          showNotice(err.message, "error");
+        }
+      }
+    });
   };
 
-  const handleDeleteSlot = async (slotId) => {
-    if (!window.confirm("Remove this recurring weekly slot? Customers will no longer be able to book this time.")) return;
-    try {
-      await request(`/slots/${slotId}`, { method: "DELETE", token });
-      showNotice("Slot deleted successfully.");
-      reload();
-    } catch (err) {
-      showNotice(err.message, "error");
-    }
+  const handleRemoveSlot = (slotId) => {
+    setConfirmDialog({
+      title: "Remove this slot?",
+      message: "Customers will no longer be able to book this scheduled recurring time.",
+      confirmLabel: "Remove slot",
+      danger: true,
+      onConfirm: async () => {
+        try {
+          await request(`/slots/${slotId}`, { method: "DELETE", token });
+          showNotice("Slot removed.");
+          reload();
+        } catch (err) {
+          showNotice(err.message, "error");
+        }
+      }
+    });
   };
 
   return (
     <div>
-      <div className="daily-schedule-toolbar">
+      <div className="management-toolbar daily-schedule-toolbar">
         <div>
-          <h2>Daily Slot Availability & Schedules</h2>
-          <p>Review real-time slot bookings by date, or block individual recurring slots for holidays.</p>
+          <h2>Slot schedules & daily availability</h2>
+          <p>Organise availability separately for every playground or block dates.</p>
         </div>
         <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-          <label>
-            <span>Date:</span>
-            <input type="date" value={slotDate} min={isoDate()} onChange={(e) => setSlotDate(e.target.value)} />
-          </label>
-          <button className="btn btn-primary" onClick={() => setActiveModal("add-slots")}>+ Generate Slots</button>
+          {subTab === "daily" && (
+            <label style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.84rem", fontWeight: 700 }}>
+              Schedule date
+              <input type="date" value={slotDate} min={isoDate()} onChange={(e) => setSlotDate(e.target.value)} />
+            </label>
+          )}
+          <button className="button" onClick={() => setActiveModal("add-slots")}>+ Generate slots</button>
         </div>
       </div>
 
-      {slotsList.length ? (
-        slotsList.map(({ ground, slots, bookings }) => {
-          const daySlots = slots.filter((s) => s.dayOfWeek === dayOfWeek && s.isActive);
-          const bookingsForDay = bookings.filter((b) => String(b.bookingDate).slice(0, 10) === slotDate && ["Pending", "Confirmed"].includes(b.bookingStatus));
+      <div className="nav-subtabs">
+        <button className={subTab === "daily" ? "active" : ""} onClick={() => setSubTab("daily")}>Daily slot availability</button>
+        <button className={subTab === "weekly" ? "active" : ""} onClick={() => setSubTab("weekly")}>Weekly schedules by venue</button>
+      </div>
 
-          return (
-            <section key={ground._id} className="daily-venue">
+      {subTab === "daily" ? (
+        slotsList.length ? (
+          slotsList.map(({ ground, slots, bookings }) => {
+            const venueSlots = slots.filter((s) => s.dayOfWeek === dayOfWeek && s.isActive);
+            const bookingsForDay = bookings.filter((b) => String(b.bookingDate).slice(0, 10) === slotDate && ["Pending", "Confirmed"].includes(b.bookingStatus));
+
+            return (
+              <section key={ground._id} className="daily-venue">
+                <header>
+                  <div>
+                    <span className="venue-kicker">PLAYGROUND</span>
+                    <h2>{ground.name}</h2>
+                    <p>{ground.address || "Address pending"}</p>
+                  </div>
+                  <strong>{bookingsForDay.length} booked</strong>
+                </header>
+
+                <div className="daily-slot-grid">
+                  {venueSlots.length ? (
+                    venueSlots.map((slot) => {
+                      const booking = bookingsForDay.find((b) => b.startTime === slot.startTime && b.endTime === slot.endTime);
+                      const unavailable = (slot.unavailableDates || []).includes(slotDate);
+
+                      if (booking) {
+                        return (
+                          <article key={slot._id} className="daily-slot booked">
+                            <div>
+                              <span>BOOKED</span>
+                              <strong>{slot.startTime} – {slot.endTime}</strong>
+                              <small>{booking.customer?.name || "Customer"} · {booking.bookingStatus}</small>
+                            </div>
+                            <b>Reserved</b>
+                          </article>
+                        );
+                      }
+                      if (unavailable) {
+                        return (
+                          <article key={slot._id} className="daily-slot unavailable">
+                            <div>
+                              <span>UNAVAILABLE</span>
+                              <strong>{slot.startTime} – {slot.endTime}</strong>
+                              <small>Closed only for this date</small>
+                            </div>
+                            <button className="button alt" type="button" onClick={() => handleToggleSlotDate(slot._id, true)}>
+                              Make available
+                            </button>
+                          </article>
+                        );
+                      }
+                      return (
+                        <article key={slot._id} className="daily-slot available">
+                          <div>
+                            <span>AVAILABLE</span>
+                            <strong>{slot.startTime} – {slot.endTime}</strong>
+                            <small>{slot.price ? `৳${slot.price}` : "Open for booking"}</small>
+                          </div>
+                          <button className="button alt" type="button" onClick={() => handleToggleSlotDate(slot._id, false)}>
+                            Block this date
+                          </button>
+                        </article>
+                      );
+                    })
+                  ) : (
+                    <p className="item-meta">No active slots are scheduled for this day.</p>
+                  )}
+                </div>
+              </section>
+            );
+          })
+        ) : (
+          <div className="empty-state">No playgrounds configured yet.</div>
+        )
+      ) : (
+        slotsList.length ? (
+          slotsList.map(({ ground, slots }) => (
+            <section key={ground._id} className="venue-slot-group">
               <header>
                 <div>
-                  <span className="dash-eyebrow">VENUE SCHEDULE</span>
+                  <span>PLAYGROUND</span>
                   <h2>{ground.name}</h2>
-                  <p className="item-meta">{ground.address || "Address pending"}</p>
+                  <p>{ground.address || "Address pending"}</p>
                 </div>
-                <strong>{bookingsForDay.length} Booked / {daySlots.length} Active Slots</strong>
+                <strong>{slots.filter((s) => s.isActive).length} active slots</strong>
               </header>
-
-              <div className="daily-slot-grid">
-                {daySlots.length ? (
-                  daySlots.map((slot) => {
-                    const booking = bookingsForDay.find((b) => b.startTime === slot.startTime && b.endTime === slot.endTime);
-                    const isUnavailable = (slot.unavailableDates || []).includes(slotDate);
-
-                    if (booking) {
-                      return (
-                        <article key={slot._id} className="daily-slot booked">
-                          <div>
-                            <strong>{slot.startTime} - {slot.endTime}</strong>
-                            <small>{booking.customer?.name || "Customer"} · {booking.bookingStatus}</small>
-                          </div>
-                          <span className="status cancelled">Booked</span>
-                        </article>
-                      );
-                    }
-                    if (isUnavailable) {
-                      return (
-                        <article key={slot._id} className="daily-slot unavailable">
-                          <div>
-                            <strong>{slot.startTime} - {slot.endTime}</strong>
-                            <small>Blocked for this day</small>
-                          </div>
-                          <button
-                            className="btn btn-alt"
-                            style={{ padding: "4px 8px", fontSize: "0.75rem" }}
-                            onClick={() => handleToggleDateAvailability(slot._id, true)}
-                          >
-                            Open
-                          </button>
-                        </article>
-                      );
-                    }
-                    return (
-                      <article key={slot._id} className="daily-slot available">
-                        <div>
-                          <strong>{slot.startTime} - {slot.endTime}</strong>
-                          <small>{slot.price ? money(slot.price) : "Open for booking"}</small>
-                        </div>
-                        <div style={{ display: "flex", gap: "4px" }}>
-                          <button
-                            className="btn btn-alt"
-                            style={{ padding: "4px 8px", fontSize: "0.75rem" }}
-                            onClick={() => handleToggleDateAvailability(slot._id, false)}
-                          >
-                            Block
-                          </button>
-                          <button
-                            className="btn btn-danger"
-                            style={{ padding: "4px 8px", fontSize: "0.75rem" }}
-                            onClick={() => handleDeleteSlot(slot._id)}
-                            title="Delete recurring slot"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      </article>
-                    );
-                  })
+              <div className="venue-slot-list">
+                {slots.length ? (
+                  slots.map((slot) => (
+                    <article key={slot._id} className="slot-record">
+                      <div>
+                        <span className={`status ${slot.isActive ? "confirmed" : "pending"}`}>{slot.isActive ? "Active" : "Inactive"}</span>
+                        <strong>Day {slot.dayOfWeek} · {slot.startTime} – {slot.endTime}</strong>
+                      </div>
+                      <button className="button alt" type="button" onClick={() => handleRemoveSlot(slot._id)}>Remove</button>
+                    </article>
+                  ))
                 ) : (
-                  <p className="item-meta">No active slots scheduled for this day of the week. Click &ldquo;+ Generate Slots&rdquo; above.</p>
+                  <p className="item-meta">No slots configured for this playground.</p>
                 )}
               </div>
             </section>
-          );
-        })
-      ) : (
-        <div className="card"><p className="item-meta">Add a playground first before managing slot schedules.</p></div>
+          ))
+        ) : (
+          <div className="empty-state">Add a playground before creating its slots.</div>
+        )
       )}
     </div>
   );
 }
 
 // ===================================================
-// SUB-TAB 6: ADMIN BOOKINGS (with Reason & Refund Cancel)
+// SECTION 6: ADMIN BOOKINGS
 // ===================================================
 function AdminBookingsTab({ bookings, token, showNotice, reload, setActiveModal, setModalData }) {
   return (
     <div>
       <div className="section-heading">
         <div>
-          <h2>Venue Booking Management</h2>
-          <p>Review customer reservations and process administrative cancellations with instant refund.</p>
+          <h2>Booking history & operations</h2>
+          <p>Review customer reservations and manage refunds or cancellations.</p>
         </div>
       </div>
 
-      <div className="card-grid">
+      <div className="pinned-grid">
         {bookings.length ? (
-          bookings.map((b) => (
-            <article key={b._id} className="card">
-              <span className={`status ${b.bookingStatus?.toLowerCase()}`}>
-                {b.bookingStatus} · {b.paymentStatus || "Unpaid"}
-              </span>
-              <h3>{b.playground?.name || "Playground Booking"}</h3>
-              <p>
-                <strong>Customer:</strong> {b.customer?.name || "Customer"} ({b.customer?.phone || b.customer?.email})<br />
-                <strong>Date & Time:</strong> {prettyDate(b.bookingDate)} · {b.startTime} - {b.endTime}<br />
-                <strong>Amount:</strong> {money(b.totalAmount || b.pricing)}
-                {b.cancellationReason && (
-                  <><br /><strong style={{ color: "#b91c1c" }}>Cancelled Reason:</strong> {b.cancellationReason}</>
+          bookings.map((b) => {
+            const canCancel = ["Pending", "Confirmed"].includes(b.bookingStatus);
+            return (
+              <article key={b._id} className="card">
+                <span className={`status ${b.bookingStatus?.toLowerCase()}`}>
+                  {b.bookingStatus} · {b.paymentStatus || "Unpaid"}
+                </span>
+                <h3>{b.playground?.name || "Playground booking"}</h3>
+                <p>
+                  {b.customer?.name || "Customer"} · {prettyDate(b.bookingDate)}<br />
+                  {b.startTime} – {b.endTime}<br />
+                  <strong>Paid:</strong> ৳{new Intl.NumberFormat("en-BD").format(b.totalAmount || b.pricing || 0)}
+                  {b.cancellationReason && (
+                    <><br /><strong style={{ color: "#a53636" }}>Reason:</strong> {b.cancellationReason}</>
+                  )}
+                </p>
+                {canCancel && (
+                  <div className="card-foot">
+                    <button
+                      className="button alt"
+                      type="button"
+                      onClick={() => { setActiveModal("admin-cancel"); setModalData(b); }}
+                    >
+                      Cancel booking
+                    </button>
+                  </div>
                 )}
-              </p>
-              <div className="card-foot">
-                {["Pending", "Confirmed"].includes(b.bookingStatus) && (
-                  <button
-                    className="btn btn-danger"
-                    onClick={() => { setActiveModal("admin-cancel"); setModalData(b); }}
-                  >
-                    Cancel Booking & Refund
-                  </button>
-                )}
-              </div>
-            </article>
-          ))
+              </article>
+            );
+          })
         ) : (
-          <div className="card"><p className="item-meta">No bookings placed for your venues yet.</p></div>
+          <div className="empty-state">No playground bookings yet.</div>
         )}
       </div>
     </div>
@@ -924,174 +1237,254 @@ function AdminBookingsTab({ bookings, token, showNotice, reload, setActiveModal,
 }
 
 // ===================================================
-// SUB-TAB 7: QR SCANNER (PLAYGROUND ADMIN)
+// SECTION 7: QR SCANNER (PLAYGROUND ADMIN)
 // ===================================================
 function QRScannerTab({ token, showNotice }) {
   const [ticketInput, setTicketInput] = useState("");
+  const [cameraOn, setCameraOn] = useState(false);
   const [result, setResult] = useState(null);
-  const [verifying, setVerifying] = useState(false);
+  const [validating, setValidating] = useState(false);
 
   const handleValidate = async (e) => {
     e?.preventDefault();
-    if (!ticketInput.trim()) return;
-    setVerifying(true);
+    const val = ticketInput.trim();
+    if (!val) return;
+    setValidating(true);
     setResult(null);
     try {
-      const data = await request("/payments/validate-qr", {
+      const res = await request("/payments/validate-qr", {
         method: "POST",
-        body: { token: ticketInput.trim() },
+        body: { token: val },
         token
       });
-      setResult({ success: true, message: data.message || "Ticket validated successfully!", data });
-      showNotice("Ticket verified: Valid reservation.");
+      playBeep(true);
+      setResult({ success: true, message: res.message || "Valid ticket! Entry granted.", data: res });
+      showNotice("Ticket validated: Access granted.");
     } catch (err) {
-      setResult({ success: false, message: err.message || "Invalid or expired QR ticket." });
+      playBeep(false);
+      setResult({ success: false, message: err.message || "This QR code is invalid or has expired." });
       showNotice(err.message, "error");
     } finally {
-      setVerifying(false);
+      setValidating(false);
     }
   };
 
   return (
-    <div style={{ maxWidth: "600px", margin: "20px auto" }}>
-      <article className="qr-scanner-card">
-        <span className="dash-eyebrow">ENTRY VALIDATION</span>
-        <h2>Venue Check-in QR Scanner</h2>
-        <p className="item-meta">Paste the QR ticket string or ticket ID to verify match and ground access eligibility.</p>
+    <div className="scanner-page">
+      <header className="scanner-head">
+        <p className="eyebrow">VENUE OPERATIONS</p>
+        <h1>Venue Check-in Scanner</h1>
+        <p>Scan ticket QR code or manually paste ticket ID to verify ground entry.</p>
+      </header>
 
-        <form onSubmit={handleValidate} className="qr-scanner-input">
-          <input
-            type="text"
-            placeholder="Scan or enter QR ticket code..."
-            value={ticketInput}
-            onChange={(e) => setTicketInput(e.target.value)}
-          />
-          <button className="btn btn-primary" type="submit" disabled={verifying}>
-            {verifying ? "Checking..." : "Verify"}
-          </button>
-        </form>
-
-        {result && (
-          <div className={`scanner-result ${result.success ? "success" : "error"}`}>
-            <strong>{result.success ? "✓ Entry Granted" : "✕ Validation Failed"}</strong>
-            <p>{result.message}</p>
-            {result.data?.booking && (
-              <div style={{ marginTop: "8px", fontSize: "0.85rem" }}>
-                <strong>Customer:</strong> {result.data.booking.customer?.name}<br />
-                <strong>Time Slot:</strong> {result.data.booking.startTime} - {result.data.booking.endTime}
-              </div>
-            )}
+      <div className="scanner-layout">
+        {/* Scanner Card */}
+        <section className="scanner-card">
+          <div style={{ textAlign: "center", marginBottom: "16px" }}>
+            <div
+              style={{
+                width: "100%",
+                height: "220px",
+                background: "#0c2816",
+                borderRadius: "16px",
+                display: "grid",
+                placeItems: "center",
+                color: "#79e29a",
+                position: "relative",
+                overflow: "hidden"
+              }}
+            >
+              {cameraOn ? (
+                <>
+                  <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "3px", background: "#22c55e", boxShadow: "0 0 12px #22c55e", animation: "turf-scan-laser 2s infinite alternate" }} />
+                  <div>
+                    <span style={{ fontSize: "2rem" }}>📷</span>
+                    <p style={{ margin: "6px 0 0", fontSize: "0.82rem", color: "#bbf7d0" }}>Camera active — point at customer QR pass</p>
+                  </div>
+                </>
+              ) : (
+                <div>
+                  <span style={{ fontSize: "2rem", opacity: 0.6 }}>⌕</span>
+                  <p style={{ margin: "6px 0 0", fontSize: "0.82rem", color: "#86efac" }}>Camera is in standby</p>
+                </div>
+              )}
+            </div>
+            <div style={{ marginTop: "14px", display: "flex", gap: "10px", justifyContent: "center" }}>
+              <button
+                type="button"
+                className={`button ${cameraOn ? "alt" : ""}`}
+                onClick={() => setCameraOn(!cameraOn)}
+              >
+                {cameraOn ? "Stop camera" : "Start QR camera"}
+              </button>
+            </div>
           </div>
-        )}
-      </article>
+
+          <form onSubmit={handleValidate} className="form-grid" style={{ marginTop: "20px" }}>
+            <label className="full">
+              Manual Ticket ID / QR Payload
+              <input
+                type="text"
+                placeholder="Enter booking ID or QR ticket string..."
+                value={ticketInput}
+                onChange={(e) => setTicketInput(e.target.value)}
+              />
+            </label>
+            <div className="full">
+              <button className="button" type="submit" disabled={validating} style={{ width: "100%" }}>
+                {validating ? "Validating ticket…" : "Verify QR ticket"}
+              </button>
+            </div>
+          </form>
+        </section>
+
+        {/* Result Card */}
+        <section className="result-card">
+          <h3>Validation Result</h3>
+          {result ? (
+            <div style={{ marginTop: "14px" }}>
+              <span className={`status ${result.success ? "confirmed" : "cancelled"}`}>
+                {result.success ? "ACCESS GRANTED" : "INVALID PASS"}
+              </span>
+              <p style={{ margin: "12px 0 6px", fontSize: "0.92rem", fontWeight: 700, color: result.success ? "#0d7135" : "#a53636" }}>
+                {result.message}
+              </p>
+              {result.data?.booking && (
+                <div style={{ fontSize: "0.82rem", color: "#546258", borderTop: "1px solid #edf2ee", paddingTop: "10px", marginTop: "10px" }}>
+                  <strong>Customer:</strong> {result.data.booking.customer?.name || "Customer"}<br />
+                  <strong>Playground:</strong> {result.data.booking.playground?.name || "Venue"}<br />
+                  <strong>Time slot:</strong> {result.data.booking.startTime} – {result.data.booking.endTime}
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="item-meta" style={{ marginTop: "14px" }}>
+              Scan a pass or enter ticket code to see customer verification details here.
+            </p>
+          )}
+        </section>
+      </div>
     </div>
   );
 }
 
 // ===================================================
-// SUB-TAB 8: INCOME & REFUNDS (PLAYGROUND ADMIN)
+// SECTION 8: INCOME & OFFICE REFUND DESK
 // ===================================================
-function IncomeTab({ incomeData, token, showNotice, reload }) {
-  const handleCompleteRefund = async (paymentId) => {
-    if (!window.confirm("Mark this refund as paid to the customer in cash at the venue office?")) return;
-    try {
-      await request(`/payments/refund/${paymentId}/complete`, { method: "PATCH", token });
-      showNotice("Refund completed and customer notified.");
-      reload();
-    } catch (err) {
-      showNotice(err.message, "error");
-    }
+function IncomeTab({ incomeData, token, showNotice, reload, setConfirmDialog }) {
+  const handleMarkRefund = (paymentId) => {
+    setConfirmDialog({
+      title: "Confirm refund collection?",
+      message: "Mark this refund as successfully paid to the customer in cash at the venue office? An in-app notification will be sent immediately.",
+      confirmLabel: "Confirm refund",
+      onConfirm: async () => {
+        try {
+          await request(`/payments/refund/${paymentId}/complete`, { method: "PATCH", token });
+          showNotice("Refund completed successfully.");
+          reload();
+        } catch (err) {
+          showNotice(err.message, "error");
+        }
+      }
+    });
   };
 
+  const formatBD = (v) => `৳${new Intl.NumberFormat("en-BD").format(v || 0)}`;
+
   return (
-    <div className="income-dashboard">
-      <div className="section-heading">
+    <div className="income-dashboard" style={{ marginTop: 0 }}>
+      <header className="section-heading">
         <div>
-          <h2>Income Overview & Office Refunds</h2>
-          <p>Review paid earnings from your playgrounds and confirm office cash refunds.</p>
+          <h2>Income overview</h2>
+          <p>Paid earnings from your own playgrounds.</p>
         </div>
-      </div>
+      </header>
 
-      <div className="income-stat-grid">
+      <section className="income-summary">
         <article>
-          <div>
-            <span>Slot Booking Earnings</span>
-            <strong>{money(incomeData?.slotTotal)}</strong>
-          </div>
+          <span>Slot income</span>
+          <strong>{formatBD(incomeData?.slotTotal)}</strong>
         </article>
         <article>
-          <div>
-            <span>Tournament Income</span>
-            <strong>{money(incomeData?.tournamentTotal)}</strong>
-          </div>
+          <span>Tournament income</span>
+          <strong>{formatBD(incomeData?.tournamentTotal)}</strong>
         </article>
-        <article className="income-grand-total">
-          <div>
-            <span>Total Collected</span>
-            <strong>{money(incomeData?.total)}</strong>
-          </div>
+        <article className="income-total">
+          <span>Total income</span>
+          <strong>{formatBD(incomeData?.total)}</strong>
         </article>
-      </div>
+      </section>
 
-      {/* Pending Office Refunds Section */}
-      <section className="panel" style={{ marginBottom: "24px" }}>
-        <h2 className="panel-title">Office Refund Collection Desk</h2>
-        <p className="item-meta" style={{ marginBottom: "12px" }}>Confirm only after the customer receives their refund at the venue office.</p>
-        <div className="list">
+      {/* Refund Collection Desk */}
+      <section className="income-section" style={{ marginTop: "20px" }}>
+        <h2>Refund collection desk</h2>
+        <p className="item-meta" style={{ marginBottom: "14px" }}>
+          Confirm only after the customer has received the cash at the venue office. A “Refund successful” notification appears immediately.
+        </p>
+        <div>
           {incomeData?.pendingRefunds?.length ? (
             incomeData.pendingRefunds.map((ref) => (
-              <div key={ref.paymentId} className="list-row">
+              <article key={ref.paymentId} className="income-row">
                 <div>
-                  <div className="item-title">{ref.customer} · {money(ref.amount)}</div>
-                  <p className="item-meta">{ref.playground} · Ref: {ref.reference}</p>
+                  <span>OFFICE REFUND · PENDING</span>
+                  <strong>{ref.customer} · {formatBD(ref.amount)}</strong>
+                  <small>{ref.playground} · {ref.reference}</small>
                 </div>
-                <button className="btn btn-primary" onClick={() => handleCompleteRefund(ref.paymentId)}>
-                  Mark Refund Successful
+                <button className="button" type="button" onClick={() => handleMarkRefund(ref.paymentId)}>
+                  Mark refund successful
                 </button>
-              </div>
+              </article>
             ))
           ) : (
-            <p className="item-meta">No refunds waiting for office collection.</p>
+            <p className="item-meta">No refunds are waiting for office collection.</p>
           )}
         </div>
       </section>
 
-      {/* Income Breakdown Lists */}
-      <section className="split-grid">
-        <article className="panel">
-          <h2 className="panel-title">Recent Paid Slots</h2>
-          <div className="list">
+      {/* Paid Transactions Split Grid */}
+      <section className="split-grid" style={{ marginTop: "20px" }}>
+        <article className="panel income-panel slot-income-panel">
+          <h2 className="panel-title">
+            <span className="income-icon slot-icon">◷</span>
+            <span>Slot booking income</span>
+            <small>Paid reservations</small>
+          </h2>
+          <div>
             {incomeData?.slots?.length ? (
-              incomeData.slots.slice(0, 6).map((item, idx) => (
+              incomeData.slots.map((item, idx) => (
                 <div key={idx} className="list-row">
                   <div>
                     <div className="item-title">{item.playground}</div>
-                    <p className="item-meta">{prettyDate(item.date)} · {item.startTime} - {item.endTime}</p>
+                    <p className="item-meta">{prettyDate(item.date)} · {item.startTime}–{item.endTime}</p>
                   </div>
-                  <strong>{money(item.amount)}</strong>
+                  <span className="status">{formatBD(item.amount)}</span>
                 </div>
               ))
             ) : (
-              <p className="item-meta">No paid slot bookings recorded yet.</p>
+              <p className="item-meta" style={{ padding: "16px 20px" }}>No paid slot bookings yet.</p>
             )}
           </div>
         </article>
 
-        <article className="panel">
-          <h2 className="panel-title">Tournament Registrations</h2>
-          <div className="list">
+        <article className="panel income-panel tournament-income-panel">
+          <h2 className="panel-title">
+            <span className="income-icon tournament-icon">★</span>
+            <span>Tournament income</span>
+            <small>Registration fees</small>
+          </h2>
+          <div>
             {incomeData?.tournaments?.length ? (
-              incomeData.tournaments.slice(0, 6).map((item, idx) => (
+              incomeData.tournaments.map((item, idx) => (
                 <div key={idx} className="list-row">
                   <div>
                     <div className="item-title">{item.tournament}</div>
                     <p className="item-meta">{item.team} · {item.playground}</p>
                   </div>
-                  <strong>{money(item.amount)}</strong>
+                  <span className="status">{formatBD(item.amount)}</span>
                 </div>
               ))
             ) : (
-              <p className="item-meta">No paid tournament team entries yet.</p>
+              <p className="item-meta" style={{ padding: "16px 20px" }}>No paid tournament registrations yet.</p>
             )}
           </div>
         </article>
@@ -1101,65 +1494,76 @@ function IncomeTab({ incomeData, token, showNotice, reload }) {
 }
 
 // ===================================================
-// SUB-TAB 9: USER CONTROL (SUPER ADMIN)
+// SECTION 9: USER CONTROL (SUPER ADMIN)
 // ===================================================
-function UserControlTab({ users, token, showNotice, reload }) {
-  const [filterRole, setFilterRole] = useState("all");
+function UserControlTab({ users, token, showNotice, reload, setConfirmDialog }) {
+  const [filterRole, setFilterRole] = useState("All");
 
-  const handleToggleBlock = async (id, isBlocked) => {
-    try {
-      await request(`/users/${isBlocked ? "unblock" : "block"}/${id}`, {
-        method: "PATCH",
-        token
-      });
-      showNotice(isBlocked ? "User unblocked successfully." : "User blocked.");
-      reload();
-    } catch (err) {
-      showNotice(err.message, "error");
-    }
+  const handleBlockToggle = (u) => {
+    const isBlocked = Boolean(u.isBlocked);
+    setConfirmDialog({
+      title: isBlocked ? `Unblock ${u.name}?` : `Block ${u.name}?`,
+      message: isBlocked ? "User will be able to log in and make bookings again." : "User will be restricted from accessing the platform.",
+      confirmLabel: isBlocked ? "Unblock account" : "Block account",
+      danger: !isBlocked,
+      onConfirm: async () => {
+        try {
+          await request(`/users/${isBlocked ? "unblock" : "block"}/${u._id}`, {
+            method: "PATCH",
+            body: {},
+            token
+          });
+          showNotice(isBlocked ? "User unblocked." : "User blocked.");
+          reload();
+        } catch (err) {
+          showNotice(err.message, "error");
+        }
+      }
+    });
   };
 
-  const filteredUsers = filterRole === "all" ? users : users.filter((u) => u.role === filterRole);
+  const filtered = filterRole === "All" ? users : users.filter((u) => u.role === filterRole);
 
   return (
     <div>
       <div className="section-heading">
         <div>
-          <h2>User Control Centre</h2>
-          <p>Oversee registered customer accounts, playground administrators, and permissions.</p>
-        </div>
-        <div>
-          <select value={filterRole} onChange={(e) => setFilterRole(e.target.value)} style={{ padding: "8px 12px", borderRadius: "8px" }}>
-            <option value="all">All Roles</option>
-            <option value="customer">Customers</option>
-            <option value="playground-admin">Playground Admins</option>
-            <option value="super-admin">Super Admins</option>
-          </select>
+          <h2>Platform user control</h2>
+          <p>Oversee registered customer accounts, owners, and system administrators.</p>
         </div>
       </div>
 
-      <div className="card-grid">
-        {filteredUsers.map((u) => (
+      <div className="nav-subtabs">
+        {["All", "customer", "playground-admin", "super-admin"].map((r) => (
+          <button key={r} className={filterRole === r ? "active" : ""} onClick={() => setFilterRole(r)}>
+            {r === "All" ? "All users" : r.replace("-", " ")}
+          </button>
+        ))}
+      </div>
+
+      <div className="pinned-grid">
+        {filtered.map((u) => (
           <article key={u._id} className="card">
             <span className={`status ${u.isBlocked ? "cancelled" : "confirmed"}`}>
               {u.role} · {u.isBlocked ? "Blocked" : "Active"}
             </span>
             <h3>{u.name}</h3>
             <p>
-              <strong>Email:</strong> {u.email}<br />
-              <strong>Phone:</strong> {u.phone || "Not added"}<br />
-              <strong>Joined:</strong> {prettyDate(u.createdAt)}
+              {u.email}<br />
+              {u.phone || "No phone added"}<br />
+              <small>Joined: {prettyDate(u.createdAt)}</small>
             </p>
-            <div className="card-foot">
-              {u.role !== "super-admin" && (
+            {u.role !== "super-admin" && (
+              <div className="card-foot">
                 <button
-                  className={`btn ${u.isBlocked ? "btn-primary" : "btn-danger"}`}
-                  onClick={() => handleToggleBlock(u._id, u.isBlocked)}
+                  type="button"
+                  className={`button ${u.isBlocked ? "" : "alt"}`}
+                  onClick={() => handleBlockToggle(u)}
                 >
-                  {u.isBlocked ? "Unblock Account" : "Block Account"}
+                  {u.isBlocked ? "Unblock user" : "Block user"}
                 </button>
-              )}
-            </div>
+              </div>
+            )}
           </article>
         ))}
       </div>
@@ -1168,18 +1572,16 @@ function UserControlTab({ users, token, showNotice, reload }) {
 }
 
 // ===================================================
-// SUB-TAB 10: REPORTS TAB (Role-Adaptive)
+// SECTION 10: REPORTS (Role-Adaptive)
 // ===================================================
-function ReportsTab({
-  role, myReports, allReports, playgrounds, reportableCustomers, token, showNotice, reload
-}) {
-  // Super Admin Decision State
-  const [selectedStatus, setSelectedStatus] = useState("All");
-  const [adminNotes, setAdminNotes] = useState({});
+function ReportsTab({ role, myReports, allReports, playgrounds, reportableCustomers, token, showNotice, reload }) {
+  const superAdmin = role === "super-admin";
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [decisionNotes, setDecisionNotes] = useState({});
   const [decisionStatuses, setDecisionStatuses] = useState({});
 
-  // New Report Form State
-  const [formState, setFormState] = useState({
+  const [newReport, setNewReport] = useState({
     playground: "", customerRecord: "", category: "Safety", severity: "Medium", subject: "", message: ""
   });
 
@@ -1188,21 +1590,21 @@ function ReportsTab({
     try {
       const payload = {
         targetType: role === "playground-admin" ? "User" : "Playground",
-        category: formState.category,
-        severity: formState.severity,
-        subject: formState.subject,
-        message: formState.message
+        category: newReport.category,
+        severity: newReport.severity,
+        subject: newReport.subject,
+        message: newReport.message
       };
       if (role === "playground-admin") {
-        const [reportedUser, playground] = formState.customerRecord.split("|");
-        payload.reportedUser = reportedUser;
-        payload.playground = playground;
+        const [repUser, pg] = newReport.customerRecord.split("|");
+        payload.reportedUser = repUser;
+        payload.playground = pg;
       } else {
-        payload.playground = formState.playground;
+        payload.playground = newReport.playground;
       }
       await request("/reports", { method: "POST", body: payload, token });
-      showNotice("Report submitted successfully for super admin review.");
-      setFormState({ playground: "", customerRecord: "", category: "Safety", severity: "Medium", subject: "", message: "" });
+      showNotice("Report submitted successfully for admin review.");
+      setNewReport({ playground: "", customerRecord: "", category: "Safety", severity: "Medium", subject: "", message: "" });
       reload();
     } catch (err) {
       showNotice(err.message, "error");
@@ -1211,127 +1613,181 @@ function ReportsTab({
 
   const handleSaveDecision = async (reportId) => {
     const status = decisionStatuses[reportId] || "Resolved";
-    const note = adminNotes[reportId] || "";
+    const adminNote = decisionNotes[reportId] || "";
     try {
       await request(`/reports/${reportId}/status`, {
         method: "PATCH",
-        body: { status, adminNote: note },
+        body: { status, adminNote },
         token
       });
-      showNotice("Decision saved and reporter notified.");
+      showNotice("Decision saved. Reporter has been notified.");
       reload();
     } catch (err) {
       showNotice(err.message, "error");
     }
   };
 
-  if (role === "super-admin") {
-    const filteredReports = selectedStatus === "All" ? allReports : allReports.filter((r) => r.status === selectedStatus);
+  if (superAdmin) {
+    const filteredReports = allReports.filter((r) => {
+      const matchSearch = [r.subject, r.message, r.reporter?.name, r.playground?.name, r.reportedUser?.name]
+        .filter(Boolean).join(" ").toLowerCase().includes(searchTerm.toLowerCase());
+      const matchStatus = statusFilter === "All" || r.status === statusFilter;
+      return matchSearch && matchStatus;
+    });
+
+    const openCount = allReports.filter((r) => ["Pending", "Under Review"].includes(r.status)).length;
+    const resolvedCount = allReports.filter((r) => r.status === "Resolved").length;
+
     return (
-      <div className="report-workspace">
-        <div className="report-hero">
+      <section className="report-workspace">
+        <header className="report-hero">
           <div>
-            <h2>Report Review Queue</h2>
-            <p>Prioritise incoming issues, document resolution decisions and update reporters.</p>
+            <h2>Report review queue</h2>
+            <p>Prioritise incoming issues, document decisions and keep reporters informed.</p>
           </div>
           <div className="report-stats">
-            <div className="report-stat"><strong>{allReports.length}</strong><span>Total</span></div>
-            <div className="report-stat"><strong>{allReports.filter((r) => ["Pending", "Under Review"].includes(r.status)).length}</strong><span>Open</span></div>
-            <div className="report-stat"><strong>{allReports.filter((r) => r.status === "Resolved").length}</strong><span>Resolved</span></div>
+            <div className="report-stat"><strong>{allReports.length}</strong><span>Total reports</span></div>
+            <div className="report-stat"><strong>{openCount}</strong><span>Open</span></div>
+            <div className="report-stat"><strong>{resolvedCount}</strong><span>Resolved</span></div>
           </div>
-        </div>
+        </header>
 
-        <div style={{ marginBottom: "16px" }}>
-          <select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value)} style={{ padding: "8px 14px", borderRadius: "8px" }}>
-            <option value="All">All Statuses</option>
-            <option value="Pending">Pending</option>
-            <option value="Under Review">Under Review</option>
-            <option value="Resolved">Resolved</option>
-            <option value="Dismissed">Dismissed</option>
-          </select>
-        </div>
+        <article className="report-list-panel">
+          <header className="report-panel-head">
+            <div>
+              <h3>All reports</h3>
+              <span>Filter queue, then save a status and review note.</span>
+            </div>
+            <div style={{ display: "flex", gap: "10px" }}>
+              <input
+                type="search"
+                placeholder="Search reports..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={{ padding: "7px 12px", borderRadius: "8px", border: "1px solid #d9e9de" }}
+              />
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                style={{ padding: "7px 12px", borderRadius: "8px", border: "1px solid #d9e9de" }}
+              >
+                <option value="All">All statuses</option>
+                <option value="Pending">Pending</option>
+                <option value="Under Review">Under review</option>
+                <option value="Resolved">Resolved</option>
+                <option value="Dismissed">Dismissed</option>
+              </select>
+            </div>
+          </header>
 
-        <div className="card-grid">
-          {filteredReports.map((r) => (
-            <article key={r._id} className="card">
-              <div className="report-card-top">
-                <span className={`status ${r.status?.toLowerCase().replace(/\s+/g, "-")}`}>{r.status}</span>
-                <span className="status cancelled">{r.severity} Priority</span>
-              </div>
-              <h3>{r.subject}</h3>
-              <p>{r.message}</p>
-              <p className="item-meta">
-                <strong>Reporter:</strong> {r.reporter?.name} · <strong>Regarding:</strong> {r.playground?.name || r.reportedUser?.name}<br />
-                <strong>Submitted:</strong> {prettyDate(r.createdAt)}
-              </p>
-
-              <div style={{ marginTop: "12px", display: "flex", flexDirection: "column", gap: "8px" }}>
-                <select
-                  value={decisionStatuses[r._id] || r.status}
-                  onChange={(e) => setDecisionStatuses({ ...decisionStatuses, [r._id]: e.target.value })}
-                  style={{ padding: "6px 8px", borderRadius: "6px" }}
-                >
-                  <option value="Pending">Pending</option>
-                  <option value="Under Review">Under Review</option>
-                  <option value="Resolved">Resolved</option>
-                  <option value="Dismissed">Dismissed</option>
-                </select>
-                <textarea
-                  placeholder="Decision note for reporter..."
-                  defaultValue={r.adminNote || ""}
-                  onChange={(e) => setAdminNotes({ ...adminNotes, [r._id]: e.target.value })}
-                  style={{ padding: "6px 8px", borderRadius: "6px", minHeight: "60px" }}
-                />
-                <button className="btn btn-primary" onClick={() => handleSaveDecision(r._id)}>
-                  Save Decision & Notify
-                </button>
-              </div>
-            </article>
-          ))}
-        </div>
-      </div>
+          <div style={{ padding: "18px" }}>
+            {filteredReports.length ? (
+              filteredReports.map((r) => {
+                const target = r.targetType === "User" ? (r.reportedUser?.name || "Customer account") : (r.playground?.name || "Account issue");
+                return (
+                  <article key={r._id} className="report-card">
+                    <div className="report-card-top">
+                      <span className={`report-status ${r.status?.toLowerCase().replace(/\s+/g, "-")}`}>{r.status}</span>
+                      <span className={`report-severity ${r.severity?.toLowerCase()}`}>{r.severity} priority</span>
+                    </div>
+                    <h3>{r.subject}</h3>
+                    <p>{r.message}</p>
+                    <div className="report-meta">
+                      <span>Category: {r.category}</span>
+                      <span>From: {r.reporter?.name || "User"}</span>
+                      <span>Regarding: {target}</span>
+                      <span>Submitted: {prettyDate(r.createdAt)}</span>
+                    </div>
+                    {r.adminNote && (
+                      <div className="report-review">
+                        <div className="report-review-head"><strong>Admin update</strong><span>{prettyDate(r.reviewedAt)}</span></div>
+                        <p>{r.adminNote}</p>
+                      </div>
+                    )}
+                    <div style={{ marginTop: "14px", borderTop: "1px solid #edf2ee", paddingTop: "12px", display: "grid", gap: "8px" }}>
+                      <label style={{ fontSize: "0.78rem", fontWeight: 700 }}>Review decision</label>
+                      <select
+                        value={decisionStatuses[r._id] || r.status}
+                        onChange={(e) => setDecisionStatuses({ ...decisionStatuses, [r._id]: e.target.value })}
+                        style={{ padding: "8px 10px", borderRadius: "8px", border: "1px solid #d9e9de" }}
+                      >
+                        <option value="Pending">Pending — not started</option>
+                        <option value="Under Review">Under review — investigating</option>
+                        <option value="Resolved">Resolved — action completed</option>
+                        <option value="Dismissed">Dismissed — no action needed</option>
+                      </select>
+                      <textarea
+                        placeholder="Message for reporter (explaining decision)..."
+                        defaultValue={r.adminNote || ""}
+                        onChange={(e) => setDecisionNotes({ ...decisionNotes, [r._id]: e.target.value })}
+                        style={{ padding: "8px 10px", borderRadius: "8px", border: "1px solid #d9e9de", minHeight: "60px" }}
+                      />
+                      <button className="button" type="button" onClick={() => handleSaveDecision(r._id)}>
+                        Save decision & notify
+                      </button>
+                    </div>
+                  </article>
+                );
+              })
+            ) : (
+              <p className="item-meta">No reports match these filters.</p>
+            )}
+          </div>
+        </article>
+      </section>
     );
   }
 
+  // Customer or Playground Admin Report View
+  const openCount = myReports.filter((r) => ["Pending", "Under Review"].includes(r.status)).length;
+  const resolvedCount = myReports.filter((r) => r.status === "Resolved").length;
+
   return (
-    <div className="report-workspace">
-      <div className="report-hero">
+    <section className="report-workspace">
+      <header className="report-hero">
         <div>
-          <h2>{role === "playground-admin" ? "Customer Report Centre" : "Issue Report Centre"}</h2>
-          <p>{role === "playground-admin" ? "Report booking misconduct or property damage for booked customers." : "Submit issue reports for venue maintenance, cleanliness or booking problems."}</p>
+          <h2>{role === "playground-admin" ? "Customer report centre" : "Report centre"}</h2>
+          <p>{role === "playground-admin" ? "Report behaviour or booking issues only for customers of your own playgrounds." : "Send a detailed issue report and follow its review status from one place."}</p>
         </div>
-      </div>
+        <div className="report-stats">
+          <div className="report-stat"><strong>{myReports.length}</strong><span>Total reports</span></div>
+          <div className="report-stat"><strong>{openCount}</strong><span>Open</span></div>
+          <div className="report-stat"><strong>{resolvedCount}</strong><span>Resolved</span></div>
+        </div>
+      </header>
 
       <div className="report-layout">
-        {/* Form Panel */}
-        <article className="panel">
-          <h2 className="panel-title">{role === "playground-admin" ? "Report a Customer" : "Submit Issue Report"}</h2>
-          <form onSubmit={handleCreateReport} className="form-grid">
+        {/* Report Form */}
+        <article className="report-form-panel">
+          <h3>{role === "playground-admin" ? "Report a customer" : "Submit an issue"}</h3>
+          <p className="report-detail">{role === "playground-admin" ? "The customer and playground are verified before submission." : "Clear details help resolve your issue faster."}</p>
+
+          <form onSubmit={handleCreateReport} className="form-grid report-form" style={{ marginTop: "14px" }}>
             {role === "playground-admin" ? (
               <label className="full">
-                Choose Customer Booking
+                Choose booked customer
                 <select
                   required
-                  value={formState.customerRecord}
-                  onChange={(e) => setFormState({ ...formState, customerRecord: e.target.value })}
+                  value={newReport.customerRecord}
+                  onChange={(e) => setNewReport({ ...newReport, customerRecord: e.target.value })}
                 >
-                  <option value="">Select a booked customer...</option>
-                  {reportableCustomers.map((item) => (
-                    <option key={`${item.customer._id}|${item.playground._id}`} value={`${item.customer._id}|${item.playground._id}`}>
-                      {item.customer.name} — {item.playground.name}
+                  <option value="">Choose one of your booked customers</option>
+                  {reportableCustomers.map((c) => (
+                    <option key={`${c.customer._id}|${c.playground._id}`} value={`${c.customer._id}|${c.playground._id}`}>
+                      {c.customer.name} — {c.playground.name}
                     </option>
                   ))}
                 </select>
               </label>
             ) : (
               <label className="full">
-                Choose Playground
+                Choose playground
                 <select
                   required
-                  value={formState.playground}
-                  onChange={(e) => setFormState({ ...formState, playground: e.target.value })}
+                  value={newReport.playground}
+                  onChange={(e) => setNewReport({ ...newReport, playground: e.target.value })}
                 >
-                  <option value="">Select venue...</option>
+                  <option value="">Choose a playground</option>
                   {playgrounds.map((g) => (
                     <option key={g._id} value={g._id}>{g.name}</option>
                   ))}
@@ -1341,11 +1797,13 @@ function ReportsTab({
 
             <label>
               Category
-              <select value={formState.category} onChange={(e) => setFormState({ ...formState, category: e.target.value })}>
+              <select value={newReport.category} onChange={(e) => setNewReport({ ...newReport, category: e.target.value })}>
                 <option>Cleanliness</option>
                 <option>Maintenance</option>
                 <option>Staff Behavior</option>
+                <option>Facilities</option>
                 <option>Safety</option>
+                <option>Booking Issue</option>
                 <option>Customer Misconduct</option>
                 <option>Property Damage</option>
                 <option>Other</option>
@@ -1354,76 +1812,92 @@ function ReportsTab({
 
             <label>
               Severity
-              <select value={formState.severity} onChange={(e) => setFormState({ ...formState, severity: e.target.value })}>
-                <option value="Low">Low</option>
-                <option value="Medium">Medium</option>
-                <option value="High">High</option>
-                <option value="Critical">Critical</option>
+              <select value={newReport.severity} onChange={(e) => setNewReport({ ...newReport, severity: e.target.value })}>
+                <option value="Low">Low priority</option>
+                <option value="Medium">Medium priority</option>
+                <option value="High">High priority</option>
+                <option value="Critical">Critical / safety</option>
               </select>
             </label>
 
             <label className="full">
-              Subject
+              Short report title
               <input
                 required
-                placeholder="Brief summary..."
-                value={formState.subject}
-                onChange={(e) => setFormState({ ...formState, subject: e.target.value })}
+                value={newReport.subject}
+                onChange={(e) => setNewReport({ ...newReport, subject: e.target.value })}
+                placeholder="Title..."
               />
             </label>
 
             <label className="full">
-              Message
+              Details
               <textarea
                 required
-                placeholder="Detailed explanation of what occurred..."
-                value={formState.message}
-                onChange={(e) => setFormState({ ...formState, message: e.target.value })}
+                value={newReport.message}
+                onChange={(e) => setNewReport({ ...newReport, message: e.target.value })}
+                placeholder="Describe what happened and include helpful booking details..."
               />
             </label>
 
             <div className="full">
-              <button className="btn btn-primary" type="submit" style={{ width: "100%" }}>Submit Report</button>
+              <button className="button" type="submit" style={{ width: "100%" }}>
+                Submit report
+              </button>
             </div>
           </form>
         </article>
 
-        {/* My Report History */}
-        <article className="panel">
-          <h2 className="panel-title">My Submitted Reports</h2>
-          <div className="list">
+        {/* My Reports List */}
+        <article className="report-list-panel">
+          <header className="report-panel-head">
+            <div>
+              <h3>My report history</h3>
+              <span>Only the super admin can update report statuses.</span>
+            </div>
+          </header>
+          <div style={{ padding: "18px" }}>
             {myReports.length ? (
-              myReports.map((r) => (
-                <div key={r._id} className="report-card">
-                  <div className="report-card-top">
-                    <span className={`status ${r.status?.toLowerCase().replace(/\s+/g, "-")}`}>{r.status}</span>
-                    <span className="status cancelled">{r.severity}</span>
-                  </div>
-                  <h3>{r.subject}</h3>
-                  <p>{r.message}</p>
-                  {r.adminNote && (
-                    <div className="report-review">
-                      <strong>Admin Update:</strong> {r.adminNote}
+              myReports.map((r) => {
+                const target = r.targetType === "User" ? (r.reportedUser?.name || "Customer") : (r.playground?.name || "Venue issue");
+                return (
+                  <article key={r._id} className="report-card">
+                    <div className="report-card-top">
+                      <span className={`report-status ${r.status?.toLowerCase().replace(/\s+/g, "-")}`}>{r.status}</span>
+                      <span className={`report-severity ${r.severity?.toLowerCase()}`}>{r.severity}</span>
                     </div>
-                  )}
-                  <p className="item-meta">{prettyDate(r.createdAt)} · Category: {r.category}</p>
-                </div>
-              ))
+                    <h3>{r.subject}</h3>
+                    <p>{r.message}</p>
+                    <div className="report-meta">
+                      <span>Category: {r.category}</span>
+                      <span>Regarding: {target}</span>
+                      <span>{prettyDate(r.createdAt)}</span>
+                    </div>
+                    {r.adminNote && (
+                      <div className="report-review">
+                        <div className="report-review-head"><strong>Admin update</strong><span>{prettyDate(r.reviewedAt)}</span></div>
+                        <p>{r.adminNote}</p>
+                      </div>
+                    )}
+                  </article>
+                );
+              })
             ) : (
-              <p className="item-meta">You haven&apos;t submitted any reports yet.</p>
+              <p className="item-meta">No reports submitted yet.</p>
             )}
           </div>
         </article>
       </div>
-    </div>
+    </section>
   );
 }
 
 // ===================================================
-// SUB-TAB 11: ACCOUNT CENTRE / PROFILE
+// SECTION 11: ACCOUNT CENTRE / PROFILE WORKSPACE
 // ===================================================
 function AccountCentreTab({ user, setUser, token, showNotice }) {
-  const [profileData, setProfileData] = useState({
+  const [profileView, setProfileView] = useState("personal");
+  const [profileForm, setProfileForm] = useState({
     name: user?.name || "",
     phone: user?.phone || "",
     gender: user?.gender || "",
@@ -1431,38 +1905,37 @@ function AccountCentreTab({ user, setUser, token, showNotice }) {
     address: user?.address || ""
   });
 
-  // Password Change
   const [pwdState, setPwdState] = useState({ newPassword: "", confirmPassword: "", otp: "" });
   const [pwdOtpSent, setPwdOtpSent] = useState(false);
 
-  // Email Change
   const [emailState, setEmailState] = useState({ newEmail: "", otp: "" });
   const [emailOtpSent, setEmailOtpSent] = useState(false);
 
   const handleSaveProfile = async (e) => {
     e.preventDefault();
     try {
-      const updated = await request("/users/me", { method: "PUT", body: profileData, token });
+      const updated = await request("/users/me", { method: "PUT", body: profileForm, token });
       const merged = { ...user, ...updated };
       setUser(merged);
       localStorage.setItem("turf_user", JSON.stringify(merged));
-      showNotice("Personal information saved successfully.");
+      showNotice("Profile saved successfully. Account details are now up to date.");
     } catch (err) {
       showNotice(err.message, "error");
     }
   };
 
-  const handleAvatarUpload = async (e) => {
+  const handlePhotoUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const form = new FormData();
-    form.append("profileImage", file);
+    if (file.size > 5 * 1024 * 1024) return showNotice("Choose an image under 5 MB.", "error");
+    const formData = new FormData();
+    formData.append("profileImage", file);
     try {
-      const updated = await request("/users/me/profile-image", { method: "PUT", body: form, token });
+      const updated = await request("/users/me/profile-image", { method: "PUT", body: formData, token });
       const merged = { ...user, ...updated };
       setUser(merged);
       localStorage.setItem("turf_user", JSON.stringify(merged));
-      showNotice("Profile picture updated!");
+      showNotice("Profile photo updated.");
     } catch (err) {
       showNotice(err.message, "error");
     }
@@ -1472,7 +1945,7 @@ function AccountCentreTab({ user, setUser, token, showNotice }) {
     try {
       await request("/auth/request-sensitive-otp", { method: "POST", body: { action: "password-change" }, token });
       setPwdOtpSent(true);
-      showNotice("Security OTP sent to your registered email address.");
+      showNotice("OTP sent to your current email address.");
     } catch (err) {
       showNotice(err.message, "error");
     }
@@ -1480,9 +1953,7 @@ function AccountCentreTab({ user, setUser, token, showNotice }) {
 
   const handleConfirmPasswordChange = async (e) => {
     e.preventDefault();
-    if (pwdState.newPassword !== pwdState.confirmPassword) {
-      return showNotice("Passwords do not match.", "error");
-    }
+    if (pwdState.newPassword !== pwdState.confirmPassword) return showNotice("Passwords do not match.", "error");
     try {
       await request("/auth/change-password", {
         method: "PATCH",
@@ -1498,7 +1969,7 @@ function AccountCentreTab({ user, setUser, token, showNotice }) {
   };
 
   const handleRequestEmailOtp = async () => {
-    if (!emailState.newEmail) return showNotice("Please enter a new email address.", "error");
+    if (!emailState.newEmail) return showNotice("Enter a new email address.", "error");
     try {
       await request("/auth/request-sensitive-otp", {
         method: "POST",
@@ -1506,7 +1977,7 @@ function AccountCentreTab({ user, setUser, token, showNotice }) {
         token
       });
       setEmailOtpSent(true);
-      showNotice("Security OTP sent to your new email address.");
+      showNotice("OTP sent to the new email address.");
     } catch (err) {
       showNotice(err.message, "error");
     }
@@ -1523,7 +1994,7 @@ function AccountCentreTab({ user, setUser, token, showNotice }) {
       const merged = { ...user, ...updated };
       setUser(merged);
       localStorage.setItem("turf_user", JSON.stringify(merged));
-      showNotice("Email address updated successfully.");
+      showNotice("Email address changed successfully.");
       setEmailOtpSent(false);
     } catch (err) {
       showNotice(err.message, "error");
@@ -1531,169 +2002,220 @@ function AccountCentreTab({ user, setUser, token, showNotice }) {
   };
 
   return (
-    <div className="report-layout">
-      {/* Profile Info Form */}
-      <article className="panel">
-        <h2 className="panel-title">Personal Information</h2>
-        <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "20px" }}>
-          <div className="avatar" style={{ width: "60px", height: "60px", fontSize: "1.4rem", backgroundImage: user.profileImage ? `url(${user.profileImage})` : "" }}>
-            {!user.profileImage && (user.name?.[0] || "U").toUpperCase()}
-          </div>
-          <div>
-            <label className="btn btn-alt" style={{ cursor: "pointer", display: "inline-block" }}>
-              Upload Photo
-              <input type="file" accept="image/*" onChange={handleAvatarUpload} hidden />
-            </label>
-            <p className="item-meta" style={{ marginTop: "4px" }}>PNG, JPG or WebP up to 5 MB</p>
-          </div>
+    <section className="profile-workspace">
+      {/* Left Column: Premium Profile Card */}
+      <aside className="profile-card">
+        <div
+          className="profile-photo"
+          style={user?.profileImage ? { backgroundImage: `url(${user.profileImage})`, backgroundSize: "cover" } : {}}
+        >
+          {!user?.profileImage && (user?.name || "U").trim().charAt(0).toUpperCase()}
+        </div>
+        <h2>{user?.name}</h2>
+        <p>{user?.email}</p>
+
+        <label className="photo-upload">
+          Change profile photo
+          <input type="file" accept="image/*" onChange={handlePhotoUpload} />
+        </label>
+        <p>JPG, PNG or WebP, up to 5 MB.</p>
+
+        <div className="account-actions">
+          <button
+            type="button"
+            className="account-action"
+            onClick={() => setProfileView("personal")}
+          >
+            <strong>Edit profile</strong>
+            <span>Update contact details and personal info.</span>
+          </button>
+          <button
+            type="button"
+            className="account-action security"
+            onClick={() => setProfileView("security")}
+          >
+            <strong>Change password</strong>
+            <span>Secure account with verification OTP.</span>
+          </button>
         </div>
 
-        <form onSubmit={handleSaveProfile} className="form-grid">
-          <label className="full">
-            Full Name
-            <input
-              required
-              value={profileData.name}
-              onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
-            />
-          </label>
-          <label>
-            Phone Number
-            <input
-              placeholder="01XXXXXXXXX"
-              value={profileData.phone}
-              onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
-            />
-          </label>
-          <label>
-            Gender
-            <select
-              value={profileData.gender}
-              onChange={(e) => setProfileData({ ...profileData, gender: e.target.value })}
-            >
-              <option value="">Prefer not to say</option>
-              <option value="male">Male</option>
-              <option value="female">Female</option>
-              <option value="other">Other</option>
-            </select>
-          </label>
-          <label>
-            Date of Birth
-            <input
-              type="date"
-              value={profileData.dateOfBirth}
-              onChange={(e) => setProfileData({ ...profileData, dateOfBirth: e.target.value })}
-            />
-          </label>
-          <label className="full">
-            Address
-            <input
-              placeholder="House, road, area, district"
-              value={profileData.address}
-              onChange={(e) => setProfileData({ ...profileData, address: e.target.value })}
-            />
-          </label>
-          <div className="full">
-            <button className="btn btn-primary" type="submit">Save Changes</button>
+        <div className="current-profile-info">
+          <div><span>Phone</span><strong>{user?.phone || "Not added"}</strong></div>
+          <div><span>Address</span><strong>{user?.address || "Not added"}</strong></div>
+          <div><span>Joined</span><strong>{prettyDate(user?.createdAt)}</strong></div>
+        </div>
+      </aside>
+
+      {/* Right Column: Profile Form Card */}
+      <article className="panel profile-form-card">
+        <nav className="profile-section-nav" style={{ padding: 0, marginBottom: "16px" }}>
+          <button
+            type="button"
+            className={profileView === "personal" ? "active" : ""}
+            onClick={() => setProfileView("personal")}
+          >
+            Edit profile
+          </button>
+          <button
+            type="button"
+            className={profileView === "security" ? "active" : ""}
+            onClick={() => setProfileView("security")}
+          >
+            Password & security
+          </button>
+        </nav>
+
+        {profileView === "personal" ? (
+          <div>
+            <h2>Personal information</h2>
+            <p>Keep your contact details and account information up to date.</p>
+            <form onSubmit={handleSaveProfile} className="form-grid" style={{ marginTop: "18px" }}>
+              <label>
+                Full name
+                <input
+                  required
+                  value={profileForm.name}
+                  onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
+                />
+              </label>
+              <label>
+                Email address
+                <input type="email" value={user.email} readOnly />
+              </label>
+              <label>
+                Phone number
+                <input
+                  placeholder="01XXXXXXXXX"
+                  value={profileForm.phone}
+                  onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
+                />
+              </label>
+              <label>
+                Date of birth
+                <input
+                  type="date"
+                  value={profileForm.dateOfBirth}
+                  onChange={(e) => setProfileForm({ ...profileForm, dateOfBirth: e.target.value })}
+                />
+              </label>
+              <label>
+                Gender
+                <select
+                  value={profileForm.gender}
+                  onChange={(e) => setProfileForm({ ...profileForm, gender: e.target.value })}
+                >
+                  <option value="">Prefer not to say</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                </select>
+              </label>
+              <label className="full">
+                Address
+                <input
+                  placeholder="House, road, area, district"
+                  value={profileForm.address}
+                  onChange={(e) => setProfileForm({ ...profileForm, address: e.target.value })}
+                />
+              </label>
+              <div className="full" style={{ marginTop: "10px" }}>
+                <button className="button" type="submit" style={{ width: "100%" }}>
+                  Save personal information
+                </button>
+              </div>
+            </form>
           </div>
-        </form>
+        ) : (
+          <div>
+            <h2>Password & security</h2>
+            <p>Verification OTP is sent to your registered email before changes are confirmed.</p>
+
+            {/* Change Password */}
+            <h3 style={{ marginTop: "20px" }}>Change password</h3>
+            <p className="item-meta">First request an OTP to current email, then enter it with your new password.</p>
+            <form onSubmit={handleConfirmPasswordChange} className="form-grid" style={{ marginTop: "12px" }}>
+              <div className="full">
+                <button type="button" className="button alt" onClick={handleRequestPasswordOtp}>
+                  {pwdOtpSent ? "Resend password OTP" : "Send password OTP"}
+                </button>
+              </div>
+              {pwdOtpSent && (
+                <>
+                  <label>
+                    New password
+                    <input
+                      type="password"
+                      required
+                      minLength={6}
+                      value={pwdState.newPassword}
+                      onChange={(e) => setPwdState({ ...pwdState, newPassword: e.target.value })}
+                    />
+                  </label>
+                  <label>
+                    Confirm new password
+                    <input
+                      type="password"
+                      required
+                      minLength={6}
+                      value={pwdState.confirmPassword}
+                      onChange={(e) => setPwdState({ ...pwdState, confirmPassword: e.target.value })}
+                    />
+                  </label>
+                  <label className="full">
+                    Verification OTP
+                    <input
+                      required
+                      placeholder="6-digit code"
+                      value={pwdState.otp}
+                      onChange={(e) => setPwdState({ ...pwdState, otp: e.target.value })}
+                    />
+                  </label>
+                  <div className="full">
+                    <button className="button" type="submit">Verify & change password</button>
+                  </div>
+                </>
+              )}
+            </form>
+
+            {/* Change Email */}
+            <h3 style={{ marginTop: "28px" }}>Change email</h3>
+            <p className="item-meta">Verify the OTP sent to your new email address before it is transferred.</p>
+            <form onSubmit={handleConfirmEmailChange} className="form-grid" style={{ marginTop: "12px" }}>
+              <label className="full">
+                New email address
+                <input
+                  type="email"
+                  required
+                  value={emailState.newEmail}
+                  onChange={(e) => setEmailState({ ...emailState, newEmail: e.target.value })}
+                />
+              </label>
+              <div className="full">
+                <button type="button" className="button alt" onClick={handleRequestEmailOtp}>
+                  {emailOtpSent ? "Resend email OTP" : "Send verification OTP"}
+                </button>
+              </div>
+              {emailOtpSent && (
+                <>
+                  <label className="full">
+                    Verification OTP
+                    <input
+                      required
+                      placeholder="6-digit code sent to new email"
+                      value={emailState.otp}
+                      onChange={(e) => setEmailState({ ...emailState, otp: e.target.value })}
+                    />
+                  </label>
+                  <div className="full">
+                    <button className="button" type="submit">Verify & change email</button>
+                  </div>
+                </>
+              )}
+            </form>
+          </div>
+        )}
       </article>
-
-      {/* Security: Email & Password */}
-      <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-        {/* Change Password Panel */}
-        <article className="panel">
-          <h2 className="panel-title">Change Password</h2>
-          <p className="item-meta">Request a security OTP to your email before resetting your password.</p>
-          <form onSubmit={handleConfirmPasswordChange} className="form-grid" style={{ marginTop: "12px" }}>
-            <div className="full" style={{ display: "flex", gap: "10px" }}>
-              <button type="button" className="btn btn-alt" onClick={handleRequestPasswordOtp}>
-                {pwdOtpSent ? "Resend OTP" : "Send Password OTP"}
-              </button>
-            </div>
-            {pwdOtpSent && (
-              <>
-                <label className="full">
-                  Verification OTP
-                  <input
-                    required
-                    placeholder="Enter 6-digit OTP"
-                    value={pwdState.otp}
-                    onChange={(e) => setPwdState({ ...pwdState, otp: e.target.value })}
-                  />
-                </label>
-                <label>
-                  New Password
-                  <input
-                    type="password"
-                    required
-                    minLength={6}
-                    value={pwdState.newPassword}
-                    onChange={(e) => setPwdState({ ...pwdState, newPassword: e.target.value })}
-                  />
-                </label>
-                <label>
-                  Confirm Password
-                  <input
-                    type="password"
-                    required
-                    minLength={6}
-                    value={pwdState.confirmPassword}
-                    onChange={(e) => setPwdState({ ...pwdState, confirmPassword: e.target.value })}
-                  />
-                </label>
-                <div className="full">
-                  <button className="btn btn-primary" type="submit">Update Password</button>
-                </div>
-              </>
-            )}
-          </form>
-        </article>
-
-        {/* Change Email Panel */}
-        <article className="panel">
-          <h2 className="panel-title">Change Email Address</h2>
-          <p className="item-meta">Verify ownership of the new email with an OTP verification code.</p>
-          <form onSubmit={handleConfirmEmailChange} className="form-grid" style={{ marginTop: "12px" }}>
-            <label className="full">
-              Current Email
-              <input type="email" value={user.email} disabled />
-            </label>
-            <label className="full">
-              New Email Address
-              <input
-                type="email"
-                required
-                placeholder="new.email@example.com"
-                value={emailState.newEmail}
-                onChange={(e) => setEmailState({ ...emailState, newEmail: e.target.value })}
-              />
-            </label>
-            <div className="full">
-              <button type="button" className="btn btn-alt" onClick={handleRequestEmailOtp}>
-                {emailOtpSent ? "Resend Email OTP" : "Send Verification OTP"}
-              </button>
-            </div>
-            {emailOtpSent && (
-              <>
-                <label className="full">
-                  OTP Code
-                  <input
-                    required
-                    placeholder="Enter 6-digit code sent to new email"
-                    value={emailState.otp}
-                    onChange={(e) => setEmailState({ ...emailState, otp: e.target.value })}
-                  />
-                </label>
-                <div className="full">
-                  <button className="btn btn-primary" type="submit">Confirm Email Change</button>
-                </div>
-              </>
-            )}
-          </form>
-        </article>
-      </div>
-    </div>
+    </section>
   );
 }
 
@@ -1701,7 +2223,6 @@ function AccountCentreTab({ user, setUser, token, showNotice }) {
 // GLOBAL MODALS COMPONENT
 // ===================================================
 function Modals({ modal, data, close, token, showNotice, reload, playgrounds }) {
-  // Playground Form State
   const isEdit = modal === "edit-playground";
   const [groundForm, setGroundForm] = useState(() => ({
     name: data?.name || "",
@@ -1724,7 +2245,6 @@ function Modals({ modal, data, close, token, showNotice, reload, playgrounds }) 
     facilities: Array.isArray(data?.facilities) ? data.facilities.join(", ") : (data?.facilities || "Floodlights, Parking, Changing Room")
   }));
 
-  // Slots Bulk Generator State
   const [slotGen, setSlotGen] = useState({
     playgroundId: playgrounds?.[0]?._id || "",
     dayType: "everyday",
@@ -1736,10 +2256,9 @@ function Modals({ modal, data, close, token, showNotice, reload, playgrounds }) 
     breakEndTime: ""
   });
 
-  // Cancellation Reason State
-  const [cancelReason, setCancelReason] = useState("");
+  const [adminCancelReason, setAdminCancelReason] = useState("");
 
-  const handleSavePlayground = async (e) => {
+  const handleSaveGround = async (e) => {
     e.preventDefault();
     const payload = {
       name: groundForm.name.trim(),
@@ -1766,10 +2285,10 @@ function Modals({ modal, data, close, token, showNotice, reload, playgrounds }) 
     try {
       if (isEdit) {
         await request(`/playgrounds/${data._id}`, { method: "PATCH", body: payload, token });
-        showNotice("Playground details updated successfully!");
+        showNotice("Playground details saved successfully.");
       } else {
         await request("/playgrounds", { method: "POST", body: payload, token });
-        showNotice("Playground submitted for review!");
+        showNotice("Playground registered and submitted for review.");
       }
       close();
       reload();
@@ -1784,7 +2303,7 @@ function Modals({ modal, data, close, token, showNotice, reload, playgrounds }) 
       const [h, m] = t.split(":").map(Number);
       return h * 60 + m;
     };
-    const formatMin = (mins) => `${String(Math.floor(mins / 60)).padStart(2, "0")}:${String(mins % 60).padStart(2, "0")}`;
+    const formatMin = (m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
 
     const days = slotGen.dayType === "weekdays" ? [0, 1, 2, 3, 4] : slotGen.dayType === "weekend" ? [5, 6] : [0, 1, 2, 3, 4, 5, 6];
     const opening = toMin(slotGen.openingTime);
@@ -1797,9 +2316,7 @@ function Modals({ modal, data, close, token, showNotice, reload, playgrounds }) 
     const dailySlots = [];
     let cur = opening;
     while (dailySlots.length < Number(slotGen.slotsPerDay) && cur + dur <= closing) {
-      if (hasBreak && cur < bEnd && cur + dur > bStart) {
-        cur = bEnd;
-      }
+      if (hasBreak && cur < bEnd && cur + dur > bStart) cur = bEnd;
       if (cur + dur > closing) break;
       dailySlots.push({
         startTime: formatMin(cur),
@@ -1816,7 +2333,7 @@ function Modals({ modal, data, close, token, showNotice, reload, playgrounds }) 
 
     try {
       await request("/slots/bulk", { method: "POST", body: payload, token });
-      showNotice(`Successfully generated ${payload.slots.length} slots!`);
+      showNotice(`Successfully created ${payload.slots.length} slots!`);
       close();
       reload();
     } catch (err) {
@@ -1824,27 +2341,16 @@ function Modals({ modal, data, close, token, showNotice, reload, playgrounds }) 
     }
   };
 
-  const handleCustomerCancelBooking = async () => {
-    try {
-      await request(`/bookings/${data._id}/cancel`, { method: "PATCH", token });
-      showNotice("Booking cancelled successfully.");
-      close();
-      reload();
-    } catch (err) {
-      showNotice(err.message, "error");
-    }
-  };
-
-  const handleAdminCancelBooking = async (e) => {
+  const handleAdminCancelSubmit = async (e) => {
     e.preventDefault();
-    if (!cancelReason.trim()) return showNotice("Please provide a reason for the customer.", "error");
+    if (!adminCancelReason.trim()) return showNotice("Please provide a reason for the customer.", "error");
     try {
-      await request(`/bookings/${data._id}/admin-cancel`, {
+      const cancelled = await request(`/bookings/${data._id}/admin-cancel`, {
         method: "PATCH",
-        body: { reason: cancelReason.trim() },
+        body: { reason: adminCancelReason.trim() },
         token
       });
-      showNotice("Booking cancelled and customer notified with refund.");
+      showNotice(cancelled?.refundAmount ? `Booking cancelled. BDT ${cancelled.refundAmount} was refunded.` : "Booking cancelled and customer notified.");
       close();
       reload();
     } catch (err) {
@@ -1854,235 +2360,311 @@ function Modals({ modal, data, close, token, showNotice, reload, playgrounds }) 
 
   return (
     <div className="modal-overlay" onClick={close}>
-      <div className="modal-box" onClick={(e) => e.stopPropagation()}>
-        <button className="modal-close" onClick={close}>×</button>
-
-        {/* 1. Add / Edit Playground Modal */}
+      <div className="modal-box" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "720px", padding: 0 }}>
+        {/* ADD OR EDIT PLAYGROUND (matches legacy playground-editor.css) */}
         {(modal === "add-playground" || modal === "edit-playground") && (
-          <div>
-            <span className="dash-eyebrow">VENUE SETUP</span>
-            <h2>{isEdit ? `Edit ${data.name}` : "Register New Playground"}</h2>
-            <p className="meta">Provide accurate pricing, sport specifications and contact information.</p>
-            <form onSubmit={handleSavePlayground} className="form-grid">
-              <label className="full">
-                Playground Name
-                <input required value={groundForm.name} onChange={(e) => setGroundForm({ ...groundForm, name: e.target.value })} />
-              </label>
+          <form className="playground-editor" onSubmit={handleSaveGround}>
+            <header className="playground-editor__head">
+              <span>PLAYGROUND SETTINGS</span>
+              <h2>{isEdit ? `Edit ${data.name}` : "Add Playground"}</h2>
+              <p>Keep your venue information, prices and customer contact details up to date.</p>
+            </header>
+
+            <section className="playground-editor__section">
+              <h3>Venue details</h3>
+              <div className="form-grid">
+                <label className="full">
+                  Playground name
+                  <input required value={groundForm.name} onChange={(e) => setGroundForm({ ...groundForm, name: e.target.value })} />
+                </label>
+                <label>
+                  Sport type
+                  <select value={groundForm.sportType} onChange={(e) => setGroundForm({ ...groundForm, sportType: e.target.value })}>
+                    <option>Football</option>
+                    <option>Cricket</option>
+                    <option>Badminton</option>
+                  </select>
+                </label>
+                <label>
+                  Maximum players
+                  <input type="number" min={1} required value={groundForm.maxPlayers} onChange={(e) => setGroundForm({ ...groundForm, maxPlayers: e.target.value })} />
+                </label>
+                <label className="full">
+                  Description
+                  <textarea required value={groundForm.description} onChange={(e) => setGroundForm({ ...groundForm, description: e.target.value })} />
+                </label>
+              </div>
+            </section>
+
+            <section className="playground-editor__section">
+              <h3>Contact & location</h3>
+              <div className="form-grid">
+                <label>
+                  Phone number
+                  <input required value={groundForm.phone} onChange={(e) => setGroundForm({ ...groundForm, phone: e.target.value })} />
+                </label>
+                <label>
+                  Email address
+                  <input type="email" required value={groundForm.email} onChange={(e) => setGroundForm({ ...groundForm, email: e.target.value })} />
+                </label>
+                <label className="full">
+                  Street address
+                  <input required value={groundForm.address} onChange={(e) => setGroundForm({ ...groundForm, address: e.target.value })} />
+                </label>
+                <label>
+                  Division
+                  <input required value={groundForm.division} onChange={(e) => setGroundForm({ ...groundForm, division: e.target.value })} />
+                </label>
+                <label>
+                  District
+                  <input required value={groundForm.district} onChange={(e) => setGroundForm({ ...groundForm, district: e.target.value })} />
+                </label>
+                <label>
+                  Area
+                  <input required value={groundForm.area} onChange={(e) => setGroundForm({ ...groundForm, area: e.target.value })} />
+                </label>
+                <label>
+                  Google Maps link
+                  <input type="url" value={groundForm.googleMapLocation} onChange={(e) => setGroundForm({ ...groundForm, googleMapLocation: e.target.value })} placeholder="https://maps.google.com/..." />
+                </label>
+              </div>
+            </section>
+
+            <section className="playground-editor__section">
+              <h3>Hours & pricing (BDT)</h3>
+              <div className="form-grid">
+                <label>
+                  Opening time
+                  <input type="time" required value={groundForm.openingTime} onChange={(e) => setGroundForm({ ...groundForm, openingTime: e.target.value })} />
+                </label>
+                <label>
+                  Closing time
+                  <input type="time" required value={groundForm.closingTime} onChange={(e) => setGroundForm({ ...groundForm, closingTime: e.target.value })} />
+                </label>
+                <label>
+                  Morning price
+                  <input type="number" min={0} required value={groundForm.morningPrice} onChange={(e) => setGroundForm({ ...groundForm, morningPrice: e.target.value })} />
+                </label>
+                <label>
+                  Day price
+                  <input type="number" min={0} required value={groundForm.dayPrice} onChange={(e) => setGroundForm({ ...groundForm, dayPrice: e.target.value })} />
+                </label>
+                <label>
+                  Evening price
+                  <input type="number" min={0} required value={groundForm.eveningPrice} onChange={(e) => setGroundForm({ ...groundForm, eveningPrice: e.target.value })} />
+                </label>
+                <label>
+                  Weekend price
+                  <input type="number" min={0} required value={groundForm.weekendPrice} onChange={(e) => setGroundForm({ ...groundForm, weekendPrice: e.target.value })} />
+                </label>
+              </div>
+            </section>
+
+            <section className="playground-editor__section">
+              <h3>Facilities</h3>
               <label>
-                Sport Type
-                <select value={groundForm.sportType} onChange={(e) => setGroundForm({ ...groundForm, sportType: e.target.value })}>
-                  <option>Football</option>
-                  <option>Cricket</option>
-                  <option>Badminton</option>
-                </select>
-              </label>
-              <label>
-                Max Players
-                <input type="number" min={1} required value={groundForm.maxPlayers} onChange={(e) => setGroundForm({ ...groundForm, maxPlayers: e.target.value })} />
-              </label>
-              <label className="full">
-                Description
-                <textarea required value={groundForm.description} onChange={(e) => setGroundForm({ ...groundForm, description: e.target.value })} />
-              </label>
-              <label>
-                Phone
-                <input required value={groundForm.phone} onChange={(e) => setGroundForm({ ...groundForm, phone: e.target.value })} />
-              </label>
-              <label>
-                Email
-                <input type="email" required value={groundForm.email} onChange={(e) => setGroundForm({ ...groundForm, email: e.target.value })} />
-              </label>
-              <label className="full">
-                Address
-                <input required value={groundForm.address} onChange={(e) => setGroundForm({ ...groundForm, address: e.target.value })} />
-              </label>
-              <label>
-                Area
-                <input required value={groundForm.area} onChange={(e) => setGroundForm({ ...groundForm, area: e.target.value })} />
-              </label>
-              <label>
-                District
-                <input required value={groundForm.district} onChange={(e) => setGroundForm({ ...groundForm, district: e.target.value })} />
-              </label>
-              <label>
-                Opening Time
-                <input type="time" required value={groundForm.openingTime} onChange={(e) => setGroundForm({ ...groundForm, openingTime: e.target.value })} />
-              </label>
-              <label>
-                Closing Time
-                <input type="time" required value={groundForm.closingTime} onChange={(e) => setGroundForm({ ...groundForm, closingTime: e.target.value })} />
-              </label>
-              <label>
-                Morning Price (BDT)
-                <input type="number" min={0} required value={groundForm.morningPrice} onChange={(e) => setGroundForm({ ...groundForm, morningPrice: e.target.value })} />
-              </label>
-              <label>
-                Evening Price (BDT)
-                <input type="number" min={0} required value={groundForm.eveningPrice} onChange={(e) => setGroundForm({ ...groundForm, eveningPrice: e.target.value })} />
-              </label>
-              <label className="full">
-                Facilities (comma separated)
+                Available facilities (comma separated)
                 <input value={groundForm.facilities} onChange={(e) => setGroundForm({ ...groundForm, facilities: e.target.value })} />
               </label>
-              <div className="full" style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
-                <button className="btn btn-alt" type="button" onClick={close}>Cancel</button>
-                <button className="btn btn-primary" type="submit">Save Playground</button>
-              </div>
-            </form>
-          </div>
+            </section>
+
+            <footer style={{ padding: "18px 24px", borderTop: "1px solid #dcece0", background: "#fff", display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+              <button type="button" className="button alt" onClick={close}>Cancel</button>
+              <button type="submit" className="button">Save all changes</button>
+            </footer>
+          </form>
         )}
 
-        {/* 2. Generate Slots Modal */}
+        {/* GENERATE SLOTS MODAL */}
         {modal === "add-slots" && (
-          <div>
-            <span className="dash-eyebrow">AUTOMATED SCHEDULE</span>
-            <h2>Generate Weekly Slots</h2>
-            <p className="meta">Configure your venue schedule, slot duration, and break times.</p>
-            <form onSubmit={handleGenerateSlots} className="form-grid">
-              <label className="full">
-                Select Playground
-                <select required value={slotGen.playgroundId} onChange={(e) => setSlotGen({ ...slotGen, playgroundId: e.target.value })}>
-                  {playgrounds.map((g) => (
-                    <option key={g._id} value={g._id}>{g.name} ({g.sportType})</option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Day Application
-                <select value={slotGen.dayType} onChange={(e) => setSlotGen({ ...slotGen, dayType: e.target.value })}>
-                  <option value="everyday">Everyday (All 7 Days)</option>
-                  <option value="weekdays">Weekdays (Sun - Thu)</option>
-                  <option value="weekend">Weekend (Fri - Sat)</option>
-                </select>
-              </label>
-              <label>
-                Slot Duration (Minutes)
-                <select value={slotGen.durationMinutes} onChange={(e) => setSlotGen({ ...slotGen, durationMinutes: e.target.value })}>
-                  <option value={60}>60 Minutes</option>
-                  <option value={90}>90 Minutes</option>
-                  <option value={120}>120 Minutes</option>
-                </select>
-              </label>
-              <label>
-                Opening Time
-                <input type="time" required value={slotGen.openingTime} onChange={(e) => setSlotGen({ ...slotGen, openingTime: e.target.value })} />
-              </label>
-              <label>
-                Closing Time
-                <input type="time" required value={slotGen.closingTime} onChange={(e) => setSlotGen({ ...slotGen, closingTime: e.target.value })} />
-              </label>
-              <label>
-                Break Start (Optional)
-                <input type="time" value={slotGen.breakStartTime} onChange={(e) => setSlotGen({ ...slotGen, breakStartTime: e.target.value })} />
-              </label>
-              <label>
-                Break End (Optional)
-                <input type="time" value={slotGen.breakEndTime} onChange={(e) => setSlotGen({ ...slotGen, breakEndTime: e.target.value })} />
-              </label>
-              <label className="full">
-                Maximum Slots Per Day
-                <input type="number" min={1} max={24} value={slotGen.slotsPerDay} onChange={(e) => setSlotGen({ ...slotGen, slotsPerDay: e.target.value })} />
-              </label>
-              <div className="full" style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
-                <button className="btn btn-alt" type="button" onClick={close}>Cancel</button>
-                <button className="btn btn-primary" type="submit">Create Slots</button>
+          <form className="playground-editor" onSubmit={handleGenerateSlots}>
+            <header className="playground-editor__head">
+              <span>AUTOMATED SCHEDULE</span>
+              <h2>Generate Weekly Slots</h2>
+              <p>Configure recurring weekly slots, durations, and break intervals.</p>
+            </header>
+
+            <section className="playground-editor__section">
+              <div className="form-grid">
+                <label className="full">
+                  Select Playground
+                  <select required value={slotGen.playgroundId} onChange={(e) => setSlotGen({ ...slotGen, playgroundId: e.target.value })}>
+                    {playgrounds.map((g) => (
+                      <option key={g._id} value={g._id}>{g.name} ({g.sportType})</option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Day schedule
+                  <select value={slotGen.dayType} onChange={(e) => setSlotGen({ ...slotGen, dayType: e.target.value })}>
+                    <option value="everyday">Everyday (All 7 Days)</option>
+                    <option value="weekdays">Weekdays (Sun – Thu)</option>
+                    <option value="weekend">Weekend (Fri – Sat)</option>
+                  </select>
+                </label>
+                <label>
+                  Slot duration
+                  <select value={slotGen.durationMinutes} onChange={(e) => setSlotGen({ ...slotGen, durationMinutes: e.target.value })}>
+                    <option value={60}>60 Minutes</option>
+                    <option value={90}>90 Minutes</option>
+                    <option value={120}>120 Minutes</option>
+                  </select>
+                </label>
+                <label>
+                  Opening time
+                  <input type="time" required value={slotGen.openingTime} onChange={(e) => setSlotGen({ ...slotGen, openingTime: e.target.value })} />
+                </label>
+                <label>
+                  Closing time
+                  <input type="time" required value={slotGen.closingTime} onChange={(e) => setSlotGen({ ...slotGen, closingTime: e.target.value })} />
+                </label>
+                <label>
+                  Break start (optional)
+                  <input type="time" value={slotGen.breakStartTime} onChange={(e) => setSlotGen({ ...slotGen, breakStartTime: e.target.value })} />
+                </label>
+                <label>
+                  Break end (optional)
+                  <input type="time" value={slotGen.breakEndTime} onChange={(e) => setSlotGen({ ...slotGen, breakEndTime: e.target.value })} />
+                </label>
+                <label className="full">
+                  Max slots per day
+                  <input type="number" min={1} max={24} value={slotGen.slotsPerDay} onChange={(e) => setSlotGen({ ...slotGen, slotsPerDay: e.target.value })} />
+                </label>
               </div>
-            </form>
-          </div>
+            </section>
+
+            <footer style={{ padding: "18px 24px", borderTop: "1px solid #dcece0", background: "#fff", display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+              <button type="button" className="button alt" onClick={close}>Cancel</button>
+              <button type="submit" className="button">Create slots</button>
+            </footer>
+          </form>
         )}
 
-        {/* 3. View QR Ticket Modal */}
+        {/* VIEW QR TICKET PASS (matches digital ticket layout) */}
         {modal === "view-ticket" && data && (
-          <div style={{ textAlign: "center" }}>
-            <span className="dash-eyebrow">DIGITAL PASS</span>
-            <h2>{data.playground?.name || "TURF Entry Pass"}</h2>
-            <p className="meta">{prettyDate(data.bookingDate)} · {data.startTime} - {data.endTime}</p>
+          <div style={{ padding: "30px", textAlign: "center" }}>
+            <span className="eyebrow">DIGITAL QR PASS</span>
+            <h2 style={{ margin: "4px 0 6px", fontSize: "1.5rem" }}>{data.playground?.name || "TURF Entry Pass"}</h2>
+            <p className="item-meta">{prettyDate(data.bookingDate)} · {data.startTime} – {data.endTime}</p>
 
-            <div style={{ margin: "20px auto", padding: "16px", background: "#f8fafc", borderRadius: "14px", display: "inline-block" }}>
+            <div className="qr-ticket-pass" style={{ margin: "20px auto", maxWidth: "340px" }}>
               <img
                 src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data._id)}`}
-                alt="Booking QR Code"
-                style={{ width: "200px", height: "200px", display: "block" }}
+                alt="Ticket QR"
               />
-              <span style={{ display: "block", marginTop: "10px", fontSize: "0.8rem", color: "#64748b", fontWeight: 700 }}>
-                Pass ID: {data._id}
-              </span>
+              <strong style={{ display: "block", marginTop: "14px", fontSize: "0.95rem", color: "#163a23" }}>
+                TICKET #{String(data._id).slice(-8).toUpperCase()}
+              </strong>
+              <small style={{ color: "#68766d", fontSize: "0.78rem" }}>Show this QR code at the venue scanner</small>
             </div>
 
-            <p style={{ fontSize: "0.85rem", color: "#64748b" }}>
-              Show this QR code at the venue reception scanner for seamless entry verification.
-            </p>
-
-            <div style={{ marginTop: "18px" }}>
-              <button className="btn btn-primary" onClick={() => window.print()}>Print Ticket</button>
+            <div style={{ display: "flex", gap: "10px", justifyContent: "center", marginTop: "18px" }}>
+              <button type="button" className="button alt" onClick={close}>Close</button>
+              <button type="button" className="button" onClick={() => window.print()}>Print pass</button>
             </div>
           </div>
         )}
 
-        {/* 4. Customer Cancel Modal */}
-        {modal === "customer-cancel" && data && (
-          <div>
-            <span className="dash-eyebrow" style={{ color: "#b91c1c" }}>CANCELLATION NOTICE</span>
-            <h2>Cancel this reservation?</h2>
-            <p className="meta">
-              Playground: <strong>{data.playground?.name}</strong><br />
-              Schedule: <strong>{prettyDate(data.bookingDate)} · {data.startTime} - {data.endTime}</strong>
-            </p>
-            <p style={{ color: "#64748b", fontSize: "0.9rem" }}>
-              Are you sure you wish to cancel this slot? Any eligible refund will be routed according to our venue cancellation policy.
-            </p>
-            <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
-              <button className="btn btn-alt" onClick={close}>Keep Booking</button>
-              <button className="btn btn-danger" onClick={handleCustomerCancelBooking}>Confirm & Cancel</button>
-            </div>
-          </div>
-        )}
-
-        {/* 5. Admin Cancel Modal */}
+        {/* ADMIN CANCELLATION MODAL (matches management.js admin cancel) */}
         {modal === "admin-cancel" && data && (
-          <div>
-            <span className="dash-eyebrow" style={{ color: "#b91c1c" }}>VENUE ACTION</span>
-            <h2>Cancel & Refund Customer Slot</h2>
-            <p className="meta">
+          <section className="cancellation-box" style={{ padding: "26px" }}>
+            <span className="eyebrow" style={{ color: "#a53636" }}>VENUE ACTION</span>
+            <h2 style={{ margin: "6px 0 4px" }}>Cancel this booked slot?</h2>
+            <p className="item-meta">
               Customer: <strong>{data.customer?.name}</strong> · Venue: <strong>{data.playground?.name}</strong><br />
-              Time: {prettyDate(data.bookingDate)} · {data.startTime} - {data.endTime}
+              {prettyDate(data.bookingDate)} · {data.startTime} – {data.endTime}
             </p>
-            <form onSubmit={handleAdminCancelBooking} className="form-grid">
-              <label className="full">
-                Reason for cancellation (Shared with customer)
+            <form onSubmit={handleAdminCancelSubmit} style={{ marginTop: "16px" }}>
+              <label style={{ display: "grid", gap: "6px", fontSize: "0.82rem", fontWeight: 700 }}>
+                Reason for cancellation (shared with customer)
                 <textarea
                   required
-                  placeholder="E.g., Field unavailable due to urgent turf maintenance or inclement weather..."
-                  value={cancelReason}
-                  onChange={(e) => setCancelReason(e.target.value)}
+                  placeholder="Example: The field is unavailable due to urgent turf maintenance."
+                  value={adminCancelReason}
+                  onChange={(e) => setAdminCancelReason(e.target.value)}
+                  style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #d9e9de", minHeight: "80px" }}
                 />
               </label>
-              <div className="full" style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
-                <button className="btn btn-alt" type="button" onClick={close}>Keep Booking</button>
-                <button className="btn btn-danger" type="submit">Cancel, Refund & Notify</button>
+              <p style={{ margin: "14px 0", fontSize: "0.84rem", color: "#546258" }}>
+                Are you sure you want to cancel this booking? The customer will be notified and any paid amount will be fully refunded.
+              </p>
+              <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+                <button type="button" className="button alt" onClick={close}>Keep booking</button>
+                <button type="submit" className="button" style={{ background: "#c6443c" }}>Cancel, refund & notify</button>
               </div>
             </form>
-          </div>
+          </section>
         )}
 
-        {/* 6. View Ground Details Modal (Super Admin) */}
+        {/* VIEW GROUND DETAILS (SUPER ADMIN) */}
         {modal === "view-ground" && data && (
-          <div>
-            <span className="dash-eyebrow">{data.sportType}</span>
-            <h2>{data.name}</h2>
-            <p className="meta">{data.address || `${data.area}, ${data.district}`}</p>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", margin: "14px 0", fontSize: "0.85rem" }}>
-              <div><strong>Owner:</strong> {data.playgroundAdmin?.name || "Admin"}</div>
-              <div><strong>Contact:</strong> {data.phone} / {data.email}</div>
-              <div><strong>Capacity:</strong> {data.maxPlayers} players</div>
-              <div><strong>Hours:</strong> {data.openingTime} - {data.closingTime}</div>
-              <div><strong>Morning Price:</strong> {money(data.pricing?.morning)}</div>
-              <div><strong>Evening Price:</strong> {money(data.pricing?.evening)}</div>
+          <div style={{ padding: "28px" }}>
+            <span className="eyebrow">{data.sportType}</span>
+            <h2 style={{ margin: "6px 0 4px" }}>{data.name}</h2>
+            <p className="item-meta">{data.address || `${data.area}, ${data.district}`}</p>
+
+            <div className="ground-detail-grid">
+              <div><b>Location</b><span>{[data.address, data.area, data.district, data.division].filter(Boolean).join(", ")}</span></div>
+              <div><b>Venue contact</b><span>{data.phone}<br />{data.email}</span></div>
+              <div><b>Admin owner</b><span>{data.playgroundAdmin?.name || "Not listed"}<br />{data.playgroundAdmin?.email || ""}</span></div>
+              <div><b>Capacity</b><span>{data.maxPlayers} max players</span></div>
+              <div><b>Hours</b><span>{data.openingTime} – {data.closingTime}</span></div>
+              <div><b>Facilities</b><span>{(data.facilities || []).join(", ") || "Not listed"}</span></div>
             </div>
-            <p><strong>Description:</strong> {data.description || "No description provided."}</p>
-            <p className="item-meta"><strong>Facilities:</strong> {(data.facilities || []).join(", ") || "None listed"}</p>
+
+            <h3>Pricing</h3>
+            <div className="ground-detail-grid">
+              <div><b>Morning</b><span>৳{data.pricing?.morning || 0}</span></div>
+              <div><b>Day</b><span>৳{data.pricing?.day || 0}</span></div>
+              <div><b>Evening</b><span>৳{data.pricing?.evening || 0}</span></div>
+              <div><b>Weekend</b><span>৳{data.pricing?.weekend || 0}</span></div>
+            </div>
+
+            <div style={{ display: "flex", gap: "10px", marginTop: "18px" }}>
+              <button type="button" className="button alt" onClick={close}>Close</button>
+              {data.googleMapLocation && (
+                <a className="button" target="_blank" rel="noopener noreferrer" href={data.googleMapLocation}>Open map location</a>
+              )}
+            </div>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ===================================================
+// TURF DIALOG COMPONENT (matches legacy ui-dialog.js)
+// ===================================================
+function TurfDialogModal({ dialog, close }) {
+  const { title, message, confirmLabel = "Confirm", danger = false, onConfirm } = dialog;
+
+  const handleConfirm = async () => {
+    close();
+    if (onConfirm) await onConfirm();
+  };
+
+  return (
+    <div className="turf-dialog-backdrop" onClick={close}>
+      <div className="turf-dialog" onClick={(e) => e.stopPropagation()}>
+        <div className={`turf-dialog-icon ${danger ? "danger" : "primary"}`}>
+          {danger ? "!" : "✓"}
+        </div>
+        <div className="turf-dialog-copy">
+          <h2>{title}</h2>
+          <p>{message}</p>
+        </div>
+        <div className="turf-dialog-actions" style={{ display: "flex", gap: "10px", justifyContent: "flex-end", marginTop: "20px" }}>
+          <button type="button" className="button alt" onClick={close}>Cancel</button>
+          <button
+            type="button"
+            className="button"
+            style={danger ? { background: "#c6443c" } : {}}
+            onClick={handleConfirm}
+          >
+            {confirmLabel}
+          </button>
+        </div>
       </div>
     </div>
   );
