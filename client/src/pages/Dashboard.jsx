@@ -65,6 +65,7 @@ export default function Dashboard({ token, user, setUser, navigate, logout, open
   const [modalData, setModalData] = useState(null);
   const [confirmDialog, setConfirmDialog] = useState(null);
   const [slotDate, setSlotDate] = useState(() => isoDate());
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const role = user?.role || "customer";
 
@@ -209,19 +210,29 @@ export default function Dashboard({ token, user, setUser, navigate, logout, open
     <div className="dashboard-shell">
       {/* Sidebar */}
       <aside className="sidebar">
-        <a className="brand" href="#" onClick={(e) => { e.preventDefault(); navigate("home"); }}>
-          <img src="/legacy/assets/images/favicon.png" alt="TURF" />
-          <span>TURF</span>
-        </a>
+        <div className="sidebar-brand-row">
+          <a className="brand" href="#" onClick={(e) => { e.preventDefault(); navigate("home"); }}>
+            <img src="/legacy/assets/images/favicon.png" alt="TURF" />
+            <span>TURF</span>
+          </a>
+          <button
+            className="mobile-side-toggle"
+            type="button"
+            onClick={() => setMobileNavOpen(!mobileNavOpen)}
+          >
+            {mobileNavOpen ? "✕ Close" : "☰ Menu"}
+          </button>
+        </div>
 
         <p className="workspace-label">{role.replace("-", " ")} workspace</p>
 
-        <nav className="side-nav">
+        <nav className={`side-nav ${mobileNavOpen ? "mobile-open" : ""}`}>
           {navItems.map((item) => (
             <button
               key={item.id}
               className={tab === item.id ? "active" : ""}
               onClick={() => {
+                setMobileNavOpen(false);
                 if (item.action) item.action();
                 else setTab(item.id);
               }}
