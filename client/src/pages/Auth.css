@@ -442,17 +442,25 @@
   align-items: center !important;
 }
 
-.label-hint {
+.label-hint,
+.label-hint-btn {
+  background: transparent !important;
+  border: none !important;
   font-size: 0.78rem !important;
   font-weight: 600 !important;
   color: #059669 !important;
-  cursor: pointer;
-  transition: color 0.15s;
+  cursor: pointer !important;
+  padding: 0 !important;
+  transition: color 0.15s ease !important;
+  text-decoration: underline !important;
+  text-underline-offset: 3px !important;
+  box-shadow: none !important;
+  outline: none !important;
 }
 
-.label-hint:hover {
+.label-hint:hover,
+.label-hint-btn:hover {
   color: #047857 !important;
-  text-decoration: underline;
 }
 
 .auth-input {
@@ -586,6 +594,16 @@
   margin: 0 !important;
   font-size: 0.86rem !important;
   color: #64748b !important;
+}
+
+.auth-security-note {
+  font-size: 0.74rem !important;
+  color: #94a3b8 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  letter-spacing: 0.01em !important;
 }
 
 .auth-switch-link {
