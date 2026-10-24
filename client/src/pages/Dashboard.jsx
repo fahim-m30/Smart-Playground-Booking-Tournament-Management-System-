@@ -749,19 +749,64 @@ function OverviewTab({
 
       {/* Live & Upcoming Tournaments Ticker */}
       {tournaments.length > 0 && (
-        <div className="ticker">
-          <span className="ticker-label">LIVE & UPCOMING</span>
-          <div className="ticker-track">
-            {tournaments.map((t) => {
-              const ground = t.playgrounds?.[0] || t.playground || {};
-              return (
-                <div key={t._id} className="ticker-item">
-                  <strong>{t.name}</strong>
-                  <small>• {ground.name || t.sportType} · {prettyDate(t.startDate)}</small>
-                </div>
-              );
-            })}
+        <div className="modern-ticker-wrapper">
+          <div className="ticker-badge-pill">
+            <span className="ticker-pulse-beacon" />
+            <span className="ticker-badge-text">LIVE TOURNAMENTS</span>
           </div>
+
+          <div className="ticker-marquee-viewport">
+            <div className="ticker-track">
+              {/* Duplicate list for seamless infinite marquee scroll */}
+              {[...tournaments, ...tournaments].map((t, idx) => {
+                const ground = t.playgrounds?.[0] || t.playground || {};
+                return (
+                  <div
+                    key={`${t._id}-${idx}`}
+                    className="ticker-item-card"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => navigate("tournaments")}
+                    onKeyDown={(e) => e.key === "Enter" && navigate("tournaments")}
+                  >
+                    <span className="ticker-sport-pill">{t.sportType || "Football"}</span>
+                    <strong className="ticker-tourney-name">{t.name}</strong>
+                    <span className="ticker-venue-meta">
+                      <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                        <circle cx="12" cy="10" r="3" />
+                      </svg>
+                      {ground.name || "Dhaka Arena"}
+                    </span>
+                    <span className="ticker-date-meta">
+                      <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                        <line x1="16" y1="2" x2="16" y2="6" />
+                        <line x1="8" y1="2" x2="8" y2="6" />
+                        <line x1="3" y1="10" x2="21" y2="10" />
+                      </svg>
+                      {prettyDate(t.startDate)}
+                    </span>
+                    <span className={`ticker-status-tag ${(t.status || "upcoming").toLowerCase()}`}>
+                      {t.status || "Upcoming"}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className="ticker-explore-btn"
+            onClick={() => navigate("tournaments")}
+            title="Browse all tournaments"
+          >
+            <span>All Cups</span>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </button>
         </div>
       )}
 
