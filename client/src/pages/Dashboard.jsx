@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo, useRef } from "react";
 import "./Dashboard.css";
 import { API, money, prettyDate, isoDate, request } from "../services/api";
+import AiMessenger from "../components/AiMessenger";
 
 // ===================================================
 // Authentic SVG Icons (from legacy dashboard.js)
@@ -69,6 +70,7 @@ export default function Dashboard({ token, user, setUser, navigate, logout, open
   const [slotDate, setSlotDate] = useState(() => isoDate());
   const [myRegistrations, setMyRegistrations] = useState([]);
   const [myPayments, setMyPayments] = useState([]);
+  const [chatContact, setChatContact] = useState(null);
 
   useEffect(() => {
     if (role === "staff" && tab === "overview") {
@@ -82,6 +84,7 @@ export default function Dashboard({ token, user, setUser, navigate, logout, open
       return [
         { id: "scanner", label: "QR Scanner", icon: "booking" },
         { id: "checkins", label: "Gate Check-ins", icon: "bookings" },
+        { id: "ai-chat", label: "AI Messenger", icon: "messages" },
         { id: "account", label: "My Profile", icon: "account" }
       ];
     }
@@ -107,7 +110,10 @@ export default function Dashboard({ token, user, setUser, navigate, logout, open
         { id: "income", label: "Income", icon: "income" }
       );
     }
-    items.splice(items.length - 1, 0, { id: "reports", label: "Reports", icon: "reports" });
+    items.splice(items.length - 1, 0,
+      { id: "ai-chat", label: "AI Messenger", icon: "messages" },
+      { id: "reports", label: "Reports", icon: "reports" }
+    );
     if (role === "super-admin") {
       items.splice(items.length - 2, 0,
         { id: "playgrounds", label: "Playground control", icon: "venue" },
@@ -134,7 +140,11 @@ export default function Dashboard({ token, user, setUser, navigate, logout, open
 
       // 2. Notifications
       const notifs = await request("/notifications", { token }).catch(() => []);
-      setNotifications(notifs || []);
+      const normalizedNotifs = (Array.isArray(notifs) ? notifs : []).map((n) => ({
+        ...n,
+        isRead: Boolean(n.readAt || n.isRead),
+      }));
+      setNotifications(normalizedNotifs);
 
       // 3. Customer Role Data
       if (role === "customer") {
@@ -224,10 +234,26 @@ export default function Dashboard({ token, user, setUser, navigate, logout, open
   const markAllNotificationsRead = async () => {
     try {
       await request("/notifications/read-all", { method: "PATCH", token });
-      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      setNotifications((prev) =>
+        prev.map((n) => ({ ...n, isRead: true, readAt: n.readAt || new Date().toISOString() }))
+      );
       showNotice("All notifications marked as read.");
     } catch (err) {
       showNotice(err.message, "error");
+    }
+  };
+
+  const markNotificationRead = async (id) => {
+    try {
+      await request(`/notifications/${id}/read`, { method: "PATCH", token });
+      setNotifications((prev) =>
+        prev.map((n) => (n._id === id ? { ...n, isRead: true, readAt: new Date().toISOString() } : n))
+      );
+    } catch {
+      // Optimistic fallback
+      setNotifications((prev) =>
+        prev.map((n) => (n._id === id ? { ...n, isRead: true, readAt: new Date().toISOString() } : n))
+      );
     }
   };
 
@@ -241,7 +267,7 @@ export default function Dashboard({ token, user, setUser, navigate, logout, open
     );
   }
 
-  const unreadNotifs = notifications.filter((n) => !n.isRead).length;
+  const unreadNotifs = notifications.filter((n) => !Boolean(n.readAt || n.isRead)).length;
 
   return (
     <div className="dashboard-shell">
@@ -284,13 +310,22 @@ export default function Dashboard({ token, user, setUser, navigate, logout, open
                 </header>
                 <div className="mobile-notification-list">
                   {notifications.length ? (
-                    notifications.slice(0, 8).map((n) => (
-                      <div key={n._id} className={`notification-item ${n.isRead ? "" : "unread"}`}>
-                        <strong>{n.title || "Notification"}</strong>
-                        <p>{n.message}</p>
-                        <span>{prettyDate(n.createdAt)}</span>
-                      </div>
-                    ))
+                    notifications.slice(0, 8).map((n) => {
+                      const isItemRead = Boolean(n.readAt || n.isRead);
+                      return (
+                        <div
+                          key={n._id}
+                          className={`notification-item ${isItemRead ? "" : "unread"}`}
+                          onClick={() => markNotificationRead(n._id)}
+                          style={{ cursor: "pointer" }}
+                          title={isItemRead ? "Read" : "Click to mark as read"}
+                        >
+                          <strong>{n.title || "Notification"}</strong>
+                          <p>{n.message}</p>
+                          <span>{prettyDate(n.createdAt)}</span>
+                        </div>
+                      );
+                    })
                   ) : (
                     <p className="notification-empty">No notifications yet.</p>
                   )}
@@ -434,13 +469,22 @@ export default function Dashboard({ token, user, setUser, navigate, logout, open
                   </header>
                   <div>
                     {notifications.length ? (
-                      notifications.slice(0, 8).map((n) => (
-                        <div key={n._id} className={`notification-item ${n.isRead ? "" : "unread"}`}>
-                          <strong>{n.title || "Notification"}</strong>
-                          <p>{n.message}</p>
-                          <span>{prettyDate(n.createdAt)}</span>
-                        </div>
-                      ))
+                      notifications.slice(0, 8).map((n) => {
+                        const isItemRead = Boolean(n.readAt || n.isRead);
+                        return (
+                          <div
+                            key={n._id}
+                            className={`notification-item ${isItemRead ? "" : "unread"}`}
+                            onClick={() => markNotificationRead(n._id)}
+                            style={{ cursor: "pointer" }}
+                            title={isItemRead ? "Read" : "Click to mark as read"}
+                          >
+                            <strong>{n.title || "Notification"}</strong>
+                            <p>{n.message}</p>
+                            <span>{prettyDate(n.createdAt)}</span>
+                          </div>
+                        );
+                      })
                     ) : (
                       <p className="notification-empty">No notifications yet.</p>
                     )}
@@ -524,6 +568,8 @@ export default function Dashboard({ token, user, setUser, navigate, logout, open
                   setModalData={setModalData}
                   setConfirmDialog={setConfirmDialog}
                   navigate={navigate}
+                  setTab={setTab}
+                  setChatContact={setChatContact}
                 />
               )}
 
@@ -651,6 +697,17 @@ export default function Dashboard({ token, user, setUser, navigate, logout, open
                   token={token}
                   showNotice={showNotice}
                   reload={loadData}
+                />
+              )}
+
+              {/* TAB: AI MESSENGER & VENUE CHAT */}
+              {tab === "ai-chat" && (
+                <AiMessenger
+                  token={token}
+                  user={user}
+                  initialContact={chatContact}
+                  embedded={true}
+                  navigate={navigate}
                 />
               )}
 
@@ -1200,7 +1257,9 @@ function CustomerBookingsTab({
   setActiveModal,
   setModalData,
   setConfirmDialog,
-  navigate
+  navigate,
+  setTab,
+  setChatContact
 }) {
   const [activeSubTab, setActiveSubTab] = useState("bookings");
   const [filter, setFilter] = useState("All");
@@ -1299,15 +1358,23 @@ function CustomerBookingsTab({
                       </button>
                     ) : null}
 
-                    {b.playground?.phone && (
-                      <button
-                        type="button"
-                        className="button alt"
-                        onClick={() => showNotice("Playground Admin Phone: " + b.playground.phone)}
-                      >
-                        Chat with admin
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      className="button alt"
+                      onClick={() => {
+                        if (setChatContact) {
+                          setChatContact({
+                            name: b.playground?.name || "Playground Admin",
+                            id: b.playground?.admin || b.playground?._id,
+                            playground: b.playground,
+                            role: "playground-admin"
+                          });
+                        }
+                        if (setTab) setTab("ai-chat");
+                      }}
+                    >
+                      Chat with admin
+                    </button>
 
                     {["Pending", "Confirmed"].includes(b.bookingStatus) && (
                       <button

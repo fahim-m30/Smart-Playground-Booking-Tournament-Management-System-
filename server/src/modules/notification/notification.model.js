@@ -41,4 +41,11 @@ const notificationSchema = new mongoose.Schema({
 
 notificationSchema.index({ recipient: 1, createdAt: -1 });
 
+notificationSchema.virtual("isRead").get(function () {
+    return Boolean(this.readAt);
+});
+
+notificationSchema.set("toJSON", { virtuals: true });
+notificationSchema.set("toObject", { virtuals: true });
+
 module.exports = mongoose.model("Notification", notificationSchema);

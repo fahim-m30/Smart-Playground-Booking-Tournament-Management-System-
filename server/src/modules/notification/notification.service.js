@@ -10,19 +10,32 @@ const createNotification = async (payload) => {
 };
 
 // Retrieves the data needed for get my notifications.
-const getMyNotifications = (userId, limit = 30) => Notification.find({ recipient: userId })
-    .sort({ createdAt: -1 })
-    .limit(Math.min(Math.max(Number(limit) || 30, 1), 100));
+const getMyNotifications = async (userId, limit = 30) => {
+    const list = await Notification.find({ recipient: userId })
+        .sort({ createdAt: -1 })
+        .limit(Math.min(Math.max(Number(limit) || 30, 1), 100))
+        .lean();
+    return list.map((n) => ({
+        ...n,
+        isRead: Boolean(n.readAt),
+    }));
+};
 
 // Handles the mark read workflow.
 const markRead = async (id, userId) => {
-    const notification = await Notification.findOneAndUpdate({ _id: id, recipient: userId }, { readAt: new Date() }, { new: true });
+    const notification = await Notification.findOneAndUpdate(
+        { _id: id, recipient: userId },
+        { readAt: new Date() },
+        { new: true }
+    ).lean();
     if (!notification) throw new Error("Notification not found.");
-    return notification;
+    return { ...notification, isRead: true };
 };
 
 // Handles the mark all read workflow.
-const markAllRead = (userId) => Notification.updateMany({ recipient: userId, readAt: null }, { readAt: new Date() });
+const markAllRead = async (userId) => {
+    return Notification.updateMany({ recipient: userId, readAt: null }, { $set: { readAt: new Date() } });
+};
 
 // Removes or cancels the data used for delete notification.
 const deleteNotification = async (id, userId) => {

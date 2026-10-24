@@ -11,6 +11,7 @@ import Dashboard from "./pages/Dashboard";
 import Tournaments from "./pages/Tournaments";
 import InfoPage from "./pages/InfoPage";
 import { API, request } from "./services/api";
+import AiMessenger from "./components/AiMessenger";
 
 export default function App() {
   const [token, setToken] = useState(() => localStorage.getItem("turf_token") || "");
@@ -46,6 +47,7 @@ export default function App() {
   const [query, setQuery] = useState("");
   const [sport, setSport] = useState("");
   const [notice, setNotice] = useState(null);
+  const [showAiModal, setShowAiModal] = useState(false);
 
   const showNotice = (message, type = "success") => {
     setNotice({ message, type });
@@ -223,6 +225,38 @@ export default function App() {
       )}
 
       {!isAuthPage && !isDashboardPage && <Footer navigate={navigate} />}
+
+      {/* Global Floating TURF AI Copilot FAB */}
+      <button
+        type="button"
+        className="turf-ai-fab-btn"
+        onClick={() => setShowAiModal(!showAiModal)}
+        title="Open TURF AI Assistant"
+      >
+        <div className="fab-avatar-badge">
+          🤖
+          <span className="fab-beacon" />
+        </div>
+        <div className="fab-copy">
+          <span className="fab-title">TURF AI</span>
+          <span className="fab-subtitle">24/7 Copilot</span>
+        </div>
+      </button>
+
+      {showAiModal && (
+        <div className="turf-ai-floating-overlay">
+          <AiMessenger
+            token={token}
+            user={user}
+            embedded={false}
+            onClose={() => setShowAiModal(false)}
+            navigate={(target) => {
+              setShowAiModal(false);
+              navigate(target);
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }
