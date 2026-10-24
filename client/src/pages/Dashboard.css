@@ -5230,17 +5230,60 @@ tr:hover td {
   overflow: hidden;
   width: 100%;
 }
+.dashboard-hero-content {
+  position: relative;
+  z-index: 1;
+  max-width: 620px;
+}
+.dashboard-hero-eyebrow {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #86efac;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
 .dashboard-hero-title {
-  margin: 6px 0 4px;
+  margin: 4px 0 6px;
   font-size: 1.55rem;
   color: #ffffff;
   letter-spacing: -0.03em;
+  font-weight: 800;
+  line-height: 1.25;
 }
 .dashboard-hero-subtitle {
   margin: 0;
   font-size: 0.85rem;
   color: #dcfce7;
   line-height: 1.55;
+}
+.dashboard-hero-badge-wrap {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  position: relative;
+  z-index: 1;
+}
+.dashboard-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 16px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #ffffff;
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+.dashboard-hero-beacon {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #4ade80;
+  box-shadow: 0 0 8px #4ade80;
 }
 
 /* Hide mobile dashboard app bar on Desktop (> 930px) */
@@ -5299,7 +5342,25 @@ tr:hover td {
     height: 32px !important;
     object-fit: contain !important;
   }
-  .mobile-brand span {
+  .mobile-brand-copy {
+    display: flex !important;
+    flex-direction: column !important;
+    line-height: 1.1 !important;
+  }
+  .mobile-brand-name {
+    font-size: 1.15rem !important;
+    font-weight: 900 !important;
+    color: #065f46 !important;
+    letter-spacing: -0.02em !important;
+  }
+  .mobile-role-pill {
+    font-size: 0.62rem !important;
+    font-weight: 800 !important;
+    color: #059669 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.06em !important;
+  }
+  .mobile-brand span:not(.mobile-brand-name):not(.mobile-role-pill) {
     font-size: 1.25rem !important;
     font-weight: 900 !important;
     color: #065f46 !important;
@@ -5329,6 +5390,10 @@ tr:hover td {
     cursor: pointer !important;
     color: #334155 !important;
     padding: 0 !important;
+  }
+  .mobile-notif-btn svg {
+    display: block !important;
+    stroke: #334155 !important;
   }
 
   .mobile-notif-badge {
@@ -5411,6 +5476,10 @@ tr:hover td {
     cursor: pointer !important;
     padding: 0 !important;
     line-height: 1 !important;
+  }
+  .mobile-logout-btn svg {
+    display: block !important;
+    stroke: #991b1b !important;
   }
 
   /* Horizontal Swipeable Segmented Pill Navigation */
@@ -5681,12 +5750,33 @@ tr:hover td {
     border-radius: 16px !important;
     margin-bottom: 16px !important;
     gap: 12px !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+  .dashboard-hero-content {
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+  .dashboard-hero-eyebrow {
+    font-size: 0.65rem !important;
   }
   .dashboard-hero-title {
     font-size: 1.25rem !important;
+    margin: 4px 0 6px 0 !important;
+    line-height: 1.25 !important;
   }
   .dashboard-hero-subtitle {
     font-size: 0.78rem !important;
+    line-height: 1.4 !important;
+    margin: 0 !important;
+  }
+  .dashboard-hero-badge-wrap {
+    width: 100% !important;
+    justify-content: flex-start !important;
+  }
+  .dashboard-hero-badge {
+    padding: 5px 12px !important;
+    font-size: 0.72rem !important;
   }
   .stats {
     grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
@@ -6094,6 +6184,8 @@ tr:hover td {
 /* ==============================================================
    TOPBAR & WIDGET POLISH
    ============================================================== */
+
+@media (min-width: 931px) {
 .dashboard-topbar,
 .desktop-topbar,
 .topbar {
@@ -6324,6 +6416,32 @@ tr:hover td {
   border-color: #fca5a5 !important;
   color: #b91c1c !important;
 }
+}
+
+/* Hard Kill Desktop Topbar and Sidebar on Phone & Tablet screens (<= 930px) */
+@media (max-width: 930px) {
+  .dashboard-topbar,
+  .desktop-topbar,
+  .topbar,
+  .desktop-sidebar,
+  .sidebar,
+  aside.sidebar,
+  header.desktop-topbar,
+  header.dashboard-topbar {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    max-height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    overflow: hidden !important;
+    pointer-events: none !important;
+  }
+}
+
 
 
 /* ============================================================

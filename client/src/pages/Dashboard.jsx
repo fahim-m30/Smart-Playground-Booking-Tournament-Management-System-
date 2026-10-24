@@ -249,7 +249,10 @@ export default function Dashboard({ token, user, setUser, navigate, logout, open
       <header className="mobile-dashboard-header">
         <a className="mobile-brand" href="#" onClick={(e) => { e.preventDefault(); navigate("home"); }}>
           <img src="/legacy/assets/images/favicon.png" alt="TURF" />
-          <span>TURF</span>
+          <div className="mobile-brand-copy">
+            <span className="mobile-brand-name">TURF</span>
+            <span className={`mobile-role-pill role-${role}`}>{role.replace("-", " ")}</span>
+          </div>
         </a>
 
         <div className="mobile-header-tools">
@@ -261,7 +264,10 @@ export default function Dashboard({ token, user, setUser, navigate, logout, open
               aria-label="Notifications"
               onClick={() => setShowNotifications(!showNotifications)}
             >
-              🔔
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+              </svg>
               {unreadNotifs > 0 && <span className="mobile-notif-badge">{unreadNotifs}</span>}
             </button>
 
@@ -312,7 +318,11 @@ export default function Dashboard({ token, user, setUser, navigate, logout, open
             title="Log out"
             aria-label="Log out"
           >
-            ⎋
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="21" x2="9" y2="12" />
+            </svg>
           </button>
         </div>
       </header>
@@ -697,8 +707,8 @@ function OverviewTab({
     <>
       {/* Premium Hero Greeting Banner */}
       <div className="dashboard-hero-banner">
-        <div style={{ position: "relative", zIndex: 1, maxWidth: "620px" }}>
-          <span style={{ fontSize: "0.72rem", fontWeight: 800, color: "#86efac", letterSpacing: "0.12em", textTransform: "uppercase" }}>
+        <div className="dashboard-hero-content">
+          <span className="dashboard-hero-eyebrow">
             TURF WORKSPACE HUB · {role.replace("-", " ").toUpperCase()}
           </span>
           <h2 className="dashboard-hero-title">
@@ -712,22 +722,9 @@ function OverviewTab({
           </p>
         </div>
 
-        <div style={{ display: "flex", gap: "10px", alignItems: "center", position: "relative", zIndex: 1 }}>
-          <span
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "8px",
-              padding: "7px 16px",
-              borderRadius: "999px",
-              background: "rgba(255, 255, 255, 0.18)",
-              fontSize: "0.78rem",
-              fontWeight: 700,
-              color: "#ffffff",
-              backdropFilter: "blur(6px)"
-            }}
-          >
-            <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#4ade80", boxShadow: "0 0 8px #4ade80" }} />
+        <div className="dashboard-hero-badge-wrap">
+          <span className="dashboard-hero-badge">
+            <span className="dashboard-hero-beacon" />
             Dhaka Hub Live
           </span>
         </div>
