@@ -1,4 +1,4 @@
-export const API = import.meta.env.VITE_API_URL || "/api/v1";
+export const API = import.meta.env.VITE_API_URL || "https://smart-playground-booking-tournament.onrender.com/api/v1";
 
 export const money = (value) => new Intl.NumberFormat("en-BD", {
   style: "currency", currency: "BDT", maximumFractionDigits: 0,

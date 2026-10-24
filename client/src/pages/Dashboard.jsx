@@ -123,7 +123,7 @@ export default function Dashboard({ token, user, setUser, navigate, logout, open
     setLoading(true);
     try {
       // 1. Tournaments & Live Matches
-      const tourneys = await request("/tournaments").catch(() => []);
+      const tourneys = await request("/tournaments", { token }).catch(() => []);
       setTournaments(tourneys || []);
 
       if (tourneys?.length) {
@@ -669,7 +669,8 @@ function OverviewTab({
   role, user, bookings, tournaments, playgrounds, slotsList, incomeData, allUsers, matches, setTab, setActiveModal, setModalData, navigate
 }) {
   const superAdmin = role === "super-admin";
-  const activeBookings = bookings.filter((b) => !["Cancelled", "Completed"].includes(b.bookingStatus));
+  const upcomingBookings = bookings.filter((b) => !["Cancelled", "Completed"].includes(b.bookingStatus));
+  const displayBookings = upcomingBookings.length > 0 ? upcomingBookings : bookings.filter((b) => b.bookingStatus !== "Cancelled");
   const activeSlotsCount = slotsList.flatMap((d) => d.slots).filter((s) => s.isActive).length;
 
   const currentHour = new Date().getHours();
@@ -718,7 +719,7 @@ function OverviewTab({
       <section className="stats">
         {role === "customer" && (
           <>
-            <article className="stat-card"><span>Active bookings</span><strong>{activeBookings.length}</strong></article>
+            <article className="stat-card"><span>Active bookings</span><strong>{upcomingBookings.length > 0 ? upcomingBookings.length : bookings.length}</strong></article>
             <article className="stat-card"><span>Available tournaments</span><strong>{tournaments.length}</strong></article>
             <article className="stat-card"><span>Booking history</span><strong>{bookings.length}</strong></article>
           </>
@@ -769,14 +770,14 @@ function OverviewTab({
         <>
           <div className="section-heading">
             <div>
-              <h2>Pinned for you</h2>
-              <p>Your upcoming bookings stay at the top.</p>
+              <h2>{upcomingBookings.length > 0 ? "Pinned for you" : "Recent Bookings & Passes"}</h2>
+              <p>{upcomingBookings.length > 0 ? "Your upcoming bookings stay at the top." : "Your latest confirmed ground sessions and QR entry passes."}</p>
             </div>
             <button className="text-link" onClick={() => setTab("my-bookings")}>Manage bookings →</button>
           </div>
           <section className="pinned-grid">
-            {activeBookings.length ? (
-              activeBookings.slice(0, 3).map((b) => (
+            {displayBookings.length ? (
+              displayBookings.slice(0, 3).map((b) => (
                 <article key={b._id} className="pin-card">
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" }}>
                     <span className={`status ${b.bookingStatus?.toLowerCase()}`}>
@@ -959,8 +960,8 @@ function OverviewTab({
                 </svg>
               </span>
               <div>
-                <h2 className="panel-title">{superAdmin ? "Platform Tournaments" : "Upcoming Bookings"}</h2>
-                <p className="activity-intro">{superAdmin ? "Latest tournament registrations across the platform." : "Your next confirmed and pending playground slots."}</p>
+                <h2 className="panel-title">{superAdmin ? "Platform Tournaments" : upcomingBookings.length > 0 ? "Upcoming Bookings" : "Recent Bookings & Passes"}</h2>
+                <p className="activity-intro">{superAdmin ? "Latest tournament registrations across the platform." : upcomingBookings.length > 0 ? "Your next confirmed and pending playground slots." : "Your latest confirmed and completed ground slots."}</p>
               </div>
             </div>
             {!superAdmin && (
@@ -988,8 +989,8 @@ function OverviewTab({
                   <span className={`status ${(t.status || "upcoming").toLowerCase()}`}>{t.status || "Upcoming"}</span>
                 </div>
               ))
-            ) : activeBookings.length ? (
-              activeBookings.slice(0, 5).map((b) => (
+            ) : displayBookings.length ? (
+              displayBookings.slice(0, 5).map((b) => (
                 <div key={b._id} className="list-row activity-row">
                   <div className="activity-item-main">
                     <div className="item-title">{b.playground?.name || "Playground booking"}</div>

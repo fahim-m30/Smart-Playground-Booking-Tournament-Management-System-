@@ -117,21 +117,18 @@ router.patch("/teams/:teamId/cancel", verifyToken, authorize("customer"), tourna
 // Get All Tournaments
 router.get(
     "/",
-    verifyToken,
     tournamentController.getAllTournaments
 );
 
 // Get Single Tournament
 router.get(
     "/:id",
-    verifyToken,
     tournamentController.getSingleTournament
 );
 
 // Get Tournament Groups
 router.get(
     "/:id/groups",
-    verifyToken,
     tournamentController.getTournamentGroups
 );
 
@@ -155,21 +152,18 @@ router.post(
 // Get Tournament Teams
 router.get(
     "/:id/teams",
-    verifyToken,
     tournamentController.getTournamentTeams
 );
 
 // Get Tournament Matches
 router.get(
     "/:id/matches",
-    verifyToken,
     tournamentController.getTournamentMatches
 );
 
 // Get Tournament Standings
 router.get(
     "/:id/standings",
-    verifyToken,
     tournamentController.getTournamentStandings
 );
 
