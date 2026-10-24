@@ -948,45 +948,130 @@ function OverviewTab({
       {/* Activity Panels */}
       <section className="split-grid">
         <article className="panel activity-bookings">
-          <h2 className="panel-title">{superAdmin ? "Platform tournaments" : "Upcoming bookings"}</h2>
-          <p className="activity-intro">{superAdmin ? "Latest tournament registrations across the platform." : "Your next confirmed and pending playground slots."}</p>
+          <div className="activity-panel-header">
+            <div className="activity-panel-title-wrap">
+              <span className="activity-icon-badge bookings-badge">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                  <line x1="16" y1="2" x2="16" y2="6" />
+                  <line x1="8" y1="2" x2="8" y2="6" />
+                  <line x1="3" y1="10" x2="21" y2="10" />
+                </svg>
+              </span>
+              <div>
+                <h2 className="panel-title">{superAdmin ? "Platform Tournaments" : "Upcoming Bookings"}</h2>
+                <p className="activity-intro">{superAdmin ? "Latest tournament registrations across the platform." : "Your next confirmed and pending playground slots."}</p>
+              </div>
+            </div>
+            {!superAdmin && (
+              <button
+                type="button"
+                className="activity-action-btn"
+                onClick={() => setTab("my-bookings")}
+              >
+                View all →
+              </button>
+            )}
+          </div>
+
           <div className="list">
             {superAdmin ? (
               tournaments.slice(0, 5).map((t) => (
-                <div key={t._id} className="list-row">
-                  <div>
+                <div key={t._id} className="list-row activity-row">
+                  <div className="activity-item-main">
                     <div className="item-title">{t.name}</div>
-                    <p className="item-meta">{t.sportType} · {prettyDate(t.startDate)}</p>
+                    <p className="item-meta">
+                      <span className="meta-tag">{t.sportType}</span>
+                      <span>{prettyDate(t.startDate)}</span>
+                    </p>
                   </div>
-                  <span className="status">{t.status || "Upcoming"}</span>
+                  <span className={`status ${(t.status || "upcoming").toLowerCase()}`}>{t.status || "Upcoming"}</span>
                 </div>
               ))
             ) : activeBookings.length ? (
               activeBookings.slice(0, 5).map((b) => (
-                <div key={b._id} className="list-row">
-                  <div>
+                <div key={b._id} className="list-row activity-row">
+                  <div className="activity-item-main">
                     <div className="item-title">{b.playground?.name || "Playground booking"}</div>
-                    <p className="item-meta">{prettyDate(b.bookingDate)} · {b.startTime}–{b.endTime}</p>
+                    <p className="item-meta">
+                      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2">
+                        <circle cx="12" cy="12" r="10" />
+                        <polyline points="12 6 12 12 16 14" />
+                      </svg>
+                      <span>{prettyDate(b.bookingDate)} · {b.startTime}–{b.endTime}</span>
+                    </p>
                   </div>
                   <span className={`status ${b.bookingStatus?.toLowerCase()}`}>{b.bookingStatus}</span>
                 </div>
               ))
             ) : (
-              <p className="item-meta" style={{ padding: "14px 0" }}>No upcoming bookings yet.</p>
+              <div className="activity-modern-empty">
+                <div className="empty-icon-wrap emerald">
+                  <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                    <line x1="16" y1="2" x2="16" y2="6" />
+                    <line x1="8" y1="2" x2="8" y2="6" />
+                    <line x1="3" y1="10" x2="21" y2="10" />
+                  </svg>
+                </div>
+                <h4>No upcoming bookings yet</h4>
+                <p>You don't have any booked turf slots right now. Reserve a ground for your next match!</p>
+                <button
+                  type="button"
+                  className="activity-empty-btn"
+                  onClick={() => navigate("venues")}
+                >
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                  Book a Turf Slot
+                </button>
+              </div>
             )}
           </div>
         </article>
 
         <article className="panel activity-tournaments">
-          <h2 className="panel-title">{superAdmin ? "Venue overview" : "Tournament updates"}</h2>
-          <p className="activity-intro">{superAdmin ? "All venues active on the platform." : "Competition status, fixtures and important updates."}</p>
+          <div className="activity-panel-header">
+            <div className="activity-panel-title-wrap">
+              <span className="activity-icon-badge tournaments-badge">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
+                  <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
+                  <path d="M4 22h16" />
+                  <path d="M10 14.66V17c0 .55-.45 1-1 1H7" />
+                  <path d="M14 14.66V17c0 .55.45 1 1 1h2" />
+                  <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
+                </svg>
+              </span>
+              <div>
+                <h2 className="panel-title">{superAdmin ? "Venue Overview" : "Tournament Updates"}</h2>
+                <p className="activity-intro">{superAdmin ? "All venues active on the platform." : "Competition status, fixtures and important updates."}</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="activity-action-btn"
+              onClick={() => navigate("tournaments")}
+            >
+              Explore →
+            </button>
+          </div>
+
           <div className="list">
             {superAdmin ? (
               playgrounds.slice(0, 5).map((g) => (
-                <div key={g._id} className="list-row">
-                  <div>
+                <div key={g._id} className="list-row activity-row">
+                  <div className="activity-item-main">
                     <div className="item-title">{g.name}</div>
-                    <p className="item-meta">{g.area || g.address || "Location pending"}</p>
+                    <p className="item-meta">
+                      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8z" />
+                        <circle cx="12" cy="10" r="3" />
+                      </svg>
+                      <span>{g.area || g.address || "Location pending"}</span>
+                    </p>
                   </div>
                   <span className={`status ${g.isApproved ? "confirmed" : "pending"}`}>{g.status || "Active"}</span>
                 </div>
@@ -995,17 +1080,44 @@ function OverviewTab({
               tournaments.slice(0, 5).map((t) => {
                 const ground = t.playgrounds?.[0] || t.playground || {};
                 return (
-                  <div key={t._id} className="list-row">
-                    <div>
+                  <div key={t._id} className="list-row activity-row">
+                    <div className="activity-item-main">
                       <div className="item-title">{t.name}</div>
-                      <p className="item-meta">{ground.name || "Venue TBD"} · {prettyDate(t.startDate)}</p>
+                      <p className="item-meta">
+                        <span className="meta-tag">{t.sportType || "Tournament"}</span>
+                        <span>{ground.name || "Venue TBD"} · {prettyDate(t.startDate)}</span>
+                      </p>
                     </div>
                     <span className="status">{t.status || "Upcoming"}</span>
                   </div>
                 );
               })
             ) : (
-              <p className="item-meta" style={{ padding: "14px 0" }}>No tournament updates.</p>
+              <div className="activity-modern-empty">
+                <div className="empty-icon-wrap amber">
+                  <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
+                    <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
+                    <path d="M4 22h16" />
+                    <path d="M10 14.66V17c0 .55-.45 1-1 1H7" />
+                    <path d="M14 14.66V17c0 .55.45 1 1 1h2" />
+                    <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
+                  </svg>
+                </div>
+                <h4>No tournament updates yet</h4>
+                <p>No active competitions or fixtures running right now. Browse upcoming tournaments!</p>
+                <button
+                  type="button"
+                  className="activity-empty-btn outline"
+                  onClick={() => navigate("tournaments")}
+                >
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="11" cy="11" r="8" />
+                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                  </svg>
+                  Browse Tournaments
+                </button>
+              </div>
             )}
           </div>
         </article>
