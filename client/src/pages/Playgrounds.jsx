@@ -1,6 +1,96 @@
+import { useState } from "react";
 import Search from "../components/Search";
 import VenueCard from "../components/VenueCard";
 
 export default function Playgrounds({ venues, query, setQuery, sport, setSport, openVenue }) {
-  return <main className="page section"><p className="eyebrow">VENUE DIRECTORY</p><h1 className="page-title">Explore playgrounds</h1><p className="muted">Compare active venues, review facilities and choose the right slot with confidence.</p><Search {...{ query, setQuery, sport, setSport }} /><p className="result-count">{venues.length} venue{venues.length === 1 ? "" : "s"} available</p><div className="venue-grid">{venues.length ? venues.map((venue) => <VenueCard key={venue._id} venue={venue} openVenue={openVenue}/>) : <div className="empty"><strong>No venues found yet.</strong><p>Try a different sport or search term.</p></div>}</div></main>;
+  const [sortBy, setSortBy] = useState("featured");
+
+  const sortedVenues = [...venues].sort((a, b) => {
+    if (sortBy === "price-asc") {
+      return (a.pricing?.morning || 0) - (b.pricing?.morning || 0);
+    }
+    if (sortBy === "price-desc") {
+      return (b.pricing?.evening || 0) - (a.pricing?.evening || 0);
+    }
+    if (sortBy === "rating") {
+      return (b.averageRating || 0) - (a.averageRating || 0);
+    }
+    return 0;
+  });
+
+  return (
+    <main className="page section">
+      <div className="section-heading" style={{ marginBottom: "20px" }}>
+        <div>
+          <p className="eyebrow">VENUE DIRECTORY</p>
+          <h1 className="page-title">Explore Playgrounds</h1>
+          <p className="muted">Compare verified venues, review field facilities and book the perfect turf with confidence.</p>
+        </div>
+      </div>
+
+      <Search {...{ query, setQuery, sport, setSport }} />
+
+      {/* Filter and Sort Toolbar */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap", margin: "24px 0 18px", paddingBottom: "14px", borderBottom: "1px solid #e2e8f0" }}>
+        {/* Sport Pills */}
+        <div style={{ display: "flex", gap: "8px", overflowX: "auto", scrollbarWidth: "none" }}>
+          {[
+            { id: "", label: "All Sports" },
+            { id: "Football", label: "⚽ Football" },
+            { id: "Cricket", label: "🏏 Cricket" },
+            { id: "Badminton", label: "🏸 Badminton" }
+          ].map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              className={`button alt ${sport === item.id ? "active" : ""}`}
+              style={{
+                padding: "8px 16px",
+                borderRadius: "999px",
+                fontSize: "0.82rem",
+                fontWeight: 600,
+                minHeight: "36px",
+                background: sport === item.id ? "#e8f7ec" : "#fff",
+                borderColor: sport === item.id ? "#8cd6a0" : "#d1e7d7",
+                color: sport === item.id ? "#0b602d" : "#334438"
+              }}
+              onClick={() => setSport(item.id)}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Sort Selector & Count */}
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <span style={{ fontSize: "0.8rem", color: "#64748b", fontWeight: 600 }}>
+            {sortedVenues.length} venue{sortedVenues.length === 1 ? "" : "s"} found
+          </span>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            style={{ padding: "8px 12px", borderRadius: "10px", border: "1px solid #cbd5e1", fontSize: "0.82rem", background: "#fff", color: "#1e293b" }}
+          >
+            <option value="featured">Featured</option>
+            <option value="price-asc">Price: Low to High</option>
+            <option value="price-desc">Price: High to Low</option>
+            <option value="rating">Highest Rated</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="venue-grid">
+        {sortedVenues.length ? (
+          sortedVenues.map((venue) => (
+            <VenueCard key={venue._id} venue={venue} openVenue={openVenue} />
+          ))
+        ) : (
+          <div className="empty" style={{ padding: "60px 20px" }}>
+            <strong>No venues found.</strong>
+            <p className="muted">Try adjusting your search query or sport filter.</p>
+          </div>
+        )}
+      </div>
+    </main>
+  );
 }

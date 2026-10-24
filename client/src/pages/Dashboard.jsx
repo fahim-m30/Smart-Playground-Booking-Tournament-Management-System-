@@ -505,8 +505,63 @@ function OverviewTab({
   const activeBookings = bookings.filter((b) => !["Cancelled", "Completed"].includes(b.bookingStatus));
   const activeSlotsCount = slotsList.flatMap((d) => d.slots).filter((s) => s.isActive).length;
 
+  const currentHour = new Date().getHours();
+  const timeGreeting = currentHour < 12 ? "Good morning" : currentHour < 18 ? "Good afternoon" : "Good evening";
+
   return (
     <>
+      {/* Premium Hero Greeting Banner */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          background: "linear-gradient(135deg, #065f46 0%, #15803d 100%)",
+          color: "#ffffff",
+          padding: "24px 28px",
+          borderRadius: "20px",
+          marginBottom: "24px",
+          flexWrap: "wrap",
+          gap: "16px",
+          boxShadow: "0 14px 35px rgba(6, 95, 70, 0.16)",
+          position: "relative",
+          overflow: "hidden"
+        }}
+      >
+        <div style={{ position: "relative", zIndex: 1, maxWidth: "620px" }}>
+          <span style={{ fontSize: "0.72rem", fontWeight: 800, color: "#86efac", letterSpacing: "0.12em", textTransform: "uppercase" }}>
+            TURF WORKSPACE HUB · {role.replace("-", " ").toUpperCase()}
+          </span>
+          <h2 style={{ margin: "6px 0 4px", fontSize: "1.55rem", color: "#ffffff", letterSpacing: "-0.03em" }}>
+            {timeGreeting}, {user?.name?.split(" ")[0] || "Player"}! 👋
+          </h2>
+          <p style={{ margin: 0, fontSize: "0.85rem", color: "#dcfce7", lineHeight: 1.55 }}>
+            {role === "customer" && "Ready for your next game? Review your entry tickets, check live fixtures, or reserve a fresh slot."}
+            {role === "playground-admin" && "Monitor daily venue slots, view earnings, handle cash refunds, and scan check-in QR passes."}
+            {role === "super-admin" && "Control platform-wide ground approvals, user roles, active disputes, and system reports."}
+          </p>
+        </div>
+
+        <div style={{ display: "flex", gap: "10px", alignItems: "center", position: "relative", zIndex: 1 }}>
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "8px",
+              padding: "7px 16px",
+              borderRadius: "999px",
+              background: "rgba(255, 255, 255, 0.18)",
+              fontSize: "0.78rem",
+              fontWeight: 700,
+              color: "#ffffff",
+              backdropFilter: "blur(6px)"
+            }}
+          >
+            <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#4ade80", boxShadow: "0 0 8px #4ade80" }} />
+            Dhaka Hub Live
+          </span>
+        </div>
+      </div>
       {/* Role Stats Row */}
       <section className="stats">
         {role === "customer" && (
@@ -564,11 +619,27 @@ function OverviewTab({
             {activeBookings.length ? (
               activeBookings.slice(0, 3).map((b) => (
                 <article key={b._id} className="pin-card">
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" }}>
+                    <span className={`status ${b.bookingStatus?.toLowerCase()}`}>
+                      {b.bookingStatus} · {b.paymentStatus || "Unpaid"}
+                    </span>
+                    <span style={{ fontSize: "0.74rem", fontWeight: 700, color: "#15803d" }}>
+                      {prettyDate(b.bookingDate)}
+                    </span>
+                  </div>
                   <h3>{b.playground?.name || "Playground booking"}</h3>
                   <p>
-                    {prettyDate(b.bookingDate)} · {b.startTime}–{b.endTime}<br />
-                    {b.playground?.address || b.playground?.area || "Location details will be shared"}
+                    <strong>Time:</strong> {b.startTime} – {b.endTime}<br />
+                    <strong>Location:</strong> {b.playground?.address || b.playground?.area || "Location details will be shared"}
                   </p>
+                  <button
+                    type="button"
+                    className="button"
+                    style={{ marginTop: "12px", width: "100%", fontSize: "0.78rem", minHeight: "36px", padding: "8px 12px" }}
+                    onClick={() => { setActiveModal("view-ticket"); setModalData(b); }}
+                  >
+                    View Digital QR Pass
+                  </button>
                 </article>
               ))
             ) : (
