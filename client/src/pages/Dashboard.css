@@ -3921,10 +3921,10 @@ body {
 .notification-button {
     font-size:0
 }
-.notification-button:before {
-    content:"\1F514";
-    font-size:1.12rem;
-    line-height:1
+.notification-button:before,
+.notification-button::before {
+    display: none !important;
+    content: none !important;
 }
 .notification-button span {
     font-size:.61rem
@@ -6201,12 +6201,31 @@ tr:hover td {
   background: #ffffff !important;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03) !important;
   color: #475569 !important;
-  display: grid !important;
-  place-items: center !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
   cursor: pointer !important;
   padding: 0 !important;
   position: relative !important;
   transition: all 0.15s ease !important;
+}
+
+.notification-button::before,
+.notification-button:before {
+  display: none !important;
+  content: none !important;
+}
+
+.notification-button svg {
+  display: block !important;
+  width: 20px !important;
+  height: 20px !important;
+  stroke: #475569 !important;
+  transition: stroke 0.15s ease !important;
+}
+
+.notification-button:hover svg {
+  stroke: #0f172a !important;
 }
 
 .notification-button:hover {
