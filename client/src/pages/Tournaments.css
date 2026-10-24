@@ -377,14 +377,59 @@
   50% { opacity: 0.7; }
 }
 
+@media (max-width: 900px) {
+  .tournament-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  }
+  .tournament-hero {
+    padding: 36px 20px;
+  }
+}
+
 @media (max-width: 640px) {
+  .tournaments-page {
+    padding: 16px 12px 36px;
+    overflow-x: hidden;
+  }
+  .tournament-hero {
+    padding: 24px 16px;
+    border-radius: 18px;
+  }
+  .tournament-hero h1 {
+    font-size: 1.75rem;
+  }
   .tournament-hero-stats {
     grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .tournament-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px;
   }
   .tournament-main-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr !important;
+    gap: 20px;
+  }
+  .fixtures-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px;
   }
   .tournament-card-footer {
     flex-direction: column;
+    gap: 10px;
+  }
+  .standings-group {
+    padding: 14px 12px;
+    border-radius: 14px;
+  }
+  .standings-table th, .standings-table td {
+    padding: 8px 6px;
+    font-size: 0.76rem;
+  }
+  .modal-box {
+    width: 100% !important;
+    max-height: 92dvh;
+    border-radius: 20px 20px 0 0 !important;
+    padding: 20px 16px !important;
   }
 }

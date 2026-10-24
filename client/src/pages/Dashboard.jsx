@@ -213,8 +213,99 @@ export default function Dashboard({ token, user, setUser, navigate, logout, open
 
   return (
     <div className="dashboard-shell">
-      {/* Sidebar */}
-      <aside className="sidebar">
+      {/* Mobile Top App Header (<= 930px) */}
+      <header className="mobile-dashboard-header">
+        <a className="mobile-brand" href="#" onClick={(e) => { e.preventDefault(); navigate("home"); }}>
+          <img src="/legacy/assets/images/favicon.png" alt="TURF" />
+          <span>TURF</span>
+        </a>
+
+        <div className="mobile-header-tools">
+          {/* Notification Button */}
+          <div className="mobile-notif-wrap">
+            <button
+              className="mobile-notif-btn"
+              type="button"
+              aria-label="Notifications"
+              onClick={() => setShowNotifications(!showNotifications)}
+            >
+              🔔
+              {unreadNotifs > 0 && <span className="mobile-notif-badge">{unreadNotifs}</span>}
+            </button>
+
+            {showNotifications && (
+              <section className="mobile-notification-menu">
+                <header>
+                  <div>
+                    <strong>Notifications</strong>
+                    <span>Stay up to date</span>
+                  </div>
+                  {unreadNotifs > 0 && (
+                    <button type="button" onClick={markAllNotificationsRead}>Mark all read</button>
+                  )}
+                </header>
+                <div className="mobile-notification-list">
+                  {notifications.length ? (
+                    notifications.slice(0, 8).map((n) => (
+                      <div key={n._id} className={`notification-item ${n.isRead ? "" : "unread"}`}>
+                        <strong>{n.title || "Notification"}</strong>
+                        <p>{n.message}</p>
+                        <span>{prettyDate(n.createdAt)}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="notification-empty">No notifications yet.</p>
+                  )}
+                </div>
+              </section>
+            )}
+          </div>
+
+          {/* Avatar button */}
+          <button
+            className="mobile-avatar"
+            type="button"
+            style={user.profileImage ? { backgroundImage: `url(${user.profileImage})` } : {}}
+            onClick={() => setTab("account")}
+            title="Account Settings"
+          >
+            {!user.profileImage && (user.name?.[0] || "U").toUpperCase()}
+          </button>
+
+          {/* Logout button */}
+          <button
+            className="mobile-logout-btn"
+            type="button"
+            onClick={logout}
+            title="Log out"
+            aria-label="Log out"
+          >
+            ⎋
+          </button>
+        </div>
+      </header>
+
+      {/* Mobile Horizontal Pill Navigation Bar (<= 930px) */}
+      <nav className="mobile-dashboard-nav" aria-label="Dashboard navigation">
+        <div className="mobile-nav-track">
+          {navItems.map((item) => (
+            <button
+              key={`m-${item.id}`}
+              className={`mobile-nav-pill ${tab === item.id ? "active" : ""}`}
+              onClick={() => {
+                if (item.action) item.action();
+                else setTab(item.id);
+              }}
+            >
+              <NavIcon name={item.icon} />
+              <span>{item.label}</span>
+            </button>
+          ))}
+        </div>
+      </nav>
+
+      {/* Desktop Sidebar (> 930px) */}
+      <aside className="sidebar desktop-sidebar">
         <div className="sidebar-brand-row">
           <a className="brand" href="#" onClick={(e) => { e.preventDefault(); navigate("home"); }}>
             <img src="/legacy/assets/images/favicon.png" alt="TURF" />
@@ -247,8 +338,8 @@ export default function Dashboard({ token, user, setUser, navigate, logout, open
 
       {/* Main Content */}
       <main className="main-content">
-        {/* Topbar */}
-        <header className="topbar">
+        {/* Desktop Topbar */}
+        <header className="dashboard-topbar desktop-topbar">
           <div>
             <p className="eyebrow">{role.replace("-", " ").toUpperCase()}</p>
             <h1>Welcome back, {user.name?.split(" ")[0] || "there"}</h1>

@@ -15,7 +15,7 @@ export default function Header({ page, user, navigate, logout }) {
   };
 
   return (
-    <header className="topbar site-header">
+    <header className="site-header">
       <button className="brand site-brand" onClick={() => handleNav("home")}>
         <img className="brand-mark" src="/legacy/assets/images/favicon.png" alt="TURF" />
         <span>
