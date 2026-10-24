@@ -602,31 +602,15 @@ function OverviewTab({
   return (
     <>
       {/* Premium Hero Greeting Banner */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          background: "linear-gradient(135deg, #065f46 0%, #15803d 100%)",
-          color: "#ffffff",
-          padding: "24px 28px",
-          borderRadius: "20px",
-          marginBottom: "24px",
-          flexWrap: "wrap",
-          gap: "16px",
-          boxShadow: "0 14px 35px rgba(6, 95, 70, 0.16)",
-          position: "relative",
-          overflow: "hidden"
-        }}
-      >
+      <div className="dashboard-hero-banner">
         <div style={{ position: "relative", zIndex: 1, maxWidth: "620px" }}>
           <span style={{ fontSize: "0.72rem", fontWeight: 800, color: "#86efac", letterSpacing: "0.12em", textTransform: "uppercase" }}>
             TURF WORKSPACE HUB · {role.replace("-", " ").toUpperCase()}
           </span>
-          <h2 style={{ margin: "6px 0 4px", fontSize: "1.55rem", color: "#ffffff", letterSpacing: "-0.03em" }}>
+          <h2 className="dashboard-hero-title">
             {timeGreeting}, {user?.name?.split(" ")[0] || "Player"}! 👋
           </h2>
-          <p style={{ margin: 0, fontSize: "0.85rem", color: "#dcfce7", lineHeight: 1.55 }}>
+          <p className="dashboard-hero-subtitle">
             {role === "customer" && "Ready for your next game? Review your entry tickets, check live fixtures, or reserve a fresh slot."}
             {role === "playground-admin" && "Monitor daily venue slots, view earnings, handle cash refunds, and scan check-in QR passes."}
             {role === "super-admin" && "Control platform-wide ground approvals, user roles, active disputes, and system reports."}
@@ -2795,7 +2779,7 @@ function Modals({ modal, data, close, token, showNotice, reload, playgrounds }) 
               </label>
             </section>
 
-            <footer style={{ padding: "18px 24px", borderTop: "1px solid #dcece0", background: "#fff", display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+            <footer className="playground-editor__actions">
               <button type="button" className="button alt" onClick={close}>Cancel</button>
               <button type="submit" className="button">Save all changes</button>
             </footer>
@@ -2860,7 +2844,7 @@ function Modals({ modal, data, close, token, showNotice, reload, playgrounds }) 
               </div>
             </section>
 
-            <footer style={{ padding: "18px 24px", borderTop: "1px solid #dcece0", background: "#fff", display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+            <footer className="playground-editor__actions">
               <button type="button" className="button alt" onClick={close}>Cancel</button>
               <button type="submit" className="button">Create slots</button>
             </footer>

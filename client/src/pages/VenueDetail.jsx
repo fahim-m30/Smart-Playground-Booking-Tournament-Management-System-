@@ -155,11 +155,11 @@ export default function VenueDetail({ venue, token, user, openAuth, navigate, sh
           <h2>When do you want to play?</h2>
 
           {/* Date Picker & Quick Shortcuts */}
-          <div style={{ display: "flex", gap: "6px", marginBottom: "12px", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: "6px", marginBottom: "12px", overflowX: "auto", WebkitOverflowScrolling: "touch", scrollbarWidth: "none", paddingBottom: "2px" }}>
             <button
               type="button"
               className={`button alt ${date === isoDate() ? "active" : ""}`}
-              style={{ padding: "6px 12px", fontSize: "0.78rem", minHeight: "34px", background: date === isoDate() ? "#e4f6e9" : "#fff" }}
+              style={{ flex: "0 0 auto", whiteSpace: "nowrap", padding: "6px 14px", fontSize: "0.78rem", minHeight: "34px", background: date === isoDate() ? "#e4f6e9" : "#fff" }}
               onClick={() => setDate(isoDate())}
             >
               Today
@@ -167,7 +167,7 @@ export default function VenueDetail({ venue, token, user, openAuth, navigate, sh
             <button
               type="button"
               className={`button alt ${date === tomorrow ? "active" : ""}`}
-              style={{ padding: "6px 12px", fontSize: "0.78rem", minHeight: "34px", background: date === tomorrow ? "#e4f6e9" : "#fff" }}
+              style={{ flex: "0 0 auto", whiteSpace: "nowrap", padding: "6px 14px", fontSize: "0.78rem", minHeight: "34px", background: date === tomorrow ? "#e4f6e9" : "#fff" }}
               onClick={() => setDate(tomorrow)}
             >
               Tomorrow
@@ -175,7 +175,7 @@ export default function VenueDetail({ venue, token, user, openAuth, navigate, sh
             <button
               type="button"
               className={`button alt ${date === dayAfter ? "active" : ""}`}
-              style={{ padding: "6px 12px", fontSize: "0.78rem", minHeight: "34px", background: date === dayAfter ? "#e4f6e9" : "#fff" }}
+              style={{ flex: "0 0 auto", whiteSpace: "nowrap", padding: "6px 14px", fontSize: "0.78rem", minHeight: "34px", background: date === dayAfter ? "#e4f6e9" : "#fff" }}
               onClick={() => setDate(dayAfter)}
             >
               Day after

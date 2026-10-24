@@ -1,1 +1,207 @@
-.legacy-home .hero-section{background-image:linear-gradient(90deg,rgba(4,22,12,.9),rgba(5,30,16,.79) 34%,rgba(7,32,18,.45) 57%,rgba(4,19,11,.14)),linear-gradient(0deg,rgba(3,17,10,.48),transparent 48%),url('https://raw.githubusercontent.com/fahim-m30/Smart-Playground-Booking-Tournament-Management-System-/dac329d/frontend/assets/images/hero-bg.jpg');background-position:center 53%;min-height:760px}.legacy-home .hero-copy{max-width:760px;padding:46px 44px 34px;border-color:rgba(209,250,229,.18);background:linear-gradient(135deg,rgba(7,33,18,.66),rgba(5,24,13,.34));box-shadow:0 28px 70px rgba(0,0,0,.31),inset 0 1px 0 rgba(255,255,255,.09)}.legacy-home .hero-subtitle{padding:8px 11px;border:1px solid rgba(187,247,208,.25);border-radius:999px;background:rgba(16,185,129,.13);color:#d1fae5;font-size:11px;letter-spacing:.14em}.legacy-home .hero-features{gap:18px;margin-top:32px}.legacy-home .feature-card{display:flex;align-items:center;gap:15px;padding:18px;border:1px solid rgba(255,255,255,.12);border-radius:20px;background:rgba(255,255,255,.12);box-shadow:0 18px 50px rgba(0,0,0,.12);color:#fff;backdrop-filter:blur(12px);transition:.35s}.legacy-home .feature-card:hover{transform:translateY(-7px)}.legacy-home .feature-icon{display:grid;place-items:center;width:50px;height:50px;border-radius:15px;background:rgba(255,255,255,.2);font-size:20px}.legacy-home .feature-card b,.legacy-home .feature-card small{display:block}.legacy-home .feature-card b{font-size:14px}.legacy-home .feature-card small{margin-top:4px;color:rgba(255,255,255,.76);font-size:11px}.gallery{padding:94px 0;background:#f8fafc}.gallery-heading{max-width:800px;margin:0 auto 48px;padding:0 22px;text-align:center}.gallery-heading h2{margin:0;color:#166534;font-size:clamp(30px,4vw,42px)}.gallery-heading p{margin:14px 0 0;color:#64748b;font-size:16px}.marquee{margin:28px 0;overflow:hidden}.track{display:flex;gap:25px;width:max-content;animation:scrollLeft 35s linear infinite}.reverse .track{animation-name:scrollRight}.marquee:hover .track{animation-play-state:paused}.track img{width:340px;height:220px;border-radius:20px;object-fit:cover;box-shadow:0 12px 30px rgba(0,0,0,.12);transition:.35s}.track img:hover{transform:translateY(-9px) scale(1.04);box-shadow:0 20px 40px rgba(22,163,74,.25)}@keyframes scrollLeft{from{transform:translateX(0)}to{transform:translateX(-50%)}}@keyframes scrollRight{from{transform:translateX(-50%)}to{transform:translateX(0)}}@media(max-width:760px){.legacy-home .hero-section{min-height:auto;padding:100px 18px 60px}.legacy-home .hero-copy{padding:31px 21px}.legacy-home .hero-features{grid-template-columns:1fr}.gallery{padding:62px 0}.track{gap:14px}.track img{width:250px;height:165px}}
+.legacy-home {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden !important;
+}
+
+.legacy-home .hero-section {
+  background-image: linear-gradient(90deg, rgba(4, 22, 12, 0.9), rgba(5, 30, 16, 0.79) 34%, rgba(7, 32, 18, 0.45) 57%, rgba(4, 19, 11, 0.14)),
+    linear-gradient(0deg, rgba(3, 17, 10, 0.48), transparent 48%),
+    url('https://raw.githubusercontent.com/fahim-m30/Smart-Playground-Booking-Tournament-Management-System-/dac329d/frontend/assets/images/hero-bg.jpg');
+  background-position: center 53%;
+  min-height: 720px;
+}
+
+.legacy-home .hero-copy {
+  max-width: 760px;
+  padding: 44px 40px 32px;
+  border-color: rgba(209, 250, 229, 0.18);
+  background: linear-gradient(135deg, rgba(7, 33, 18, 0.66), rgba(5, 24, 13, 0.34));
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.31), inset 0 1px 0 rgba(255, 255, 255, 0.09);
+}
+
+.legacy-home .hero-subtitle {
+  padding: 8px 12px;
+  border: 1px solid rgba(187, 247, 208, 0.25);
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.13);
+  color: #d1fae5;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+}
+
+.legacy-home .hero-features {
+  gap: 16px;
+  margin-top: 28px;
+}
+
+.legacy-home .feature-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.12);
+  color: #fff;
+  backdrop-filter: blur(12px);
+  transition: 0.3s;
+}
+
+.legacy-home .feature-card:hover {
+  transform: translateY(-5px);
+}
+
+.legacy-home .feature-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.2);
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.legacy-home .feature-card b,
+.legacy-home .feature-card small {
+  display: block;
+}
+
+.legacy-home .feature-card b {
+  font-size: 14px;
+}
+
+.legacy-home .feature-card small {
+  margin-top: 3px;
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 11px;
+}
+
+/* Playground Gallery Marquee */
+.gallery {
+  padding: 80px 0;
+  background: #f8fafc;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.gallery-heading {
+  max-width: 800px;
+  margin: 0 auto 40px;
+  padding: 0 20px;
+  text-align: center;
+}
+
+.gallery-heading h2 {
+  margin: 0;
+  color: #166534;
+  font-size: clamp(28px, 4vw, 42px);
+}
+
+.gallery-heading p {
+  margin: 12px 0 0;
+  color: #64748b;
+  font-size: 15px;
+}
+
+.marquee {
+  margin: 22px 0;
+  overflow: hidden;
+  width: 100%;
+  max-width: 100%;
+}
+
+.track {
+  display: flex;
+  gap: 20px;
+  width: max-content;
+  animation: scrollLeft 35s linear infinite;
+}
+
+.reverse .track {
+  animation-name: scrollRight;
+}
+
+.marquee:hover .track {
+  animation-play-state: paused;
+}
+
+.track img {
+  width: 320px;
+  height: 210px;
+  border-radius: 18px;
+  object-fit: cover;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
+  transition: 0.3s;
+}
+
+.track img:hover {
+  transform: translateY(-6px) scale(1.03);
+  box-shadow: 0 20px 40px rgba(22, 163, 74, 0.25);
+}
+
+@keyframes scrollLeft {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@keyframes scrollRight {
+  from { transform: translateX(-50%); }
+  to { transform: translateX(0); }
+}
+
+/* Tablet Layout: <= 760px */
+@media (max-width: 760px) {
+  .legacy-home .hero-section {
+    min-height: auto;
+    padding: 36px 16px 44px;
+  }
+  .legacy-home .hero-copy {
+    padding: 26px 18px;
+    border-radius: 20px;
+  }
+  .legacy-home .hero-features {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .gallery {
+    padding: 48px 0;
+  }
+  .track {
+    gap: 12px;
+  }
+  .track img {
+    width: 220px;
+    height: 145px;
+  }
+}
+
+/* Mobile Phones: <= 480px */
+@media (max-width: 480px) {
+  .legacy-home .hero-section {
+    padding: 20px 10px 32px;
+  }
+  .legacy-home .hero-copy {
+    padding: 18px 14px;
+    border-radius: 16px;
+  }
+  .legacy-home .feature-card {
+    padding: 12px;
+  }
+  .legacy-home .feature-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 17px;
+  }
+  .gallery {
+    padding: 36px 0;
+  }
+  .track img {
+    width: 180px;
+    height: 120px;
+    border-radius: 12px;
+  }
+}

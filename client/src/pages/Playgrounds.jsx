@@ -33,7 +33,7 @@ export default function Playgrounds({ venues, query, setQuery, sport, setSport, 
       {/* Filter and Sort Toolbar */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap", margin: "24px 0 18px", paddingBottom: "14px", borderBottom: "1px solid #e2e8f0" }}>
         {/* Sport Pills */}
-        <div style={{ display: "flex", gap: "8px", overflowX: "auto", scrollbarWidth: "none" }}>
+        <div style={{ display: "flex", gap: "8px", overflowX: "auto", WebkitOverflowScrolling: "touch", scrollbarWidth: "none", maxWidth: "100%", paddingBottom: "4px" }}>
           {[
             { id: "", label: "All Sports" },
             { id: "Football", label: "⚽ Football" },
@@ -45,6 +45,8 @@ export default function Playgrounds({ venues, query, setQuery, sport, setSport, 
               type="button"
               className={`button alt ${sport === item.id ? "active" : ""}`}
               style={{
+                flex: "0 0 auto",
+                whiteSpace: "nowrap",
                 padding: "8px 16px",
                 borderRadius: "999px",
                 fontSize: "0.82rem",
@@ -62,7 +64,7 @@ export default function Playgrounds({ venues, query, setQuery, sport, setSport, 
         </div>
 
         {/* Sort Selector & Count */}
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", flexWrap: "wrap" }}>
           <span style={{ fontSize: "0.8rem", color: "#64748b", fontWeight: 600 }}>
             {sortedVenues.length} venue{sortedVenues.length === 1 ? "" : "s"} found
           </span>
