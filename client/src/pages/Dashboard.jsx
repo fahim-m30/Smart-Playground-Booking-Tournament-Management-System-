@@ -382,14 +382,14 @@ export default function Dashboard({ token, user, setUser, navigate, logout, open
         {/* Desktop Topbar */}
         <header className="dashboard-topbar desktop-topbar">
           <div>
-            <p className="eyebrow">{role.replace("-", " ").toUpperCase()}</p>
-            <h1>Welcome back, {user.name?.split(" ")[0] || "there"}</h1>
+            <span className="eyebrow-pill">{role.replace("-", " ").toUpperCase()} PORTAL</span>
+            <h1 className="dashboard-welcome-heading">Welcome back, {user.name?.split(" ")[0] || "Player"}! 👋</h1>
           </div>
 
           <div className="topbar-tools">
             {/* Live Weather / Date Widget */}
             <div className="weather-date">
-              <span className="weather-icon">☀</span>
+              <span className="weather-icon">🌤️</span>
               <div>
                 <strong>Dhaka 28°C</strong>
                 <span>{new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}</span>
@@ -404,7 +404,11 @@ export default function Dashboard({ token, user, setUser, navigate, logout, open
                 aria-label="Open notifications"
                 onClick={() => setShowNotifications(!showNotifications)}
               >
-                ♢{unreadNotifs > 0 && <span>{unreadNotifs}</span>}
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                </svg>
+                {unreadNotifs > 0 && <span className="notif-badge">{unreadNotifs}</span>}
               </button>
 
               {showNotifications && (
@@ -437,15 +441,15 @@ export default function Dashboard({ token, user, setUser, navigate, logout, open
 
             {/* Account Menu */}
             <div className="account-menu">
-              <label
+              <div
                 className="avatar"
                 style={user.profileImage ? { backgroundImage: `url(${user.profileImage})` } : {}}
                 onClick={() => setTab("account")}
                 title="Account Settings"
               >
                 {!user.profileImage && (user.name?.[0] || "U").toUpperCase()}
-              </label>
-              <div className="account-copy">
+              </div>
+              <div className="account-copy" onClick={() => setTab("account")} style={{ cursor: "pointer" }}>
                 <strong>{user.name}</strong>
                 <span>{user.email}</span>
               </div>
