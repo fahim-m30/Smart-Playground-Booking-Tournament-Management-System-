@@ -57,7 +57,7 @@ export default function App() {
     setToken(session.accessToken);
     setUser(session.user);
     showNotice(`Welcome back, ${session.user.name}!`);
-    navigate("home");
+    navigate("dashboard");
   };
 
   useEffect(() => {
