@@ -836,14 +836,7 @@ body {
         top:72px;
         right:16px
     }
-    .logout-button {
-        font-size:0;
-        padding:10px
-    }
-    .logout-button:after {
-        content:'â†ª';
-        font-size:.95rem
-    }
+
 }
 /* Tablet and phone layout: applies at (max-width:800px) */
 @media(max-width:800px) {
