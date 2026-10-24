@@ -338,14 +338,23 @@ export default function Dashboard({ token, user, setUser, navigate, logout, open
 
       {/* Desktop Sidebar (> 930px) */}
       <aside className="sidebar desktop-sidebar">
-        <div className="sidebar-brand-row">
-          <a className="brand" href="#" onClick={(e) => { e.preventDefault(); navigate("home"); }}>
-            <img src="/legacy/assets/images/favicon.png" alt="TURF" />
-            <span>TURF</span>
-          </a>
+        <div className="sidebar-brand-row" style={{ padding: "8px 4px 16px", borderBottom: "1px solid #f1f5f9", marginBottom: "14px" }}>
+          <div
+            className="brand"
+            role="button"
+            tabIndex={0}
+            onClick={() => navigate("home")}
+            style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: "10px", textDecoration: "none" }}
+          >
+            <img src="/legacy/assets/images/favicon.png" alt="TURF" style={{ width: "36px", height: "36px", borderRadius: "8px", padding: "2px", background: "#f0fdf4", border: "1px solid #dcfce7" }} />
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <span style={{ fontSize: "1.25rem", fontWeight: 900, color: "#065f46", letterSpacing: "-0.03em", lineHeight: 1 }}>TURF</span>
+              <span style={{ fontSize: "0.66rem", fontWeight: 800, color: "#059669", textTransform: "uppercase", letterSpacing: "0.08em", marginTop: "3px" }}>
+                {role.replace("-", " ")} portal
+              </span>
+            </div>
+          </div>
         </div>
-
-        <p className="workspace-label">{role.replace("-", " ")} workspace</p>
 
         <nav className="side-nav">
           {navItems.map((item) => (
@@ -1640,74 +1649,176 @@ function StaffManagementTab({ staffList = [], playgrounds = [], token, showNotic
     });
   };
 
+  const uniqueGrounds = new Set(staffList.map((s) => s.assignedPlayground?._id || s.assignedPlayground).filter(Boolean));
+
   return (
-    <div>
-      <div className="section-heading">
+    <div className="staff-mgmt-page">
+      {/* Top Metric Stat Cards */}
+      <div className="staff-stats-row">
+        <div className="staff-stat-box">
+          <div className="stat-icon-wrap" style={{ background: "#ecfdf5", color: "#059669" }}>
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+          </div>
+          <div>
+            <span className="stat-label">Active Field Staff</span>
+            <strong className="stat-value">{staffList.length} {staffList.length === 1 ? "Employee" : "Employees"}</strong>
+          </div>
+        </div>
+
+        <div className="staff-stat-box">
+          <div className="stat-icon-wrap" style={{ background: "#eff6ff", color: "#2563eb" }}>
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+              <polyline points="9 22 9 12 15 12 15 22" />
+            </svg>
+          </div>
+          <div>
+            <span className="stat-label">Assigned Venue Gates</span>
+            <strong className="stat-value">{uniqueGrounds.size || (staffList.length ? 1 : 0)} of {playgrounds.length} Grounds</strong>
+          </div>
+        </div>
+
+        <div className="staff-stat-box">
+          <div className="stat-icon-wrap" style={{ background: "#fef3c7", color: "#d97706" }}>
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+              <line x1="16" y1="2" x2="16" y2="6" />
+              <line x1="8" y1="2" x2="8" y2="6" />
+              <line x1="3" y1="10" x2="21" y2="10" />
+            </svg>
+          </div>
+          <div>
+            <span className="stat-label">Role Access Level</span>
+            <strong className="stat-value">Gate QR Scanner &amp; Check-in</strong>
+          </div>
+        </div>
+      </div>
+
+      {/* Action Bar */}
+      <div className="staff-action-head">
         <div>
-          <h2>Employee & Gate Staff Management</h2>
-          <p>Create and manage field personnel who scan QR passes and verify check-ins at your playground entrances.</p>
+          <h2>Employee &amp; Gate Staff Management</h2>
+          <p>Create dedicated employee accounts to scan customer QR passes and verify venue entry.</p>
         </div>
         <button
           type="button"
-          className="button"
+          className="add-staff-btn"
           onClick={() => setActiveModal("add-staff")}
           disabled={!playgrounds.length}
         >
-          + Add New Staff
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+          <span>Add New Employee</span>
         </button>
       </div>
 
       {!playgrounds.length ? (
-        <div className="empty-state">
-          <h3>No playgrounds registered</h3>
-          <p>You need to have at least one approved playground before creating employee gate accounts.</p>
+        <div className="staff-empty-card">
+          <div className="empty-icon-circle">🏟️</div>
+          <h3>No playgrounds registered yet</h3>
+          <p>You need to register at least one approved playground before creating employee gate accounts.</p>
         </div>
       ) : staffList.length ? (
-        <div className="pinned-grid">
-          {staffList.map((s) => (
-            <article key={s._id} className="card" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-              <div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "10px" }}>
-                  <span className="status confirmed">Staff · Active</span>
-                  <span className="badge" style={{ background: "#e8f5ed", color: "#163a23", fontWeight: 700, fontSize: "0.75rem", padding: "4px 8px", borderRadius: "6px" }}>
-                    {s.assignedPlayground?.name || "Assigned Turf"}
+        <div className="staff-grid-modern">
+          {staffList.map((s) => {
+            const initials = (s.name || "S").split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase();
+            return (
+              <article key={s._id} className="staff-card-modern">
+                {/* Card Header */}
+                <div className="staff-card-head">
+                  <div className="staff-avatar-wrap">
+                    <span className="staff-initials">{initials}</span>
+                  </div>
+                  <div className="staff-meta-col">
+                    <div className="staff-name-row">
+                      <h3>{s.name}</h3>
+                      <span className="verified-check" title="Active Employee Account">✓</span>
+                    </div>
+                    <span className="staff-designation">{s.staffTitle || "Gatekeeper / Entry Staff"}</span>
+                  </div>
+                  <span className="live-status-pill">
+                    <span className="live-dot" />
+                    Active
                   </span>
                 </div>
-                <h3 style={{ margin: "4px 0" }}>{s.name}</h3>
-                <p className="item-meta" style={{ margin: "2px 0 10px", color: "#15803d", fontWeight: 600 }}>
-                  {s.staffTitle || "Gatekeeper / Entry Staff"}
-                </p>
-                <p style={{ fontSize: "0.84rem", color: "#475569", lineHeight: 1.5 }}>
-                  <strong>Email:</strong> {s.email}<br />
-                  <strong>Phone:</strong> {s.phone || "Not provided"}<br />
-                  <strong>Venue:</strong> {s.assignedPlayground?.name} ({s.assignedPlayground?.area || s.assignedPlayground?.district || "Dhaka"})<br />
-                  <small style={{ color: "#64748b" }}>Added: {prettyDate(s.createdAt)}</small>
-                </p>
-              </div>
-              <div className="card-foot" style={{ marginTop: "16px", paddingTop: "12px", borderTop: "1px solid #e2e8f0" }}>
-                <button
-                  type="button"
-                  className="button alt"
-                  style={{ color: "#c6443c", borderColor: "#fca5a5" }}
-                  onClick={() => handleDeleteStaff(s)}
-                >
-                  Remove staff
-                </button>
-              </div>
-            </article>
-          ))}
+
+                {/* Venue Badge Box */}
+                <div className="staff-venue-box">
+                  <div className="venue-label-row">
+                    <span className="venue-lead-label">ASSIGNED VENUE GATE</span>
+                    <span className="venue-tag">Gate Pass Check</span>
+                  </div>
+                  <strong className="venue-title">🏟️ {s.assignedPlayground?.name || "Assigned Turf"}</strong>
+                  <p className="venue-address">
+                    {s.assignedPlayground?.address || `${s.assignedPlayground?.area || s.assignedPlayground?.district || "Dhaka"}, Bangladesh`}
+                  </p>
+                </div>
+
+                {/* Contact List */}
+                <div className="staff-details-list">
+                  <div className="staff-detail-item">
+                    <span className="detail-icon">✉️</span>
+                    <div>
+                      <small>LOGIN EMAIL</small>
+                      <strong>{s.email}</strong>
+                    </div>
+                  </div>
+                  <div className="staff-detail-item">
+                    <span className="detail-icon">📞</span>
+                    <div>
+                      <small>CONTACT PHONE</small>
+                      <strong>{s.phone || "Not provided"}</strong>
+                    </div>
+                  </div>
+                  <div className="staff-detail-item">
+                    <span className="detail-icon">📅</span>
+                    <div>
+                      <small>JOINED DATE</small>
+                      <strong>{prettyDate(s.createdAt)}</strong>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Card Footer Actions */}
+                <div className="staff-card-footer">
+                  <span className="access-perm-badge">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                    </svg>
+                    QR Scanner Enabled
+                  </span>
+                  <button
+                    type="button"
+                    className="remove-staff-btn"
+                    onClick={() => handleDeleteStaff(s)}
+                  >
+                    Remove Access
+                  </button>
+                </div>
+              </article>
+            );
+          })}
         </div>
       ) : (
-        <div className="empty-state">
-          <h3>No gate staff accounts yet</h3>
-          <p>Add employee accounts so your gatekeeper or venue manager can scan customer tickets directly from their phones or tablets.</p>
+        <div className="staff-empty-card">
+          <div className="empty-icon-circle">👥</div>
+          <h3>No employee accounts created yet</h3>
+          <p>Add venue staff accounts so your gatekeeper or attendant can scan customer QR tickets directly from their phones or tablets.</p>
           <button
             type="button"
-            className="button"
-            style={{ marginTop: "14px" }}
+            className="add-staff-btn"
+            style={{ marginTop: "16px" }}
             onClick={() => setActiveModal("add-staff")}
           >
-            + Create your first staff account
+            + Create your first employee account
           </button>
         </div>
       )}
