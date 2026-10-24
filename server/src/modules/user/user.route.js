@@ -42,6 +42,34 @@ router.put(
 );
 
 // ===================================
+// Playground Admin Staff Routes
+// ===================================
+
+// Create Staff Member
+router.post(
+    "/staff",
+    auth,
+    authorize("playground-admin"),
+    userController.createStaffController
+);
+
+// Get My Staff Members
+router.get(
+    "/my-staff",
+    auth,
+    authorize("playground-admin"),
+    userController.getMyStaffController
+);
+
+// Delete Staff Member
+router.delete(
+    "/staff/:id",
+    auth,
+    authorize("playground-admin"),
+    userController.deleteStaffController
+);
+
+// ===================================
 // Super Admin Routes
 // ===================================
 

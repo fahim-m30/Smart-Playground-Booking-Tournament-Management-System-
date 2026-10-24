@@ -110,8 +110,30 @@ nidBackImage: {
                 "customer",
                 "playground-admin",
                 "super-admin",
+                "staff",
             ],
             default: "customer",
+        },
+
+        // ===============================
+        // Staff / Employee Assignment
+        // ===============================
+        assignedPlayground: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Playground",
+            default: null,
+        },
+
+        createdBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            default: null,
+        },
+
+        staffTitle: {
+            type: String,
+            default: "Gate Scanner / Field Attendant",
+            trim: true,
         },
 
         // ===============================

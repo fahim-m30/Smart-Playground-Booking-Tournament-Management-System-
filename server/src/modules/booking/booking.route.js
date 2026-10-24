@@ -57,7 +57,7 @@ router.patch(
 router.get(
     "/playground/:playgroundId",
     verifyToken,
-    authorize("playground-admin"),
+    authorize("playground-admin", "staff"),
     bookingController.getPlaygroundBookings
 );
 

@@ -9,6 +9,7 @@
 
 const Booking = require("./booking.model");
 const Playground = require("../playground/playground.model");
+const User = require("../user/user.model");
 const Slot = require("../slot/slot.model");
 const { createNotification } = require("../notification/notification.service");
 const Payment = require("../payment/payment.model");
@@ -225,7 +226,7 @@ const getSingleBooking = async (id, customerId) => {
 // Get Playground Bookings
 // ===================================================
 
-const getPlaygroundBookings = async (playgroundId, adminId) => {
+const getPlaygroundBookings = async (playgroundId, userId) => {
     const playground = await Playground.findOne({
         _id: playgroundId,
         isDeleted: false,
@@ -235,7 +236,14 @@ const getPlaygroundBookings = async (playgroundId, adminId) => {
         throw new Error("Playground not found.");
     }
 
-    if (playground.playgroundAdmin.toString() !== adminId) {
+    const user = await User.findById(userId);
+    const isOwner = playground.playgroundAdmin.toString() === userId.toString();
+    const isAssignedStaff = user?.role === "staff" && (
+        user.assignedPlayground?.toString() === playgroundId.toString() ||
+        user.createdBy?.toString() === playground.playgroundAdmin.toString()
+    );
+
+    if (!isOwner && !isAssignedStaff) {
         throw new Error("You are not authorized to view bookings for this playground.");
     }
 

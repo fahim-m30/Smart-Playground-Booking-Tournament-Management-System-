@@ -338,13 +338,24 @@ export default function Tournaments({ token, user, openAuth, navigate, showNotic
                       >
                         Fixtures &amp; Table
                       </button>
-                      <button
-                        type="button"
-                        className="button"
-                        onClick={() => handleJoinClick(t)}
-                      >
-                        Join Tournament
-                      </button>
+                      {t.status === "Completed" ? (
+                        <button
+                          type="button"
+                          className="button alt"
+                          style={{ borderColor: "#16a34a", color: "#15803d", background: "#f0fdf4", fontWeight: 700 }}
+                          onClick={() => loadFixtures(t)}
+                        >
+                          🏆 Final Standings
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="button"
+                          onClick={() => handleJoinClick(t)}
+                        >
+                          Join Tournament
+                        </button>
+                      )}
                     </div>
                   </article>
                 );

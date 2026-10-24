@@ -195,7 +195,7 @@ const loginUser = async ({ email, password }) => {
     const normalizedEmail = normalizeEmail(email);
 
     // Find User
-    const user = await User.findOne({ email: normalizedEmail });
+    const user = await User.findOne({ email: normalizedEmail }).populate("assignedPlayground", "name address");
 
     if (!user) {
         throw new Error("Invalid Email or Password.");
@@ -241,6 +241,8 @@ const loginUser = async ({ email, password }) => {
             name: user.name,
             email: user.email,
             role: user.role,
+            assignedPlayground: user.assignedPlayground,
+            staffTitle: user.staffTitle,
         },
     };
 };
@@ -410,7 +412,7 @@ const resetPassword = async ({ email, otp, newPassword }) => {
     const normalizedEmail = normalizeEmail(email);
 
     // Find User
-    const user = await User.findOne({ email: normalizedEmail });
+    const user = await User.findOne({ email: normalizedEmail }).populate("assignedPlayground", "name address");
 
     if (!user) {
         throw new Error("User not found.");

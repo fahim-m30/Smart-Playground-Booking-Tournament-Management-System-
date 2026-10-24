@@ -16,6 +16,9 @@ const {
     blockUser,
     unblockUser,
     deleteUser,
+    createStaff,
+    getMyStaff,
+    deleteStaff,
 } = require("./user.service");
 
 // ===============================
@@ -225,6 +228,56 @@ const deleteUserController = async (req, res) => {
         });
     }
 };
+// ===============================
+// Staff Controllers (Playground Admin)
+// ===============================
+
+const createStaffController = async (req, res) => {
+    try {
+        const staff = await createStaff(req.user._id, req.body);
+        res.status(201).json({
+            success: true,
+            message: "Staff member created successfully.",
+            data: staff,
+        });
+    } catch (error) {
+        res.status(400).json({
+            success: false,
+            message: error.message,
+        });
+    }
+};
+
+const getMyStaffController = async (req, res) => {
+    try {
+        const staffList = await getMyStaff(req.user._id);
+        res.status(200).json({
+            success: true,
+            data: staffList,
+        });
+    } catch (error) {
+        res.status(400).json({
+            success: false,
+            message: error.message,
+        });
+    }
+};
+
+const deleteStaffController = async (req, res) => {
+    try {
+        await deleteStaff(req.user._id, req.params.id);
+        res.status(200).json({
+            success: true,
+            message: "Staff member removed successfully.",
+        });
+    } catch (error) {
+        res.status(400).json({
+            success: false,
+            message: error.message,
+        });
+    }
+};
+
 module.exports = {
     register,
     getMyProfile,
@@ -235,4 +288,7 @@ module.exports = {
     blockUserController,
     unblockUserController,
     deleteUserController,
+    createStaffController,
+    getMyStaffController,
+    deleteStaffController,
 };

@@ -43,7 +43,8 @@ function playBeep(success = true) {
 // MASTER DASHBOARD COMPONENT
 // ===================================================
 export default function Dashboard({ token, user, setUser, navigate, logout, openAuth, showNotice }) {
-  const [tab, setTab] = useState("overview");
+  const role = user?.role || "customer";
+  const [tab, setTab] = useState(() => (role === "staff" ? "scanner" : "overview"));
   const [loading, setLoading] = useState(true);
 
   // Platform Data
@@ -59,6 +60,7 @@ export default function Dashboard({ token, user, setUser, navigate, logout, open
   const [reportableCustomers, setReportableCustomers] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [staffList, setStaffList] = useState([]);
 
   // Interactive Modals & Confirm Dialogs
   const [activeModal, setActiveModal] = useState(null);
@@ -68,10 +70,22 @@ export default function Dashboard({ token, user, setUser, navigate, logout, open
   const [myRegistrations, setMyRegistrations] = useState([]);
   const [myPayments, setMyPayments] = useState([]);
 
-  const role = user?.role || "customer";
+  useEffect(() => {
+    if (role === "staff" && tab === "overview") {
+      setTab("scanner");
+    }
+  }, [role, tab]);
 
   // Build role-based side nav items matching dashboard.js
   const navItems = useMemo(() => {
+    if (role === "staff") {
+      return [
+        { id: "scanner", label: "QR Scanner", icon: "booking" },
+        { id: "checkins", label: "Gate Check-ins", icon: "bookings" },
+        { id: "account", label: "My Profile", icon: "account" }
+      ];
+    }
+
     const items = [
       { id: "overview", label: "Overview", icon: "overview" },
       { id: "tournaments", label: "Tournaments", icon: "tournament", action: () => navigate("tournaments") },
@@ -88,6 +102,7 @@ export default function Dashboard({ token, user, setUser, navigate, logout, open
         { id: "playgrounds", label: "Venue management", icon: "venue" },
         { id: "slots", label: "Slots", icon: "slots" },
         { id: "bookings", label: "Bookings", icon: "bookings" },
+        { id: "staff", label: "Staff & Employees", icon: "users" },
         { id: "scanner", label: "QR scanner", icon: "booking" },
         { id: "income", label: "Income", icon: "income" }
       );
@@ -139,16 +154,18 @@ export default function Dashboard({ token, user, setUser, navigate, logout, open
 
       // 4. Playground Admin Data
       if (role === "playground-admin") {
-        const [myGrounds, income, repCust, myR] = await Promise.all([
+        const [myGrounds, income, repCust, myR, myStaff] = await Promise.all([
           request("/playgrounds/my-playgrounds", { token }).catch(() => []),
           request("/payments/playground-admin/income", { token }).catch(() => null),
           request("/reports/reportable-customers", { token }).catch(() => []),
-          request("/reports/my-reports", { token }).catch(() => [])
+          request("/reports/my-reports", { token }).catch(() => []),
+          request("/users/my-staff", { token }).catch(() => [])
         ]);
         setPlaygrounds(myGrounds || []);
         setIncomeData(income);
         setReportableCustomers(repCust || []);
         setMyReports(myR || []);
+        setStaffList(myStaff || []);
 
         if (myGrounds?.length) {
           const slotPromises = myGrounds.map(async (ground) => {
@@ -167,7 +184,22 @@ export default function Dashboard({ token, user, setUser, navigate, logout, open
         }
       }
 
-      // 5. Super Admin Data
+      // 5. Staff Employee Data
+      if (role === "staff") {
+        const staffGroundId = user?.assignedPlayground?._id || user?.assignedPlayground;
+        if (staffGroundId) {
+          const [groundBookings, groundInfo] = await Promise.all([
+            request(`/bookings/playground/${staffGroundId}`, { token }).catch(() => []),
+            request(`/playgrounds/${staffGroundId}`).catch(() => null)
+          ]);
+          setBookings(groundBookings || []);
+          if (groundInfo) {
+            setPlaygrounds([groundInfo]);
+          }
+        }
+      }
+
+      // 6. Super Admin Data
       if (role === "super-admin") {
         const [allP, users, reports] = await Promise.all([
           request("/playgrounds/admin/all", { token }).catch(() => []),
@@ -510,9 +542,40 @@ export default function Dashboard({ token, user, setUser, navigate, logout, open
                 />
               )}
 
-              {/* TAB 7: QR SCANNER (PLAYGROUND ADMIN) */}
+              {/* TAB 7: STAFF MANAGEMENT (PLAYGROUND ADMIN) */}
+              {tab === "staff" && role === "playground-admin" && (
+                <StaffManagementTab
+                  staffList={staffList}
+                  playgrounds={playgrounds}
+                  token={token}
+                  showNotice={showNotice}
+                  reload={loadData}
+                  setActiveModal={setActiveModal}
+                  setModalData={setModalData}
+                  setConfirmDialog={setConfirmDialog}
+                />
+              )}
+
+              {/* TAB 8: QR SCANNER (PLAYGROUND ADMIN & STAFF) */}
               {tab === "scanner" && (
-                <QRScannerTab token={token} showNotice={showNotice} />
+                <QRScannerTab
+                  token={token}
+                  showNotice={showNotice}
+                  user={user}
+                  bookings={bookings}
+                  reload={loadData}
+                />
+              )}
+
+              {/* TAB 9: GATE CHECK-INS (STAFF) */}
+              {tab === "checkins" && (
+                <GateCheckinsTab
+                  bookings={bookings}
+                  user={user}
+                  token={token}
+                  showNotice={showNotice}
+                  reload={loadData}
+                />
               )}
 
               {/* TAB 8: INCOME (PLAYGROUND ADMIN) */}
@@ -613,6 +676,7 @@ function OverviewTab({
           <p className="dashboard-hero-subtitle">
             {role === "customer" && "Ready for your next game? Review your entry tickets, check live fixtures, or reserve a fresh slot."}
             {role === "playground-admin" && "Monitor daily venue slots, view earnings, handle cash refunds, and scan check-in QR passes."}
+            {role === "staff" && "Welcome to the venue gate checkpoint. Scan customer QR passes, verify tickets, and ensure smooth ground entry."}
             {role === "super-admin" && "Control platform-wide ground approvals, user roles, active disputes, and system reports."}
           </p>
         </div>
@@ -651,6 +715,13 @@ function OverviewTab({
             <article className="stat-card"><span>Live tournaments</span><strong>{tournaments.length}</strong></article>
             <article className="stat-card"><span>My playgrounds</span><strong>{playgrounds.length}</strong></article>
             <article className="stat-card"><span>Active slot schedules</span><strong>{activeSlotsCount}</strong></article>
+          </>
+        )}
+        {role === "staff" && (
+          <>
+            <article className="stat-card"><span>Assigned Gate</span><strong>{user?.assignedPlayground?.name || "Assigned Venue"}</strong></article>
+            <article className="stat-card"><span>Today's ground bookings</span><strong>{bookings.length}</strong></article>
+            <article className="stat-card"><span>Security role</span><strong>{user?.staffTitle || "Gatekeeper / Staff"}</strong></article>
           </>
         )}
         {role === "super-admin" && (
@@ -1548,17 +1619,115 @@ function AdminBookingsTab({ bookings, token, showNotice, reload, setActiveModal,
 }
 
 // ===================================================
-// SECTION 7: QR SCANNER (PLAYGROUND ADMIN)
+// SECTION 7: STAFF MANAGEMENT (PLAYGROUND ADMIN)
 // ===================================================
-function QRScannerTab({ token, showNotice }) {
+function StaffManagementTab({ staffList = [], playgrounds = [], token, showNotice, reload, setActiveModal, setConfirmDialog }) {
+  const handleDeleteStaff = (staff) => {
+    setConfirmDialog({
+      title: `Remove ${staff.name}?`,
+      message: `Are you sure you want to remove ${staff.name} from your venue staff? Their gate scanner access will be revoked immediately.`,
+      danger: true,
+      confirmLabel: "Remove staff",
+      onConfirm: async () => {
+        try {
+          await request(`/users/staff/${staff._id}`, { method: "DELETE", token });
+          showNotice(`Staff account ${staff.name} removed successfully.`);
+          reload();
+        } catch (err) {
+          showNotice(err.message, "error");
+        }
+      }
+    });
+  };
+
+  return (
+    <div>
+      <div className="section-heading">
+        <div>
+          <h2>Employee & Gate Staff Management</h2>
+          <p>Create and manage field personnel who scan QR passes and verify check-ins at your playground entrances.</p>
+        </div>
+        <button
+          type="button"
+          className="button"
+          onClick={() => setActiveModal("add-staff")}
+          disabled={!playgrounds.length}
+        >
+          + Add New Staff
+        </button>
+      </div>
+
+      {!playgrounds.length ? (
+        <div className="empty-state">
+          <h3>No playgrounds registered</h3>
+          <p>You need to have at least one approved playground before creating employee gate accounts.</p>
+        </div>
+      ) : staffList.length ? (
+        <div className="pinned-grid">
+          {staffList.map((s) => (
+            <article key={s._id} className="card" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+              <div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "10px" }}>
+                  <span className="status confirmed">Staff · Active</span>
+                  <span className="badge" style={{ background: "#e8f5ed", color: "#163a23", fontWeight: 700, fontSize: "0.75rem", padding: "4px 8px", borderRadius: "6px" }}>
+                    {s.assignedPlayground?.name || "Assigned Turf"}
+                  </span>
+                </div>
+                <h3 style={{ margin: "4px 0" }}>{s.name}</h3>
+                <p className="item-meta" style={{ margin: "2px 0 10px", color: "#15803d", fontWeight: 600 }}>
+                  {s.staffTitle || "Gatekeeper / Entry Staff"}
+                </p>
+                <p style={{ fontSize: "0.84rem", color: "#475569", lineHeight: 1.5 }}>
+                  <strong>Email:</strong> {s.email}<br />
+                  <strong>Phone:</strong> {s.phone || "Not provided"}<br />
+                  <strong>Venue:</strong> {s.assignedPlayground?.name} ({s.assignedPlayground?.area || s.assignedPlayground?.district || "Dhaka"})<br />
+                  <small style={{ color: "#64748b" }}>Added: {prettyDate(s.createdAt)}</small>
+                </p>
+              </div>
+              <div className="card-foot" style={{ marginTop: "16px", paddingTop: "12px", borderTop: "1px solid #e2e8f0" }}>
+                <button
+                  type="button"
+                  className="button alt"
+                  style={{ color: "#c6443c", borderColor: "#fca5a5" }}
+                  onClick={() => handleDeleteStaff(s)}
+                >
+                  Remove staff
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div className="empty-state">
+          <h3>No gate staff accounts yet</h3>
+          <p>Add employee accounts so your gatekeeper or venue manager can scan customer tickets directly from their phones or tablets.</p>
+          <button
+            type="button"
+            className="button"
+            style={{ marginTop: "14px" }}
+            onClick={() => setActiveModal("add-staff")}
+          >
+            + Create your first staff account
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ===================================================
+// SECTION 8: QR SCANNER (PLAYGROUND ADMIN & STAFF)
+// ===================================================
+function QRScannerTab({ token, showNotice, user, bookings = [], reload }) {
   const [ticketInput, setTicketInput] = useState("");
   const [cameraOn, setCameraOn] = useState(false);
   const [result, setResult] = useState(null);
   const [validating, setValidating] = useState(false);
+  const [recentScans, setRecentScans] = useState([]);
 
-  const handleValidate = async (e) => {
+  const handleValidate = async (e, directCode) => {
     e?.preventDefault();
-    const val = ticketInput.trim();
+    const val = (directCode || ticketInput).trim();
     if (!val) return;
     setValidating(true);
     setResult(null);
@@ -1569,8 +1738,18 @@ function QRScannerTab({ token, showNotice }) {
         token
       });
       playBeep(true);
+      const scanItem = {
+        id: Date.now(),
+        code: val,
+        time: new Date().toLocaleTimeString(),
+        booking: res.booking,
+        message: res.message || "Valid ticket! Entry granted.",
+        verifiedBy: res.verifiedByStaff?.name || user?.name
+      };
       setResult({ success: true, message: res.message || "Valid ticket! Entry granted.", data: res });
+      setRecentScans((prev) => [scanItem, ...prev.slice(0, 9)]);
       showNotice("Ticket validated: Access granted.");
+      if (reload) reload();
     } catch (err) {
       playBeep(false);
       setResult({ success: false, message: err.message || "This QR code is invalid or has expired." });
@@ -1583,9 +1762,18 @@ function QRScannerTab({ token, showNotice }) {
   return (
     <div className="scanner-page">
       <header className="scanner-head">
-        <p className="eyebrow">VENUE OPERATIONS</p>
-        <h1>Venue Check-in Scanner</h1>
-        <p>Scan ticket QR code or manually paste ticket ID to verify ground entry.</p>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "12px" }}>
+          <div>
+            <p className="eyebrow">{user?.role === "staff" ? "GATE SECURITY CHECKPOINT" : "VENUE OPERATIONS"}</p>
+            <h1>{user?.role === "staff" ? "Gatekeeper QR Scanner" : "Venue Check-in Scanner"}</h1>
+            <p>Scan ticket QR code or manually paste ticket ID to verify ground entry.</p>
+          </div>
+          {user?.role === "staff" && (
+            <div style={{ background: "#e8f5ed", border: "1px solid #b7dfc6", borderRadius: "10px", padding: "8px 16px", fontSize: "0.85rem", color: "#163a23" }}>
+              <strong>Staff:</strong> {user?.name} · <strong>Gate:</strong> {user?.assignedPlayground?.name || "Assigned Turf"}
+            </div>
+          )}
+        </div>
       </header>
 
       <div className="scanner-layout">
@@ -1664,7 +1852,10 @@ function QRScannerTab({ token, showNotice }) {
                 <div style={{ fontSize: "0.82rem", color: "#546258", borderTop: "1px solid #edf2ee", paddingTop: "10px", marginTop: "10px" }}>
                   <strong>Customer:</strong> {result.data.booking.customer?.name || "Customer"}<br />
                   <strong>Playground:</strong> {result.data.booking.playground?.name || "Venue"}<br />
-                  <strong>Time slot:</strong> {result.data.booking.startTime} – {result.data.booking.endTime}
+                  <strong>Time slot:</strong> {result.data.booking.startTime} – {result.data.booking.endTime}<br />
+                  {result.data.verifiedByStaff && (
+                    <small style={{ color: "#15803d" }}>Verified by: {result.data.verifiedByStaff.name}</small>
+                  )}
                 </div>
               )}
             </div>
@@ -1673,8 +1864,133 @@ function QRScannerTab({ token, showNotice }) {
               Scan a pass or enter ticket code to see customer verification details here.
             </p>
           )}
+
+          {/* Recent Scans Session Log */}
+          {recentScans.length > 0 && (
+            <div style={{ marginTop: "24px", borderTop: "1px solid #e2e8f0", paddingTop: "16px" }}>
+              <h4 style={{ fontSize: "0.85rem", color: "#334155", margin: "0 0 10px" }}>Recent Check-ins (This Session)</h4>
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                {recentScans.map((s) => (
+                  <div key={s.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#f8fafc", padding: "6px 10px", borderRadius: "6px", fontSize: "0.78rem" }}>
+                    <div>
+                      <strong>{s.booking?.customer?.name || "Customer"}</strong> · #{String(s.code).slice(-6)}
+                    </div>
+                    <span style={{ color: "#16a34a", fontWeight: 600 }}>{s.time}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </section>
       </div>
+    </div>
+  );
+}
+
+// ===================================================
+// SECTION 9: GATE CHECK-INS (STAFF)
+// ===================================================
+function GateCheckinsTab({ bookings = [], user, token, showNotice, reload }) {
+  const [filter, setFilter] = useState("all");
+  const [checkingIn, setCheckingIn] = useState(null);
+
+  const handleQuickCheckin = async (b) => {
+    setCheckingIn(b._id);
+    try {
+      await request("/payments/validate-qr", {
+        method: "POST",
+        body: { qrData: b._id },
+        token
+      });
+      playBeep(true);
+      showNotice(`Check-in verified for ${b.customer?.name || "Customer"}! Entry granted.`);
+      if (reload) reload();
+    } catch (err) {
+      playBeep(false);
+      showNotice(err.message, "error");
+    } finally {
+      setCheckingIn(null);
+    }
+  };
+
+  const filtered = bookings.filter((b) => {
+    const isPaid = b.paymentStatus === "Paid" || b.status === "paid" || b.bookingStatus === "Confirmed";
+    if (filter === "checked-in") return b.checkedIn || b.bookingStatus === "Completed";
+    if (filter === "awaiting") return !b.checkedIn && isPaid;
+    return true;
+  });
+
+  return (
+    <div>
+      <div className="section-heading">
+        <div>
+          <h2>Gate Check-in Register</h2>
+          <p>Live manifest of customer bookings and passes for {user?.assignedPlayground?.name || "your venue"}.</p>
+        </div>
+        <div style={{ display: "flex", gap: "8px" }}>
+          {["all", "awaiting", "checked-in"].map((f) => (
+            <button
+              key={f}
+              type="button"
+              className={`button ${filter === f ? "" : "alt"}`}
+              style={{ fontSize: "0.82rem", padding: "6px 14px" }}
+              onClick={() => setFilter(f)}
+            >
+              {f === "all" ? "All Bookings" : f === "awaiting" ? "Awaiting Arrival" : "Checked In"}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {filtered.length ? (
+        <div className="pinned-grid">
+          {filtered.map((b) => {
+            const isCheckedIn = Boolean(b.checkedIn || b.bookingStatus === "Completed");
+            return (
+              <article key={b._id} className="card">
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                  <span className={`status ${isCheckedIn ? "confirmed" : "pending"}`}>
+                    {isCheckedIn ? "Checked In ✓" : "Awaiting Check-in"}
+                  </span>
+                  <strong style={{ fontSize: "0.82rem", color: "#15803d" }}>
+                    ৳{new Intl.NumberFormat("en-BD").format(b.totalAmount || b.pricing || 0)}
+                  </strong>
+                </div>
+                <h3 style={{ margin: "8px 0 4px" }}>{b.customer?.name || "Customer Ticket"}</h3>
+                <p style={{ fontSize: "0.85rem", color: "#475569", lineHeight: 1.5 }}>
+                  <strong>Time Slot:</strong> {b.startTime} – {b.endTime}<br />
+                  <strong>Date:</strong> {prettyDate(b.bookingDate)}<br />
+                  <strong>Pass ID:</strong> #{String(b._id).slice(-8).toUpperCase()}<br />
+                  {b.customer?.phone && <><strong>Phone:</strong> {b.customer.phone}<br /></>}
+                  {b.checkedInAt && <small style={{ color: "#16a34a" }}>Scanned at: {new Date(b.checkedInAt).toLocaleTimeString()}</small>}
+                </p>
+                <div className="card-foot" style={{ marginTop: "12px", paddingTop: "10px", borderTop: "1px solid #f1f5f9" }}>
+                  {isCheckedIn ? (
+                    <span style={{ fontSize: "0.82rem", color: "#166534", fontWeight: 700 }}>
+                      ✓ Verified &amp; Entry Allowed
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      className="button"
+                      style={{ width: "100%", fontSize: "0.82rem", padding: "8px 12px" }}
+                      disabled={checkingIn === b._id}
+                      onClick={() => handleQuickCheckin(b)}
+                    >
+                      {checkingIn === b._id ? "Verifying…" : "Verify & Check In"}
+                    </button>
+                  )}
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="empty-state">
+          <h3>No bookings match this filter</h3>
+          <p>Customer reservations for this playground will appear here automatically.</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -2324,6 +2640,11 @@ function AccountCentreTab({ user, setUser, token, showNotice }) {
         </div>
         <h2>{user?.name}</h2>
         <p>{user?.email}</p>
+        {user?.role === "staff" && (
+          <span className="badge" style={{ marginTop: "6px", display: "inline-block", background: "#e8f5ed", color: "#163a23", fontWeight: 700, padding: "4px 10px", borderRadius: "999px", fontSize: "0.78rem" }}>
+            Staff · {user?.assignedPlayground?.name || "Assigned Turf"}
+          </span>
+        )}
 
         <label className="photo-upload">
           Change profile photo
@@ -2351,6 +2672,12 @@ function AccountCentreTab({ user, setUser, token, showNotice }) {
         </div>
 
         <div className="current-profile-info">
+          {user?.role === "staff" && (
+            <>
+              <div><span>Designation</span><strong>{user?.staffTitle || "Gatekeeper / Entry Staff"}</strong></div>
+              <div><span>Assigned Gate</span><strong>{user?.assignedPlayground?.name || "Playground Gate"}</strong></div>
+            </>
+          )}
           <div><span>Phone</span><strong>{user?.phone || "Not added"}</strong></div>
           <div><span>Address</span><strong>{user?.address || "Not added"}</strong></div>
           <div><span>Joined</span><strong>{prettyDate(user?.createdAt)}</strong></div>
@@ -2568,6 +2895,41 @@ function Modals({ modal, data, close, token, showNotice, reload, playgrounds }) 
   });
 
   const [adminCancelReason, setAdminCancelReason] = useState("");
+
+  const [staffForm, setStaffForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    password: "",
+    assignedPlayground: playgrounds?.[0]?._id || "",
+    staffTitle: "Gatekeeper / Entry Staff"
+  });
+  const [savingStaff, setSavingStaff] = useState(false);
+
+  const handleCreateStaff = async (e) => {
+    e.preventDefault();
+    if (!staffForm.assignedPlayground) {
+      return showNotice("Please assign a playground for this staff member.", "error");
+    }
+    if (!staffForm.password || staffForm.password.length < 6) {
+      return showNotice("Password must be at least 6 characters long.", "error");
+    }
+    setSavingStaff(true);
+    try {
+      await request("/users/staff", {
+        method: "POST",
+        body: staffForm,
+        token
+      });
+      showNotice(`Staff account created for ${staffForm.name}! They can now log in and scan passes.`);
+      close();
+      reload();
+    } catch (err) {
+      showNotice(err.message, "error");
+    } finally {
+      setSavingStaff(false);
+    }
+  };
 
   const handleSaveGround = async (e) => {
     e.preventDefault();
@@ -2847,6 +3209,91 @@ function Modals({ modal, data, close, token, showNotice, reload, playgrounds }) 
             <footer className="playground-editor__actions">
               <button type="button" className="button alt" onClick={close}>Cancel</button>
               <button type="submit" className="button">Create slots</button>
+            </footer>
+          </form>
+        )}
+
+        {/* ADD STAFF MODAL (FOR PLAYGROUND ADMIN) */}
+        {modal === "add-staff" && (
+          <form className="playground-editor" onSubmit={handleCreateStaff}>
+            <header className="playground-editor__head">
+              <span>VENUE ACCESS</span>
+              <h2>Add Venue Staff / Employee</h2>
+              <p>Create gatekeeper credentials to scan QR passes and verify customer check-ins at your playground.</p>
+            </header>
+
+            <section className="playground-editor__section">
+              <h3>Employee credentials</h3>
+              <div className="form-grid">
+                <label className="full">
+                  Employee full name
+                  <input
+                    required
+                    placeholder="e.g. Kamal Hossain"
+                    value={staffForm.name}
+                    onChange={(e) => setStaffForm({ ...staffForm, name: e.target.value })}
+                  />
+                </label>
+                <label>
+                  Login email address
+                  <input
+                    type="email"
+                    required
+                    placeholder="staff.kamal@turf.com"
+                    value={staffForm.email}
+                    onChange={(e) => setStaffForm({ ...staffForm, email: e.target.value })}
+                  />
+                </label>
+                <label>
+                  Login password (min 6 chars)
+                  <input
+                    type="password"
+                    required
+                    minLength={6}
+                    placeholder="Set password for staff"
+                    value={staffForm.password}
+                    onChange={(e) => setStaffForm({ ...staffForm, password: e.target.value })}
+                  />
+                </label>
+                <label>
+                  Contact phone
+                  <input
+                    placeholder="+8801700000000"
+                    value={staffForm.phone}
+                    onChange={(e) => setStaffForm({ ...staffForm, phone: e.target.value })}
+                  />
+                </label>
+                <label>
+                  Job title / role
+                  <input
+                    placeholder="Gatekeeper / Entry Staff"
+                    value={staffForm.staffTitle}
+                    onChange={(e) => setStaffForm({ ...staffForm, staffTitle: e.target.value })}
+                  />
+                </label>
+                <label className="full">
+                  Assigned playground gate
+                  <select
+                    required
+                    value={staffForm.assignedPlayground}
+                    onChange={(e) => setStaffForm({ ...staffForm, assignedPlayground: e.target.value })}
+                  >
+                    <option value="">-- Select Playground --</option>
+                    {playgrounds.map((g) => (
+                      <option key={g._id} value={g._id}>
+                        {g.name} ({g.sportType} · {g.area || g.district || "Dhaka"})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            </section>
+
+            <footer className="playground-editor__actions">
+              <button type="button" className="button alt" onClick={close}>Cancel</button>
+              <button type="submit" className="button" disabled={savingStaff}>
+                {savingStaff ? "Creating account…" : "Create staff account"}
+              </button>
             </footer>
           </form>
         )}

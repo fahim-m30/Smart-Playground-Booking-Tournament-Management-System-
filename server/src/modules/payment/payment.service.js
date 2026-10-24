@@ -503,8 +503,8 @@ const getSinglePayment = async (paymentId, customerId) => {
 // Verify QR Code
 // ===================================================
 
-// Verifies a venue-scanned QR and confirms that the scanning admin owns the relevant venue.
-const verifyQR = async (qrDataString, adminId) => {
+// Verifies a venue-scanned QR and confirms that the scanning admin or staff member owns the relevant venue.
+const verifyQR = async (qrDataString, scannerUserId) => {
     const parsed = baseVerifyQR(qrDataString);
 
     if (!parsed.valid) {
@@ -513,6 +513,11 @@ const verifyQR = async (qrDataString, adminId) => {
 
     const { type, id } = parsed.data;
     const now = new Date();
+
+    const scannerUser = await User.findById(scannerUserId);
+    const isStaff = scannerUser?.role === "staff";
+    const allowedAdminId = isStaff ? scannerUser.createdBy?.toString() : scannerUserId?.toString();
+    const staffAssignedGround = isStaff && scannerUser.assignedPlayground ? scannerUser.assignedPlayground.toString() : null;
 
     if (type === "SlotBooking") {
         const booking = await Booking.findById(id)
@@ -523,7 +528,17 @@ const verifyQR = async (qrDataString, adminId) => {
             return { valid: false, message: "Slot ticket not found.", data: { type: "SlotBooking", ticketType: "Slot booking" } };
         }
 
-        if (String(booking.playground?.playgroundAdmin) !== String(adminId)) {
+        const bookingAdminId = String(booking.playground?.playgroundAdmin);
+        const bookingGroundId = String(booking.playground?._id);
+
+        if (isStaff) {
+            if (staffAssignedGround && staffAssignedGround !== bookingGroundId) {
+                return { valid: false, message: "This ticket is for a different venue. You are only authorized to scan for your assigned playground.", data: { type: "SlotBooking", ticketType: "Slot booking" } };
+            }
+            if (allowedAdminId && allowedAdminId !== bookingAdminId) {
+                return { valid: false, message: "Ticket not found at this playground.", data: { type: "SlotBooking", ticketType: "Slot booking" } };
+            }
+        } else if (bookingAdminId !== String(scannerUserId)) {
             return { valid: false, message: "Ticket not found at this playground.", data: { type: "SlotBooking", ticketType: "Slot booking" } };
         }
 
@@ -550,7 +565,7 @@ const verifyQR = async (qrDataString, adminId) => {
 
         const checkedIn = await Booking.findByIdAndUpdate(
             booking._id,
-            { $set: { isScanned: true, checkedInAt: booking.checkedInAt || now, checkedInBy: booking.checkedInBy || adminId } },
+            { $set: { isScanned: true, checkedInAt: booking.checkedInAt || now, checkedInBy: booking.checkedInBy || scannerUserId } },
             { new: true }
         );
 
@@ -560,6 +575,7 @@ const verifyQR = async (qrDataString, adminId) => {
             data: {
                 ...ticket,
                 checkedInAt: checkedIn.checkedInAt,
+                verifiedByStaff: isStaff ? scannerUser.name : null,
             },
         };
 
@@ -572,7 +588,13 @@ const verifyQR = async (qrDataString, adminId) => {
 
         const tournament = team.tournament;
         if (!tournament || tournament.isDeleted) return { valid: false, message: "Tournament ticket not found.", data: { type: "TournamentTicket", ticketType: "Tournament" } };
-        if (String(tournament.playground?.playgroundAdmin) !== String(adminId)) {
+        
+        const tournamentAdminId = String(tournament.playground?.playgroundAdmin);
+        if (isStaff) {
+            if (allowedAdminId && allowedAdminId !== tournamentAdminId) {
+                return { valid: false, message: "Ticket not found at this playground.", data: { type: "TournamentTicket", ticketType: "Tournament" } };
+            }
+        } else if (tournamentAdminId !== String(scannerUserId)) {
             return { valid: false, message: "Ticket not found at this playground.", data: { type: "TournamentTicket", ticketType: "Tournament" } };
         }
         const teamMatches = await TournamentMatch.find({

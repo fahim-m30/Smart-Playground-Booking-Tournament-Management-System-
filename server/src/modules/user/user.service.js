@@ -14,6 +14,7 @@ const transporter = require("../../config/mail");
 const generateOTP = require("../../utils/generateOTP");
 
 const User = require("../user/user.model");
+const Playground = require("../playground/playground.model");
 const { createNotification } = require("../notification/notification.service");
 
 // Handles the convert file to data url workflow.
@@ -309,7 +310,9 @@ const changePassword = async ({
 // ===============================
 
 const getMyProfile = async (userId) => {
-    const user = await User.findById(userId).select("-password -otp -pendingEmail");
+    const user = await User.findById(userId)
+        .select("-password -otp -pendingEmail")
+        .populate("assignedPlayground", "name address sportType");
 
     if (!user) {
         throw new Error("User not found.");
@@ -484,6 +487,79 @@ const deleteUser = async (userId) => {
 };
 
 // ===============================
+// Playground Admin Staff Management
+// ===============================
+
+const createStaff = async (adminId, staffData) => {
+    const { name, email, password, phone, assignedPlayground, staffTitle } = staffData;
+
+    if (!name || !email || !password || !assignedPlayground) {
+        throw new Error("Name, email, password, and assigned playground are required.");
+    }
+
+    const ground = await Playground.findOne({
+        _id: assignedPlayground,
+        playgroundAdmin: adminId,
+        isDeleted: false,
+    });
+
+    if (!ground) {
+        throw new Error("Playground not found or you are not authorized to assign staff to it.");
+    }
+
+    const existing = await User.findOne({ email: email.toLowerCase().trim() });
+    if (existing) {
+        throw new Error("A user with this email already exists.");
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    const staff = await User.create({
+        name: name.trim(),
+        email: email.toLowerCase().trim(),
+        password: hashedPassword,
+        phone: phone ? phone.trim() : null,
+        role: "staff",
+        isVerified: true,
+        assignedPlayground: ground._id,
+        createdBy: adminId,
+        staffTitle: staffTitle?.trim() || "Gate Scanner / Field Attendant",
+    });
+
+    return await User.findById(staff._id)
+        .select("-password")
+        .populate("assignedPlayground", "name address sportType area");
+};
+
+const getMyStaff = async (adminId) => {
+    return await User.find({
+        createdBy: adminId,
+        role: "staff",
+        isDeleted: false,
+    })
+        .select("-password")
+        .populate("assignedPlayground", "name address sportType area")
+        .sort({ createdAt: -1 });
+};
+
+const deleteStaff = async (adminId, staffId) => {
+    const staff = await User.findOne({
+        _id: staffId,
+        createdBy: adminId,
+        role: "staff",
+    });
+
+    if (!staff) {
+        throw new Error("Staff member not found or you are not authorized to delete this staff.");
+    }
+
+    staff.isDeleted = true;
+    await staff.save();
+    return { success: true };
+};
+
+// ===============================
 // Export Services
 // ===============================
 
@@ -505,4 +581,8 @@ module.exports = {
     blockUser,
     unblockUser,
     deleteUser,
+
+    createStaff,
+    getMyStaff,
+    deleteStaff,
 };

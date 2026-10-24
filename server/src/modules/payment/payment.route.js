@@ -59,7 +59,7 @@ router.get(
 router.post(
     "/validate-qr",
     verifyToken,
-    authorize("playground-admin"),
+    authorize("playground-admin", "staff"),
     paymentController.verifyQR
 );
 
