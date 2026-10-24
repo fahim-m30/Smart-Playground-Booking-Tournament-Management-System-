@@ -2,35 +2,63 @@ import { useState } from "react";
 import { request } from "../services/api";
 import "./Auth.css";
 
-function Visual() {
+function Visual({ mode }) {
   return (
     <aside className="turf-auth-visual">
       <div className="turf-auth-visual__header">
-        <span className="turf-auth-brand">
+        <div className="turf-auth-brand">
           <img src="/legacy/assets/images/favicon.png" alt="TURF" />
-          TURF
-        </span>
-        <span>SMART SPORTS BOOKING</span>
+          <span>TURF</span>
+        </div>
+        <span className="turf-auth-badge">SPORTS ECOSYSTEM</span>
       </div>
-      <div>
-        <p className="turf-auth-eyebrow">READY WHEN YOU ARE</p>
-        <h2>Welcome back<br />to the game.</h2>
-        <p>Manage your bookings, digital entry passes, venue slots, and tournament updates in one place.</p>
+
+      <div className="turf-auth-visual__body">
+        <span className="turf-auth-eyebrow">READY WHEN YOU ARE</span>
+        <h2>
+          {mode === "login" ? (
+            <>Welcome back<br />to the pitch.</>
+          ) : (
+            <>Join the game.<br />Play without limits.</>
+          )}
+        </h2>
+        <p>
+          {mode === "login"
+            ? "Manage your match bookings, digital entry passes, and tournament updates in one unified hub."
+            : "Reserve premium turf venues across Dhaka, generate digital QR tickets, and compete with top teams."}
+        </p>
+
+        <ul className="turf-auth-perks">
+          <li>
+            <div className="perk-icon">⚡</div>
+            <div>
+              <strong>Instant Slot Booking</strong>
+              <small>Real-time turf availability with instant confirmation</small>
+            </div>
+          </li>
+          <li>
+            <div className="perk-icon">🎟️</div>
+            <div>
+              <strong>Digital QR Gate Passes</strong>
+              <small>Flash your phone at the gate for fast, touchless entry</small>
+            </div>
+          </li>
+          <li>
+            <div className="perk-icon">🏆</div>
+            <div>
+              <strong>Tournaments &amp; Standings</strong>
+              <small>Live tournament fixtures, group tables, and match results</small>
+            </div>
+          </li>
+        </ul>
       </div>
-      <ul>
-        <li>
-          <i>✓</i>
-          <span><b>Instant slot booking</b><small>Find and reserve top turf in seconds</small></span>
-        </li>
-        <li>
-          <i>✓</i>
-          <span><b>Digital QR entry passes</b><small>Show your phone at the scanner gate</small></span>
-        </li>
-        <li>
-          <i>✓</i>
-          <span><b>Venue & tournament hub</b><small>Host or join verified competitions</small></span>
-        </li>
-      </ul>
+
+      <div className="turf-auth-visual__footer">
+        <div className="auth-trust-pill">
+          <span className="trust-dot" />
+          <span>50+ Verified Venues · 10,000+ Bookings · 24/7 Gate Verification</span>
+        </div>
+      </div>
     </aside>
   );
 }
@@ -54,35 +82,37 @@ function OtpVerify({ email, showNotice, onDone }) {
   };
 
   return (
-    <>
-      <div>
-        <span className="form-kicker">EMAIL VERIFICATION</span>
+    <div className="otp-container">
+      <div className="form-head">
+        <span className="form-kicker">SECURITY CHECK</span>
         <h1>Verify account</h1>
-        <p>Enter the six-digit OTP sent to <strong>{email}</strong>.</p>
+        <p>We sent a 6-digit verification code to <strong>{email}</strong>.</p>
       </div>
-      <label>
-        6-Digit Verification Code
+
+      <label className="auth-field">
+        <span className="field-label">6-Digit Verification Code</span>
         <input
           required
           inputMode="numeric"
           maxLength="6"
-          placeholder="123456"
+          placeholder="••••••"
           value={otp}
-          onChange={(event) => setOtp(event.target.value)}
-          style={{ letterSpacing: "4px", fontSize: "1.2rem", textAlign: "center" }}
+          onChange={(event) => setOtp(event.target.value.replace(/\D/g, ""))}
+          className="otp-input"
         />
       </label>
-      <div className="auth-form__actions" style={{ marginTop: "16px" }}>
+
+      <div className="auth-form__actions">
         <button
           type="button"
-          className="auth-btn auth-btn--primary"
+          className="auth-submit-btn"
           onClick={verify}
           disabled={busy || otp.length < 4}
         >
-          {busy ? "Verifying…" : "Verify and Continue"}
+          {busy ? "Verifying code…" : "Verify & Continue"}
         </button>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -130,141 +160,213 @@ export default function Auth({ onLogin, showNotice, goHome }) {
   return (
     <main className="turf-auth-page">
       <section className="turf-auth-card">
-        <Visual />
-        <form className="turf-auth-form" onSubmit={submit}>
-          <button type="button" className="auth-back" onClick={goHome}>
-            ← Back to home
-          </button>
+        {/* Left Visual Hero */}
+        <Visual mode={mode} />
 
-          {pending ? (
-            <OtpVerify email={form.email} showNotice={showNotice} onDone={() => switchMode("login")} />
-          ) : (
-            <>
-              <div>
-                <span className="form-kicker">{mode === "login" ? "ACCOUNT ACCESS" : "JOIN TURF"}</span>
-                <h1>{mode === "login" ? "Sign in" : "Create account"}</h1>
-                <p>
-                  {mode === "login"
-                    ? "Enter your registered email and password to access your dashboard."
-                    : "Register to reserve sports venues, access QR passes, and compete in tournaments."}
-                </p>
-              </div>
+        {/* Right Form Card */}
+        <div className="turf-auth-form-wrap">
+          {/* Top Bar with Back Link */}
+          <div className="auth-topbar">
+            <button type="button" className="auth-back-link" onClick={goHome}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="19" y1="12" x2="5" y2="12" />
+                <polyline points="12 19 5 12 12 5" />
+              </svg>
+              <span>Back to home</span>
+            </button>
 
-              {mode === "register" && (
-                <>
-                  {/* Account Type Selector */}
-                  <div style={{ marginBottom: "16px" }}>
-                    <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "6px", display: "block" }}>
-                      I am registering as:
-                    </label>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-                      <button
-                        type="button"
-                        style={{
-                          padding: "10px",
-                          borderRadius: "10px",
-                          border: `2px solid ${accountType === "customer" ? "#16a34a" : "#cbd5e1"}`,
-                          background: accountType === "customer" ? "#f0fdf4" : "#fff",
-                          color: accountType === "customer" ? "#15803d" : "#475569",
-                          fontWeight: 700,
-                          fontSize: "0.82rem",
-                          cursor: "pointer"
-                        }}
-                        onClick={() => setAccountType("customer")}
-                      >
-                        ⚽ Player / Customer
-                      </button>
-                      <button
-                        type="button"
-                        style={{
-                          padding: "10px",
-                          borderRadius: "10px",
-                          border: `2px solid ${accountType === "playground-admin" ? "#16a34a" : "#cbd5e1"}`,
-                          background: accountType === "playground-admin" ? "#f0fdf4" : "#fff",
-                          color: accountType === "playground-admin" ? "#15803d" : "#475569",
-                          fontWeight: 700,
-                          fontSize: "0.82rem",
-                          cursor: "pointer"
-                        }}
-                        onClick={() => setAccountType("playground-admin")}
-                      >
-                        🏟 Venue Admin
-                      </button>
+            {/* Segmented Mode Switcher */}
+            <div className="auth-mode-tabs">
+              <button
+                type="button"
+                className={`mode-tab ${mode === "login" ? "active" : ""}`}
+                onClick={() => switchMode("login")}
+              >
+                Sign In
+              </button>
+              <button
+                type="button"
+                className={`mode-tab ${mode === "register" ? "active" : ""}`}
+                onClick={() => switchMode("register")}
+              >
+                Register
+              </button>
+            </div>
+          </div>
+
+          <form className="turf-auth-form" onSubmit={submit}>
+            {pending ? (
+              <OtpVerify email={form.email} showNotice={showNotice} onDone={() => switchMode("login")} />
+            ) : (
+              <>
+                <div className="form-head">
+                  <span className="form-kicker">
+                    {mode === "login" ? "ACCOUNT ACCESS" : "GET STARTED"}
+                  </span>
+                  <h1>{mode === "login" ? "Sign in to TURF" : "Create your account"}</h1>
+                  <p>
+                    {mode === "login"
+                      ? "Enter your registered email and password to access your dashboard."
+                      : "Create an account to book venues, get digital passes, and compete in tournaments."}
+                  </p>
+                </div>
+
+                {mode === "register" && (
+                  <>
+                    {/* Account Type Selector Cards */}
+                    <div className="account-type-group">
+                      <span className="field-label">I WANT TO REGISTER AS:</span>
+                      <div className="account-type-grid">
+                        <button
+                          type="button"
+                          className={`account-type-card ${accountType === "customer" ? "active" : ""}`}
+                          onClick={() => setAccountType("customer")}
+                        >
+                          <span className="card-emoji">⚽</span>
+                          <div className="card-info">
+                            <strong>Player / Customer</strong>
+                            <small>Book turfs &amp; join tournaments</small>
+                          </div>
+                          <span className="card-check">✓</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          className={`account-type-card ${accountType === "playground-admin" ? "active" : ""}`}
+                          onClick={() => setAccountType("playground-admin")}
+                        >
+                          <span className="card-emoji">🏟️</span>
+                          <div className="card-info">
+                            <strong>Venue Owner</strong>
+                            <small>List playground &amp; manage slots</small>
+                          </div>
+                          <span className="card-check">✓</span>
+                        </button>
+                      </div>
                     </div>
-                  </div>
 
-                  <label>
-                    Full Name
-                    <input required placeholder="Your full name" value={form.name} onChange={update("name")} />
-                  </label>
+                    <label className="auth-field">
+                      <span className="field-label">Full Name</span>
+                      <input
+                        required
+                        placeholder="e.g. Fahim Muntasir"
+                        value={form.name}
+                        onChange={update("name")}
+                        className="auth-input"
+                      />
+                    </label>
 
-                  <label>
-                    Mobile Phone
-                    <input required type="tel" placeholder="01XXXXXXXXX" value={form.phone} onChange={update("phone")} />
-                  </label>
-                </>
-              )}
-
-              <label>
-                Email Address
-                <input required type="email" placeholder="name@example.com" value={form.email} onChange={update("email")} />
-              </label>
-
-              <label style={{ position: "relative" }}>
-                Password
-                <input
-                  required
-                  minLength="6"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Enter your secure password"
-                  value={form.password}
-                  onChange={update("password")}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  style={{
-                    position: "absolute",
-                    right: "12px",
-                    top: "35px",
-                    background: "none",
-                    border: "none",
-                    color: "#64748b",
-                    fontSize: "0.8rem",
-                    cursor: "pointer",
-                    padding: 0
-                  }}
-                >
-                  {showPassword ? "Hide" : "Show"}
-                </button>
-              </label>
-
-              <div className="auth-form__actions">
-                <button className="auth-btn auth-btn--primary" disabled={busy}>
-                  {busy ? "Please wait…" : mode === "login" ? "Sign in to Dashboard" : "Register Account"}
-                </button>
-              </div>
-
-              <p className="auth-footer">
-                {mode === "login" ? (
-                  <>
-                    New to TURF?{" "}
-                    <button type="button" onClick={() => switchMode("register")}>
-                      Create an account
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    Already have an account?{" "}
-                    <button type="button" onClick={() => switchMode("login")}>
-                      Sign in
-                    </button>
+                    <label className="auth-field">
+                      <span className="field-label">Mobile Phone</span>
+                      <input
+                        required
+                        type="tel"
+                        placeholder="01XXXXXXXXX"
+                        value={form.phone}
+                        onChange={update("phone")}
+                        className="auth-input"
+                      />
+                    </label>
                   </>
                 )}
-              </p>
-            </>
-          )}
-        </form>
+
+                <label className="auth-field">
+                  <span className="field-label">Email Address</span>
+                  <input
+                    required
+                    type="email"
+                    placeholder="name@example.com"
+                    value={form.email}
+                    onChange={update("email")}
+                    className="auth-input"
+                  />
+                </label>
+
+                <label className="auth-field">
+                  <div className="label-row">
+                    <span className="field-label">Password</span>
+                    {mode === "login" && (
+                      <span className="label-hint" onClick={() => showNotice("Please contact support or venue admin for password resets.")}>
+                        Forgot password?
+                      </span>
+                    )}
+                  </div>
+                  <div className="password-input-wrap">
+                    <input
+                      required
+                      minLength="6"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Enter your secure password"
+                      value={form.password}
+                      onChange={update("password")}
+                      className="auth-input password-input"
+                    />
+                    <button
+                      type="button"
+                      className="password-toggle-btn"
+                      onClick={() => setShowPassword(!showPassword)}
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? (
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                          <line x1="1" y1="1" x2="23" y2="23" />
+                        </svg>
+                      ) : (
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                          <circle cx="12" cy="12" r="3" />
+                        </svg>
+                      )}
+                      <span>{showPassword ? "Hide" : "Show"}</span>
+                    </button>
+                  </div>
+                </label>
+
+                <div className="auth-form__actions">
+                  <button type="submit" className="auth-submit-btn" disabled={busy}>
+                    {busy ? (
+                      <span className="btn-spinner-wrap">
+                        <span className="btn-spinner" />
+                        <span>Processing…</span>
+                      </span>
+                    ) : mode === "login" ? (
+                      "Sign in to Dashboard →"
+                    ) : (
+                      "Create Account & Continue →"
+                    )}
+                  </button>
+                </div>
+
+                <div className="auth-footer">
+                  {mode === "login" ? (
+                    <p>
+                      New to TURF?{" "}
+                      <button
+                        type="button"
+                        className="auth-switch-link"
+                        onClick={() => switchMode("register")}
+                      >
+                        Create an account
+                      </button>
+                    </p>
+                  ) : (
+                    <p>
+                      Already have an account?{" "}
+                      <button
+                        type="button"
+                        className="auth-switch-link"
+                        onClick={() => switchMode("login")}
+                      >
+                        Sign in
+                      </button>
+                    </p>
+                  )}
+                </div>
+              </>
+            )}
+          </form>
+        </div>
       </section>
     </main>
   );
