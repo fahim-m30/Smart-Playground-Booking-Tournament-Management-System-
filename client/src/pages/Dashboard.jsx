@@ -380,8 +380,8 @@ export default function Dashboard({ token, user, setUser, navigate, logout, open
       {/* Main Content */}
       <main className="main-content">
         {/* Desktop Topbar */}
-        <header className="dashboard-topbar desktop-topbar">
-          <div>
+        <header className="topbar dashboard-topbar desktop-topbar">
+          <div className="topbar-welcome-col">
             <span className="eyebrow-pill">{role.replace("-", " ").toUpperCase()} PORTAL</span>
             <h1 className="dashboard-welcome-heading">Welcome back, {user.name?.split(" ")[0] || "Player"}! 👋</h1>
           </div>

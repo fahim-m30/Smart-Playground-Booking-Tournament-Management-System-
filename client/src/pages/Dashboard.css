@@ -6091,6 +6091,30 @@ tr:hover td {
 /* ==============================================================
    TOPBAR & WIDGET POLISH
    ============================================================== */
+.dashboard-topbar,
+.desktop-topbar,
+.topbar {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 20px !important;
+  padding: 0 0 20px 0 !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  margin-bottom: 24px !important;
+  min-height: 80px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  flex-direction: row !important;
+}
+
+.topbar-welcome-col {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+}
+
 .eyebrow-pill {
   display: inline-flex !important;
   align-items: center !important;
@@ -6102,7 +6126,8 @@ tr:hover td {
   border: 1px solid #bbf7d0 !important;
   padding: 3px 10px !important;
   border-radius: 999px !important;
-  margin-bottom: 6px !important;
+  margin-bottom: 2px !important;
+  width: max-content !important;
 }
 
 .dashboard-welcome-heading {
@@ -6111,17 +6136,66 @@ tr:hover td {
   letter-spacing: -0.03em !important;
   color: #0f172a !important;
   margin: 0 !important;
+  line-height: 1.2 !important;
+}
+
+.topbar-tools {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  margin-left: auto !important;
+  flex-shrink: 0 !important;
 }
 
 .weather-date {
+  height: 44px !important;
+  box-sizing: border-box !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  padding: 0 14px !important;
   border: 1px solid #e2e8f0 !important;
   border-radius: 12px !important;
   background: #ffffff !important;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03) !important;
-  padding: 6px 12px !important;
+}
+
+.weather-date .weather-icon {
+  font-size: 1.3rem !important;
+  line-height: 1 !important;
+  display: inline-block !important;
+}
+
+.weather-date div {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 1px !important;
+}
+
+.weather-date strong {
+  font-size: 0.82rem !important;
+  font-weight: 700 !important;
+  color: #0f172a !important;
+  white-space: nowrap !important;
+  line-height: 1.2 !important;
+}
+
+.weather-date span:not(.weather-icon) {
+  font-size: 0.7rem !important;
+  color: #64748b !important;
+  white-space: nowrap !important;
+  line-height: 1.2 !important;
+}
+
+.notification-wrap {
+  position: relative !important;
+  display: inline-flex !important;
+  align-items: center !important;
 }
 
 .notification-button {
+  height: 44px !important;
+  width: 44px !important;
   border: 1px solid #e2e8f0 !important;
   border-radius: 12px !important;
   background: #ffffff !important;
@@ -6129,8 +6203,9 @@ tr:hover td {
   color: #475569 !important;
   display: grid !important;
   place-items: center !important;
-  width: 42px !important;
-  height: 42px !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  position: relative !important;
   transition: all 0.15s ease !important;
 }
 
@@ -6141,19 +6216,26 @@ tr:hover td {
 }
 
 .notif-badge {
+  position: absolute !important;
+  top: -6px !important;
+  right: -6px !important;
   background: #ef4444 !important;
   color: #ffffff !important;
   font-size: 0.65rem !important;
   font-weight: 800 !important;
-  padding: 1px 5px !important;
+  padding: 2px 6px !important;
   border-radius: 999px !important;
-  border: 1.5px solid #ffffff !important;
+  border: 2px solid #ffffff !important;
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.35) !important;
+  line-height: 1 !important;
 }
 
 .account-menu {
-  display: flex !important;
+  height: 44px !important;
+  box-sizing: border-box !important;
+  display: inline-flex !important;
   align-items: center !important;
-  gap: 10px !important;
+  gap: 12px !important;
   background: #ffffff !important;
   border: 1px solid #e2e8f0 !important;
   border-radius: 999px !important;
@@ -6172,13 +6254,15 @@ tr:hover td {
   display: grid !important;
   place-items: center !important;
   border: 1.5px solid #a7f3d0 !important;
+  flex-shrink: 0 !important;
+  cursor: pointer !important;
 }
 
 .account-menu .account-copy {
   display: flex !important;
   flex-direction: column !important;
-  gap: 0px !important;
-  padding-right: 4px !important;
+  gap: 1px !important;
+  padding-right: 6px !important;
 }
 
 .account-menu .account-copy strong {
@@ -6186,13 +6270,14 @@ tr:hover td {
   font-weight: 700 !important;
   color: #1e293b !important;
   line-height: 1.2 !important;
+  white-space: nowrap !important;
 }
 
 .account-menu .account-copy span {
   font-size: 0.7rem !important;
   color: #64748b !important;
   line-height: 1.2 !important;
-  max-width: 140px;
+  max-width: 150px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -6203,12 +6288,13 @@ tr:hover td {
   color: #dc2626 !important;
   border: 1px solid #fee2e2 !important;
   border-radius: 999px !important;
-  padding: 6px 12px !important;
+  padding: 7px 14px !important;
   font-size: 0.78rem !important;
   font-weight: 700 !important;
   cursor: pointer !important;
   transition: all 0.15s ease !important;
   margin-left: 0 !important;
+  white-space: nowrap !important;
 }
 
 .account-menu .logout-button:hover {
