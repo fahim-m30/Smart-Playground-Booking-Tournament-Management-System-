@@ -2,7 +2,7 @@ import { useState } from "react";
 import Search from "../components/Search";
 import VenueCard from "../components/VenueCard";
 
-export default function Playgrounds({ venues, query, setQuery, sport, setSport, openVenue }) {
+export default function Playgrounds({ venues, query, setQuery, sport, setSport, openVenue, user, navigate }) {
   const [sortBy, setSortBy] = useState("featured");
 
   const sortedVenues = [...venues].sort((a, b) => {
@@ -20,6 +20,23 @@ export default function Playgrounds({ venues, query, setQuery, sport, setSport, 
 
   return (
     <main className="page section">
+      {/* Top Back Navigation Bar */}
+      {navigate && (
+        <div className="page-back-toolbar">
+          <button
+            type="button"
+            className="page-back-button"
+            onClick={() => user ? navigate("dashboard") : navigate("home")}
+          >
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="19" y1="12" x2="5" y2="12" />
+              <polyline points="12 19 5 12 12 5" />
+            </svg>
+            <span>{user ? "Back to Dashboard" : "Back to Home"}</span>
+          </button>
+        </div>
+      )}
+
       <div className="section-heading" style={{ marginBottom: "20px" }}>
         <div>
           <p className="eyebrow">VENUE DIRECTORY</p>

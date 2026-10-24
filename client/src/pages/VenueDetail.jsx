@@ -88,6 +88,34 @@ export default function VenueDetail({ venue, token, user, openAuth, navigate, sh
 
   return (
     <main className="venue-page">
+      {/* Top Back Navigation Toolbar */}
+      <div className="venue-back-toolbar" style={{ padding: "16px 20px 4px", maxWidth: "1200px", margin: "0 auto" }}>
+        <button
+          type="button"
+          className="page-back-button"
+          onClick={() => navigate("venues")}
+        >
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12" />
+            <polyline points="12 19 5 12 12 5" />
+          </svg>
+          <span>Back to Playgrounds</span>
+        </button>
+
+        {user && (
+          <button
+            type="button"
+            className="page-secondary-back"
+            onClick={() => navigate("dashboard")}
+          >
+            <span>My Dashboard</span>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </button>
+        )}
+      </div>
+
       {/* Hero Banner */}
       <section
         className="venue-hero"

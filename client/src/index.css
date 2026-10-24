@@ -143,3 +143,74 @@ footer a {
   font-size: 13px;
   font-weight: 600;
 }
+
+/* ============================================================
+   UNIVERSAL MODERN BACK BUTTON & TOOLBAR
+   ============================================================ */
+.page-back-toolbar,
+.venue-back-toolbar,
+.tab-back-toolbar {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  flex-wrap: wrap !important;
+  gap: 12px !important;
+  margin-bottom: 20px !important;
+}
+
+.page-back-button {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  background: #ffffff !important;
+  color: #334155 !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 999px !important;
+  padding: 8px 18px !important;
+  font-size: 0.84rem !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  line-height: 1 !important;
+  outline: none !important;
+}
+
+.page-back-button:hover {
+  background: #f1f5f9 !important;
+  color: #0f172a !important;
+  border-color: #94a3b8 !important;
+  transform: translateX(-3px) !important;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08) !important;
+}
+
+.page-back-button svg {
+  color: #059669 !important;
+  transition: transform 0.2s ease !important;
+}
+
+.page-back-button:hover svg {
+  transform: translateX(-2px) !important;
+}
+
+.page-secondary-back {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  background: #ecfdf5 !important;
+  color: #047857 !important;
+  border: 1px solid #a7f3d0 !important;
+  border-radius: 999px !important;
+  padding: 8px 16px !important;
+  font-size: 0.82rem !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  line-height: 1 !important;
+}
+
+.page-secondary-back:hover {
+  background: #d1fae5 !important;
+  border-color: #6ee7b7 !important;
+  transform: translateX(2px) !important;
+}

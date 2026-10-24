@@ -148,6 +148,8 @@ export default function App() {
           sport={sport}
           setSport={setSport}
           openVenue={openVenue}
+          user={user}
+          navigate={navigate}
         />
       )}
 
@@ -202,6 +204,7 @@ export default function App() {
             ["Live availability", "Reserve published slots without calling or waiting."],
             ["Secure entry", "Keep every confirmation and QR ticket in one place."]
           ]}
+          navigate={navigate}
         />
       )}
 
@@ -215,6 +218,7 @@ export default function App() {
             ["Venue partners", "List and manage your playground on TURF."],
             ["Tournament desk", "Plan and promote your next competition."]
           ]}
+          navigate={navigate}
         />
       )}
 
