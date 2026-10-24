@@ -65,7 +65,8 @@ export default function Dashboard({ token, user, setUser, navigate, logout, open
   const [modalData, setModalData] = useState(null);
   const [confirmDialog, setConfirmDialog] = useState(null);
   const [slotDate, setSlotDate] = useState(() => isoDate());
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [myRegistrations, setMyRegistrations] = useState([]);
+  const [myPayments, setMyPayments] = useState([]);
 
   const role = user?.role || "customer";
 
@@ -122,14 +123,18 @@ export default function Dashboard({ token, user, setUser, navigate, logout, open
 
       // 3. Customer Role Data
       if (role === "customer") {
-        const [myB, myR, allP] = await Promise.all([
+        const [myB, myR, allP, myTeams, myPmts] = await Promise.all([
           request("/bookings/my-bookings", { token }).catch(() => []),
           request("/reports/my-reports", { token }).catch(() => []),
-          request("/playgrounds").catch(() => [])
+          request("/playgrounds").catch(() => []),
+          request("/tournaments/my-registrations", { token }).catch(() => []),
+          request("/payments/my-payments", { token }).catch(() => [])
         ]);
         setBookings(myB || []);
         setMyReports(myR || []);
         setPlaygrounds(allP || []);
+        setMyRegistrations(myTeams || []);
+        setMyPayments(myPmts || []);
       }
 
       // 4. Playground Admin Data
@@ -215,24 +220,16 @@ export default function Dashboard({ token, user, setUser, navigate, logout, open
             <img src="/legacy/assets/images/favicon.png" alt="TURF" />
             <span>TURF</span>
           </a>
-          <button
-            className="mobile-side-toggle"
-            type="button"
-            onClick={() => setMobileNavOpen(!mobileNavOpen)}
-          >
-            {mobileNavOpen ? "✕ Close" : "☰ Menu"}
-          </button>
         </div>
 
         <p className="workspace-label">{role.replace("-", " ")} workspace</p>
 
-        <nav className={`side-nav ${mobileNavOpen ? "mobile-open" : ""}`}>
+        <nav className="side-nav">
           {navItems.map((item) => (
             <button
               key={item.id}
               className={tab === item.id ? "active" : ""}
               onClick={() => {
-                setMobileNavOpen(false);
                 if (item.action) item.action();
                 else setTab(item.id);
               }}
@@ -354,12 +351,16 @@ export default function Dashboard({ token, user, setUser, navigate, logout, open
               {tab === "my-bookings" && (
                 <CustomerBookingsTab
                   bookings={bookings}
+                  myRegistrations={myRegistrations}
+                  myPayments={myPayments}
                   token={token}
+                  user={user}
                   showNotice={showNotice}
                   reload={loadData}
                   setActiveModal={setActiveModal}
                   setModalData={setModalData}
                   setConfirmDialog={setConfirmDialog}
+                  navigate={navigate}
                 />
               )}
 
@@ -784,12 +785,29 @@ function OverviewTab({
 }
 
 // ===================================================
-// SECTION 2: CUSTOMER MY BOOKINGS & QR PASSES
+// SECTION 2: CUSTOMER MY BOOKINGS & QR PASSES (Authentic)
 // ===================================================
-function CustomerBookingsTab({ bookings, token, showNotice, reload, setActiveModal, setModalData, setConfirmDialog }) {
+function CustomerBookingsTab({
+  bookings,
+  myRegistrations = [],
+  myPayments = [],
+  token,
+  user,
+  showNotice,
+  reload,
+  setActiveModal,
+  setModalData,
+  setConfirmDialog,
+  navigate
+}) {
+  const [activeSubTab, setActiveSubTab] = useState("bookings");
   const [filter, setFilter] = useState("All");
 
   const filtered = filter === "All" ? bookings : bookings.filter((b) => b.bookingStatus === filter);
+
+  // Paid payments and bookings with confirmed QR passes
+  const paidPayments = myPayments.filter((p) => p.paymentStatus === "Paid");
+  const paidBookings = bookings.filter((b) => b.paymentStatus === "Paid");
 
   const handleCancelClick = (booking) => {
     setConfirmDialog({
@@ -813,56 +831,192 @@ function CustomerBookingsTab({ bookings, token, showNotice, reload, setActiveMod
     <div>
       <div className="section-heading">
         <div>
-          <h2>My bookings & passes</h2>
+          <h2>My bookings &amp; entry passes</h2>
           <p>Access your reserved ground slots, digital tickets and cancellation options.</p>
         </div>
       </div>
 
-      <div className="nav-subtabs">
-        {["All", "Confirmed", "Pending", "Cancelled"].map((f) => (
-          <button key={f} className={filter === f ? "active" : ""} onClick={() => setFilter(f)}>
-            {f}
-          </button>
-        ))}
+      {/* Top Authentic Tabs */}
+      <div className="tabs" style={{ display: "flex", gap: "10px", marginBottom: "22px" }}>
+        <button
+          className={activeSubTab === "bookings" ? "active" : ""}
+          onClick={() => setActiveSubTab("bookings")}
+          style={{ minHeight: "42px", padding: "10px 18px", fontWeight: 700 }}
+        >
+          My bookings
+        </button>
+        <button
+          className={activeSubTab === "tickets" ? "active" : ""}
+          onClick={() => setActiveSubTab("tickets")}
+          style={{ minHeight: "42px", padding: "10px 18px", fontWeight: 700 }}
+        >
+          My QR tickets ({paidPayments.length || paidBookings.length})
+        </button>
       </div>
 
-      <div className="pinned-grid">
-        {filtered.length ? (
-          filtered.map((b) => (
-            <article key={b._id} className="card">
-              <span className={`status ${b.bookingStatus?.toLowerCase()}`}>
-                {b.bookingStatus} · {b.paymentStatus || "Unpaid"}
-              </span>
-              <h3>{b.playground?.name || "Playground booking"}</h3>
-              <p>
-                <strong>Date:</strong> {prettyDate(b.bookingDate)}<br />
-                <strong>Time:</strong> {b.startTime} – {b.endTime}<br />
-                <strong>Amount:</strong> ৳{new Intl.NumberFormat("en-BD").format(b.totalAmount || b.pricing || 0)}
-              </p>
-              <div className="card-foot">
-                <button
-                  type="button"
-                  className="button"
-                  onClick={() => { setActiveModal("view-ticket"); setModalData(b); }}
-                >
-                  View QR pass
-                </button>
-                {["Pending", "Confirmed"].includes(b.bookingStatus) && (
+      {activeSubTab === "bookings" ? (
+        <>
+          <div className="nav-subtabs">
+            {["All", "Confirmed", "Pending", "Cancelled"].map((f) => (
+              <button key={f} className={filter === f ? "active" : ""} onClick={() => setFilter(f)}>
+                {f}
+              </button>
+            ))}
+          </div>
+
+          <div className="pinned-grid">
+            {filtered.length ? (
+              filtered.map((b) => (
+                <article key={b._id} className="card">
+                  <span className={`status ${b.bookingStatus?.toLowerCase()}`}>
+                    {b.bookingStatus} · {b.paymentStatus || "Unpaid"}
+                  </span>
+                  <h3>{b.playground?.name || "Playground booking"}</h3>
+                  <p>
+                    <strong>Date:</strong> {prettyDate(b.bookingDate)}<br />
+                    <strong>Time:</strong> {b.startTime} – {b.endTime}<br />
+                    <strong>Location:</strong> {b.playground?.address || "Location will be confirmed"}<br />
+                    <strong>Total:</strong> ৳{new Intl.NumberFormat("en-BD").format(b.totalAmount || b.pricing || 0)}
+                  </p>
+                  <div className="card-foot">
+                    {b.paymentStatus === "Paid" ? (
+                      <button
+                        type="button"
+                        className="button"
+                        onClick={() => { setActiveModal("view-ticket"); setModalData(b); }}
+                      >
+                        View QR pass
+                      </button>
+                    ) : b.bookingStatus !== "Cancelled" ? (
+                      <button
+                        type="button"
+                        className="button"
+                        onClick={() => { setActiveModal("view-ticket"); setModalData(b); }}
+                      >
+                        Pay &amp; get pass
+                      </button>
+                    ) : null}
+
+                    {b.playground?.phone && (
+                      <button
+                        type="button"
+                        className="button alt"
+                        onClick={() => showNotice("Playground Admin Phone: " + b.playground.phone)}
+                      >
+                        Chat with admin
+                      </button>
+                    )}
+
+                    {["Pending", "Confirmed"].includes(b.bookingStatus) && (
+                      <button
+                        type="button"
+                        className="button alt"
+                        onClick={() => handleCancelClick(b)}
+                      >
+                        Cancel booking
+                      </button>
+                    )}
+                  </div>
+                </article>
+              ))
+            ) : (
+              <div className="empty-state">No bookings found under this filter.</div>
+            )}
+
+            {/* Active Tournament Registrations */}
+            {myRegistrations.map((team) => (
+              <article key={team._id} className="card">
+                <span className="badge">TOURNAMENT · PAID</span>
+                <h3>{team.teamName}</h3>
+                <p>
+                  <strong>Tournament:</strong> {team.tournament?.name || "Tournament"}<br />
+                  <strong>Dates:</strong> {prettyDate(team.tournament?.startDate)} – {prettyDate(team.tournament?.endDate)}<br />
+                  <strong>Registration:</strong> ৳{new Intl.NumberFormat("en-BD").format(team.tournament?.registrationFee || 0)}
+                </p>
+                <div className="card-foot">
                   <button
                     type="button"
                     className="button alt"
-                    onClick={() => handleCancelClick(b)}
+                    onClick={() => navigate("tournaments")}
                   >
-                    Cancel
+                    View fixture
                   </button>
-                )}
-              </div>
-            </article>
-          ))
-        ) : (
-          <div className="empty-state">No bookings found under this filter.</div>
-        )}
-      </div>
+                  <button
+                    type="button"
+                    className="button"
+                    onClick={() => {
+                      setActiveModal("view-receipt");
+                      setModalData({
+                        tournamentTeam: team,
+                        playground: team.tournament?.name,
+                        amount: team.tournament?.registrationFee,
+                        createdAt: team.createdAt
+                      });
+                    }}
+                  >
+                    View receipt
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        </>
+      ) : (
+        /* Authentic Ticket Grid */
+        <div className="ticket-grid">
+          {(paidPayments.length ? paidPayments : paidBookings).length ? (
+            (paidPayments.length ? paidPayments : paidBookings).map((item) => {
+              const b = item.booking || item;
+              const title = b.playground?.name || item.tournamentTeam?.tournament?.name || "TURF Entry Pass";
+              const schedule = b.bookingDate
+                ? `${prettyDate(b.bookingDate)} · ${b.startTime} - ${b.endTime}`
+                : (item.tournamentTeam ? `Team: ${item.tournamentTeam.teamName}` : "Confirmed Reservation");
+              const amount = item.amount || b.totalAmount || b.pricing || 0;
+              const qrUrl = b.qrCode || `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(b._id || item._id)}`;
+
+              return (
+                <article key={item._id || b._id} className="card ticket">
+                  <div className="ticket-copy">
+                    <div>
+                      <span className="badge">PAID TICKET</span>
+                      <h3>{title}</h3>
+                      <p>
+                        {schedule}<br />
+                        Paid: BDT {new Intl.NumberFormat("en-BD").format(amount)}
+                      </p>
+                    </div>
+                    <div className="ticket-actions">
+                      <button
+                        type="button"
+                        className="button alt"
+                        onClick={() => {
+                          setActiveModal("view-receipt");
+                          setModalData({ booking: b, ...item, amount, title });
+                        }}
+                      >
+                        View receipt
+                      </button>
+                    </div>
+                  </div>
+                  <aside className="ticket-qr">
+                    <span className="ticket-qr-label">ENTRY QR</span>
+                    <div className="ticket-qr-frame">
+                      <img className="ticket-qr-image" src={qrUrl} alt="QR ticket" />
+                    </div>
+                    <small>Show this code at venue entry</small>
+                  </aside>
+                </article>
+              );
+            })
+          ) : (
+            <div className="empty-state full" style={{ gridColumn: "1 / -1", padding: "40px 20px", textAlign: "center" }}>
+              <h3>No paid tickets yet</h3>
+              <p style={{ color: "#68766d", margin: "8px 0 16px" }}>Complete a slot booking or tournament registration to receive your entry pass with QR code.</p>
+              <button className="button" onClick={() => navigate("venues")}>Find playgrounds</button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -1265,7 +1419,7 @@ function QRScannerTab({ token, showNotice }) {
     try {
       const res = await request("/payments/validate-qr", {
         method: "POST",
-        body: { token: val },
+        body: { qrData: val },
         token
       });
       playBeep(true);
@@ -2576,7 +2730,77 @@ function Modals({ modal, data, close, token, showNotice, reload, playgrounds }) 
           </div>
         )}
 
-        {/* ADMIN CANCELLATION MODAL (matches management.js admin cancel) */}
+        {/* AUTHENTIC RECEIPT MODAL (matches receipt.html) */}
+          {modal === "view-receipt" && data && (
+            <div className="receipt-modal-box">
+              <header className="receipt-header">
+                <div>
+                  <p className="brand">TURF</p>
+                  <h1>Entry Pass &amp; Money Receipt</h1>
+                  <p className="sub">Keep this document and show the QR code at the venue gate.</p>
+                </div>
+                <span className="receipt-badge-paid">PAID</span>
+              </header>
+
+              <div className="receipt-ticket-info">
+                <div>
+                  <span className="eyebrow">{data.booking ? "SLOT BOOKING" : "TOURNAMENT PASS"}</span>
+                  <h2>{data.title || data.booking?.playground?.name || data.tournamentTeam?.tournament?.name || "TURF Entry Pass"}</h2>
+                  <p>
+                    {data.booking
+                      ? `${prettyDate(data.booking.bookingDate)} · ${data.booking.startTime} - ${data.booking.endTime}`
+                      : (data.tournamentTeam ? `Team: ${data.tournamentTeam.teamName}` : prettyDate(data.createdAt))}
+                    <br />
+                    {data.booking?.playground?.address || "Venue entry confirmed"}
+                  </p>
+                </div>
+                <img
+                  className="receipt-qr-thumb"
+                  src={data.booking?.qrCode || `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(data.booking?._id || data._id || "turf")}`}
+                  alt="Entry QR"
+                />
+              </div>
+
+              <div className="receipt-details-list">
+                <div className="receipt-detail-row">
+                  <span>Customer Name</span>
+                  <strong>{user?.name || "Customer"}</strong>
+                </div>
+                <div className="receipt-detail-row">
+                  <span>Customer Email</span>
+                  <strong>{user?.email || "Email on record"}</strong>
+                </div>
+                <div className="receipt-detail-row">
+                  <span>Payment Method</span>
+                  <strong>{data.paymentMethod || "Digital Payment / Online"}</strong>
+                </div>
+                <div className="receipt-detail-row">
+                  <span>Payment Reference / ID</span>
+                  <strong>#{String(data._id || data.paymentId || "00000000").slice(-10).toUpperCase()}</strong>
+                </div>
+                <div className="receipt-detail-row">
+                  <span>Issue Date</span>
+                  <strong>{prettyDate(data.createdAt || new Date())}</strong>
+                </div>
+              </div>
+
+              <div className="receipt-total">
+                <span>Total Paid</span>
+                <strong>৳{new Intl.NumberFormat("en-BD").format(data.amount || data.totalAmount || data.booking?.totalAmount || 0)}</strong>
+              </div>
+
+              <p className="receipt-footer-note">
+                Generated electronically by TURF. This is a valid payment receipt and entry pass.
+              </p>
+
+              <div className="receipt-modal-actions">
+                <button type="button" className="button alt" onClick={close}>Close</button>
+                <button type="button" className="button" onClick={() => window.print()}>Print / Save PDF</button>
+              </div>
+            </div>
+          )}
+
+          {/* ADMIN CANCELLATION MODAL (matches management.js admin cancel) */}
         {modal === "admin-cancel" && data && (
           <section className="cancellation-box" style={{ padding: "26px" }}>
             <span className="eyebrow" style={{ color: "#a53636" }}>VENUE ACTION</span>
