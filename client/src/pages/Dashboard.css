@@ -1081,7 +1081,7 @@ body {
     gap:9px;
     align-items:center
 }
-.button,button {
+.button {
     border:0;
     border-radius:8px;
     background:var(--green);
@@ -1091,7 +1091,7 @@ body {
     cursor:pointer;
     text-decoration:none
 }
-.button.alt,button.alt {
+.button.alt {
     background:#fff;
     color:var(--green);
     border:1px solid #bcdcc6
@@ -4352,7 +4352,7 @@ iframe {
     .portal-head>.user-actions,.portal-head>div:last-child:not(:first-child) {
         width:100%;
     }
-    .button,button,input[type="submit"],input[type="button"] {
+    .button,input[type="submit"],input[type="button"] {
         min-height:44px;
     }
     .modal {
@@ -4454,7 +4454,7 @@ iframe {
     .portal-head h1 {
         font-size:1.38rem;
     }
-    .button,button {
+    .button {
         min-height:43px;
     }
     .card-foot>* {
@@ -4812,7 +4812,7 @@ tr:hover td {
     .portal-head h1,.topbar h1,.chat-top h1 {
         letter-spacing:-.04em;
     }
-    .button,button,input[type="submit"],input[type="button"] {
+    .button,input[type="submit"],input[type="button"] {
         min-height:46px;
     }
     .card-foot,.venue-contact-actions,.cancellation-actions {
