@@ -282,8 +282,10 @@ export default function VenueDetail({ venue, token, user, openAuth, navigate, sh
       {successBooking && (
         <div className="modal-overlay">
           <div className="modal-box" style={{ maxWidth: "500px", textAlign: "center", padding: "30px 24px" }}>
-            <div style={{ width: "60px", height: "60px", borderRadius: "50%", background: "#dcfce7", color: "#15803d", display: "grid", placeItems: "center", fontSize: "1.8rem", margin: "0 auto 16px" }}>
-              ✓
+            <div style={{ width: "60px", height: "60px", borderRadius: "50%", background: "#dcfce7", color: "#15803d", display: "grid", placeItems: "center", margin: "0 auto 16px" }}>
+              <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
             </div>
             <span className="eyebrow">RESERVATION CONFIRMED</span>
             <h2 style={{ margin: "6px 0 8px", fontSize: "1.45rem", color: "#163a23" }}>You're ready to play!</h2>

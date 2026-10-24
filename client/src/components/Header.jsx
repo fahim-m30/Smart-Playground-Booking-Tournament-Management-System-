@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import "./Header.css";
 
 export default function Header({ page, user, navigate, logout }) {
@@ -14,14 +14,66 @@ export default function Header({ page, user, navigate, logout }) {
     logout();
   };
 
+  // Dynamically compute ID/Role-wise navigation links
+  const navLinks = useMemo(() => {
+    if (!user) {
+      return [
+        { id: "home", label: "Home" },
+        { id: "venues", label: "Playgrounds" },
+        { id: "tournaments", label: "Tournament" },
+        { id: "about", label: "About" },
+        { id: "contact", label: "Contact" },
+      ];
+    }
+
+    const role = user.role;
+    if (role === "staff") {
+      return [
+        { id: "dashboard", label: "QR Gate Check-in" },
+        { id: "venues", label: "Playgrounds" },
+      ];
+    }
+
+    if (role === "playground-admin") {
+      return [
+        { id: "dashboard", label: "Dashboard Console" },
+        { id: "venues", label: "Playgrounds" },
+        { id: "tournaments", label: "Tournaments" },
+      ];
+    }
+
+    if (role === "super-admin") {
+      return [
+        { id: "dashboard", label: "Platform Dashboard" },
+        { id: "venues", label: "Playgrounds" },
+        { id: "tournaments", label: "Tournaments" },
+      ];
+    }
+
+    // Default: Customer / Player
+    return [
+      { id: "dashboard", label: "My Bookings & QR" },
+      { id: "venues", label: "Playgrounds" },
+      { id: "tournaments", label: "Tournaments" },
+      { id: "home", label: "Home" },
+    ];
+  }, [user]);
+
+  const roleLabel = {
+    staff: "Staff Gate",
+    "playground-admin": "Venue Admin",
+    "super-admin": "Super Admin",
+    customer: "Player"
+  }[user?.role] || "Member";
+
   return (
     <header className="site-header">
       <div
         className="site-brand"
         role="button"
         tabIndex={0}
-        onClick={() => handleNav("home")}
-        onKeyDown={(e) => e.key === "Enter" && handleNav("home")}
+        onClick={() => handleNav(user ? "dashboard" : "home")}
+        onKeyDown={(e) => e.key === "Enter" && handleNav(user ? "dashboard" : "home")}
       >
         <img className="brand-mark" src="/legacy/assets/images/favicon.png" alt="TURF" />
         <div className="brand-text">
@@ -33,65 +85,54 @@ export default function Header({ page, user, navigate, logout }) {
         </div>
       </div>
 
-      {/* Desktop Navigation */}
+      {/* Desktop Navigation - Role & ID Adaptive */}
       <nav className="desktop-nav" aria-label="Main navigation">
-        <button
-          type="button"
-          className={`nav-link ${page === "home" ? "active" : ""}`}
-          onClick={() => handleNav("home")}
-        >
-          Home
-        </button>
-        <button
-          type="button"
-          className={`nav-link ${page === "venues" ? "active" : ""}`}
-          onClick={() => handleNav("venues")}
-        >
-          Playgrounds
-        </button>
-        <button
-          type="button"
-          className={`nav-link ${page === "tournaments" ? "active" : ""}`}
-          onClick={() => handleNav("tournaments")}
-        >
-          Tournament
-        </button>
-        <button
-          type="button"
-          className={`nav-link ${page === "about" ? "active" : ""}`}
-          onClick={() => handleNav("about")}
-        >
-          About
-        </button>
-        <button
-          type="button"
-          className={`nav-link ${page === "contact" ? "active" : ""}`}
-          onClick={() => handleNav("contact")}
-        >
-          Contact
-        </button>
+        {navLinks.map((link) => (
+          <button
+            key={link.id}
+            type="button"
+            className={`nav-link ${page === link.id ? "active" : ""}`}
+            onClick={() => handleNav(link.id)}
+          >
+            {link.label}
+          </button>
+        ))}
       </nav>
 
       {/* Desktop Actions */}
       <div className="nav-actions desktop-actions">
         {user ? (
-          <>
+          <div className="user-profile-nav">
             <button
               type="button"
               className="dashboard-nav-btn"
               onClick={() => handleNav("dashboard")}
+              title={`Open ${user.role} workspace`}
             >
-              <span className="user-pulse-dot" />
-              <span>Dashboard ({user.name?.split(" ")[0] || "Account"})</span>
+              <div className="user-avatar-badge">
+                {user.name?.charAt(0).toUpperCase() || "U"}
+              </div>
+              <div className="user-nav-meta">
+                <span className="user-nav-name">{user.name?.split(" ")[0] || "Account"}</span>
+                <span className={`user-role-chip role-${user.role || "customer"}`}>
+                  {roleLabel}
+                </span>
+              </div>
             </button>
             <button
               type="button"
               className="logout-nav-btn"
               onClick={handleLogout}
+              title="Sign out of account"
             >
-              Log out
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="21" x2="9" y2="12" />
+              </svg>
+              <span>Logout</span>
             </button>
-          </>
+          </div>
         ) : (
           <>
             <button
@@ -130,41 +171,16 @@ export default function Header({ page, user, navigate, logout }) {
         <div className="mobile-nav-drawer" onClick={() => setMenuOpen(false)}>
           <div className="mobile-nav-content" onClick={(e) => e.stopPropagation()}>
             <div className="mobile-nav-links">
-              <button
-                type="button"
-                className={`mobile-nav-link ${page === "home" ? "active" : ""}`}
-                onClick={() => handleNav("home")}
-              >
-                Home
-              </button>
-              <button
-                type="button"
-                className={`mobile-nav-link ${page === "venues" ? "active" : ""}`}
-                onClick={() => handleNav("venues")}
-              >
-                Playgrounds
-              </button>
-              <button
-                type="button"
-                className={`mobile-nav-link ${page === "tournaments" ? "active" : ""}`}
-                onClick={() => handleNav("tournaments")}
-              >
-                Tournament
-              </button>
-              <button
-                type="button"
-                className={`mobile-nav-link ${page === "about" ? "active" : ""}`}
-                onClick={() => handleNav("about")}
-              >
-                About
-              </button>
-              <button
-                type="button"
-                className={`mobile-nav-link ${page === "contact" ? "active" : ""}`}
-                onClick={() => handleNav("contact")}
-              >
-                Contact
-              </button>
+              {navLinks.map((link) => (
+                <button
+                  key={link.id}
+                  type="button"
+                  className={`mobile-nav-link ${page === link.id ? "active" : ""}`}
+                  onClick={() => handleNav(link.id)}
+                >
+                  {link.label}
+                </button>
+              ))}
             </div>
             <div className="mobile-nav-actions">
               {user ? (
@@ -174,8 +190,15 @@ export default function Header({ page, user, navigate, logout }) {
                     className="dashboard-nav-btn mobile-action-btn"
                     onClick={() => handleNav("dashboard")}
                   >
-                    <span className="user-pulse-dot" />
-                    <span>Dashboard ({user.name?.split(" ")[0] || "Account"})</span>
+                    <div className="user-avatar-badge">
+                      {user.name?.charAt(0).toUpperCase() || "U"}
+                    </div>
+                    <div className="user-nav-meta">
+                      <span className="user-nav-name">{user.name || "Account"}</span>
+                      <span className={`user-role-chip role-${user.role || "customer"}`}>
+                        {roleLabel}
+                      </span>
+                    </div>
                   </button>
                   <button
                     type="button"

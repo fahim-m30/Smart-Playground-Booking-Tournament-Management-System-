@@ -13,13 +13,38 @@ import InfoPage from "./pages/InfoPage";
 import { API, request } from "./services/api";
 
 export default function App() {
-  const [page, setPage] = useState("home");
+  const [token, setToken] = useState(() => localStorage.getItem("turf_token") || "");
+  const [user, setUser] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("turf_user") || "null");
+    } catch {
+      return null;
+    }
+  });
+
+  const getInitialPage = () => {
+    const hash = window.location.hash.replace("#", "").toLowerCase();
+    const validPages = ["home", "venues", "venue", "tournaments", "dashboard", "about", "contact", "auth"];
+    if (hash && validPages.includes(hash)) {
+      return hash;
+    }
+    try {
+      const savedUser = JSON.parse(localStorage.getItem("turf_user") || "null");
+      const savedToken = localStorage.getItem("turf_token");
+      if (savedToken && savedUser) {
+        if (["staff", "playground-admin", "super-admin"].includes(savedUser.role)) {
+          return "dashboard";
+        }
+      }
+    } catch {}
+    return "home";
+  };
+
+  const [page, setPage] = useState(getInitialPage);
   const [venues, setVenues] = useState([]);
   const [selectedVenue, setSelectedVenue] = useState(null);
   const [query, setQuery] = useState("");
   const [sport, setSport] = useState("");
-  const [user, setUser] = useState(() => JSON.parse(localStorage.getItem("turf_user") || "null"));
-  const [token, setToken] = useState(() => localStorage.getItem("turf_token") || "");
   const [notice, setNotice] = useState(null);
 
   const showNotice = (message, type = "success") => {
@@ -29,8 +54,21 @@ export default function App() {
 
   const navigate = (target) => {
     setPage(target);
+    window.location.hash = target;
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
+
+  useEffect(() => {
+    const handleHash = () => {
+      const hash = window.location.hash.replace("#", "").toLowerCase();
+      const validPages = ["home", "venues", "venue", "tournaments", "dashboard", "about", "contact", "auth"];
+      if (hash && validPages.includes(hash)) {
+        setPage(hash);
+      }
+    };
+    window.addEventListener("hashchange", handleHash);
+    return () => window.removeEventListener("hashchange", handleHash);
+  }, []);
 
   const logout = () => {
     localStorage.removeItem("turf_token");
