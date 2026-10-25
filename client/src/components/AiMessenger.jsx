@@ -1,47 +1,45 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import "./AiMessenger.css";
 import { request } from "../services/api";
 
-export default function AiMessenger({ token, user, initialContact, onClose, embedded = false, navigate }) {
-  const [mode, setMode] = useState("ai"); // "ai" | "messenger"
-  const [input, setInput] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
-
-  // AI Chat Messages
-  const [aiMessages, setAiMessages] = useState([
-    {
-      id: "ai-welcome",
-      sender: "ai",
-      text: `Hello ${user?.name ? user.name.split(" ")[0] : "Player"}! 👋 I'm **TURF AI Copilot**, your 24/7 smart assistant. 
-
-I can help you with:
-• ⚽ **Ground Bookings** & hourly slot timings
-• 🏆 **Tournaments**, live lottery draw & fixtures
-• 💸 **Cancellations** & instant cash refund rules
-• 🌦️ **Rain & weather** match rescheduling policies
-• 🎫 **Gate QR Pass** check-in at the ground
-
-Feel free to ask in **English** or **বাংলা**! How can I assist you today?`,
-      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      quickChips: [
-        "⚽ How to book a ground?",
-        "🏆 Tournament draw & lottery",
-        "💸 Cancellation & refund policy",
-        "🌦️ What happens if it rains?",
-        "📍 Best turf fields in Dhaka",
-        "বাংলায় সাহায্য চাই"
-      ]
+// Subtle modern UI message chime
+function playChime(isReceived = false) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    const now = ctx.currentTime;
+    if (isReceived) {
+      osc.frequency.setValueAtTime(587.33, now); // D5
+      osc.frequency.exponentialRampToValueAtTime(880, now + 0.12); // A5
+    } else {
+      osc.frequency.setValueAtTime(440, now); // A4
+      osc.frequency.exponentialRampToValueAtTime(659.25, now + 0.08); // E5
     }
-  ]);
+    gain.gain.setValueAtTime(0.06, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.22);
+  } catch {}
+}
 
-  // Venue Messenger State
+export default function AiMessenger({ token, user, initialContact, onClose, embedded = false, navigate }) {
+  const role = user?.role || "customer";
   const [contacts, setContacts] = useState([]);
   const [conversations, setConversations] = useState([]);
   const [activeContact, setActiveContact] = useState(initialContact || null);
-  const [threadMessages, setThreadMessages] = useState([]);
-  const [loadingContacts, setLoadingContacts] = useState(false);
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+  const [search, setSearch] = useState("");
+  const [loadingContacts, setLoadingContacts] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
-  const [messengerError, setMessengerError] = useState("");
+  const [isSending, setIsSending] = useState(false);
+  const [errorBanner, setErrorBanner] = useState("");
+  const [showVenueInfo, setShowVenueInfo] = useState(false);
+  const [mobileView, setMobileView] = useState("list"); // "list" | "thread" on phone
 
   const messagesEndRef = useRef(null);
 
@@ -51,288 +49,304 @@ Feel free to ask in **English** or **বাংলা**! How can I assist you tod
 
   useEffect(() => {
     scrollToBottom();
-  }, [aiMessages, threadMessages, isTyping]);
+  }, [messages, isSending]);
 
-  // Load Contacts and Conversations when switching to Messenger mode
+  // Load Contacts and Conversations on Mount
   useEffect(() => {
-    if (mode === "messenger" && token) {
-      loadMessengerData();
-    }
-  }, [mode, token]);
+    if (!token) return;
+    loadContactsAndConversations();
+  }, [token, role]);
 
-  const loadMessengerData = async () => {
+  const loadContactsAndConversations = async () => {
     setLoadingContacts(true);
-    setMessengerError("");
+    setErrorBanner("");
     try {
-      const [convs, conts] = await Promise.all([
-        request("/chat/conversations", { token }).catch(() => []),
-        request("/chat/contacts", { token }).catch(() => [])
+      const [conts, convs] = await Promise.all([
+        request("/chat/contacts", { token }).catch(() => []),
+        request("/chat/conversations", { token }).catch(() => [])
       ]);
-      setConversations(Array.isArray(convs) ? convs : []);
-      setContacts(Array.isArray(conts) ? conts : []);
 
+      const rawContacts = Array.isArray(conts) ? conts : [];
+      const rawConversations = Array.isArray(convs) ? convs : [];
+
+      // Filter: Customer MUST NOT see system admin / super-admin
+      const filteredContacts = rawContacts.filter((c) => {
+        if (role === "customer") {
+          return c.role === "playground-admin";
+        }
+        return true;
+      });
+
+      const filteredConversations = rawConversations.filter((cv) => {
+        if (role === "customer") {
+          return cv.contact?.role === "playground-admin";
+        }
+        return true;
+      });
+
+      setContacts(filteredContacts);
+      setConversations(filteredConversations);
+
+      // Select initial contact if provided or pick first conversation/contact
       if (initialContact) {
         setActiveContact(initialContact);
-      } else if (!activeContact && convs?.length > 0) {
-        setActiveContact(convs[0].contact || convs[0]);
-      } else if (!activeContact && conts?.length > 0) {
-        setActiveContact(conts[0]);
+        setMobileView("thread");
+      } else if (!activeContact) {
+        if (filteredConversations.length > 0) {
+          const first = filteredConversations[0];
+          setActiveContact({
+            ...(first.contact || {}),
+            playground: first.playground || first.contact?.playground
+          });
+        } else if (filteredContacts.length > 0) {
+          setActiveContact(filteredContacts[0]);
+        }
       }
     } catch (err) {
-      setMessengerError(err.message || "Failed to load chat contacts.");
+      setErrorBanner(err.message || "Failed to load messenger contacts.");
     } finally {
       setLoadingContacts(false);
     }
   };
 
-  // Load Active Thread Messages
+  // Load thread messages whenever activeContact changes
   useEffect(() => {
-    if (mode === "messenger" && activeContact && token) {
-      loadThreadMessages(activeContact.id || activeContact._id);
-    }
-  }, [activeContact, mode, token]);
+    const contactId = activeContact?.id || activeContact?._id;
+    if (!contactId || !token) return;
+    loadThread(contactId);
+  }, [activeContact, token]);
 
-  const loadThreadMessages = async (contactId) => {
-    if (!contactId) return;
+  const loadThread = async (contactId) => {
     setLoadingMessages(true);
     try {
-      const msgs = await request(`/chat/contacts/${contactId}/messages`, { token });
-      setThreadMessages(Array.isArray(msgs) ? msgs : []);
-    } catch {
-      setThreadMessages([]);
+      const thread = await request(`/chat/contacts/${contactId}/messages`, { token });
+      const rawList = Array.isArray(thread) ? thread : [];
+
+      // If no messages yet, provide a smart welcome message from the AI
+      if (rawList.length === 0) {
+        const welcomeMessage = getWelcomeGreeting(activeContact);
+        setMessages([
+          {
+            _id: "welcome-system",
+            senderRole: "system",
+            message: welcomeMessage,
+            createdAt: new Date().toISOString()
+          }
+        ]);
+      } else {
+        setMessages(rawList);
+      }
+    } catch (err) {
+      setMessages([]);
     } finally {
       setLoadingMessages(false);
     }
   };
 
-  // ========================================================
-  // AI KNOWLEDGE BRAIN & RESPONSE GENERATOR
-  // ========================================================
-  const generateAiAnswer = (prompt) => {
-    const q = prompt.toLowerCase();
-    const isBangla = /[\u0980-\u09FF]/.test(prompt) ||
-      /\b(kivabe|ki vabe|kobe|taka|refund|pabo|bristi|khala|khelte|koto|mathe|shomoy)\b/i.test(prompt);
-
-    // 1. Cancellation & Refunds
-    if (q.includes("cancel") || q.includes("refund") || q.includes("ferot") || q.includes("টাকা ফেরত") || q.includes("বাতিল")) {
-      if (isBangla) {
-        return `### 💸 বাতিল ও রিফান্ড নীতি (TURF Refund Policy)
-1. **স্লট বুকিং বাতিল:** খেলার নির্ধারিত সময়ের অন্তত **২ ঘণ্টা আগে** বুকিং বাতিল করলে সম্পূর্ণ রিফান্ড পাওয়া যাবে।
-2. **টুর্নামেন্ট রেজিস্ট্রেশন বাতিল:** টুর্নামেন্ট শুরু হওয়ার অন্তত **২ দিন আগে** বাতিল করতে হবে।
-3. **ক্যাশ রিফান্ড সংগ্রহ:** অনুমোদিত রিফান্ডের টাকা সরাসরি সংশ্লিষ্ট ভেন্যু/মাঠের অফিস থেকে সংগ্রহ করা যায়। আপনার ফোনে বুকিং বাতিল ও কালেকশন ভাউচারের SMS পাঠানো হয়।`;
-      }
-      return `### 💸 Cancellation & Refund Policy
-• **Slot Bookings:** You can cancel any slot booking up to **2 hours before** start time for an approved refund.
-• **Tournament Registrations:** Must be cancelled at least **2 days before** the tournament begins.
-• **Cash Collection:** Approved refunds can be collected in cash directly at the venue office counter. An SMS notification voucher is automatically sent to your registered phone number.`;
+  // Welcome greeting logic
+  const getWelcomeGreeting = (contact) => {
+    if (contact?.role === "super-admin") {
+      return `স্বাগতম TURF সিস্টেম সাপোর্ট ডেস্কে! 🛡️ আমি প্ল্যাটফর্মের এআই অ্যাসিস্ট্যান্ট।
+ভেন্যু অনুমোদন, স্লট কনফিগারেশন, পেমেন্ট ও পে-আউট, টুর্নামেন্ট আয়োজন বা স্টাফ স্ক্যানার পলিসি সম্পর্কে যেকোনো প্রশ্ন করতে পারেন। সিস্টেম সংক্রান্ত যে কোনো বিষয় আমি তাৎক্ষণিকভাবে বুঝিয়ে দিতে পারি। বিশেষ সহায়তার প্রয়োজন হলে সিস্টেম অ্যাডমিন সরাসরি যোগাযোগ করবেন।`;
     }
-
-    // 2. Booking a Ground / Slot
-    if (q.includes("book") || q.includes("slot") || q.includes("ground") || q.includes("field") || q.includes("মাঠ") || q.includes("বুক")) {
-      if (isBangla) {
-        return `### ⚽ মাঠ বা স্লট বুক করার সহজ নিয়ম:
-1. **মাঠ নির্বাচন:** 'Playgrounds' অপশনে গিয়ে আপনার পছন্দের ভেন্যু (যেমন: ধানমন্ডি, গুলশান, মিরপুর) বেছে নিন।
-2. **তারিখ ও স্লট নির্বাচন:** উপলব্ধ তারিখ ও পছন্দের সময়সূচি (সকাল ৬টা থেকে রাত ১২টা) নির্বাচন করুন।
-3. **কনফার্মেশন ও QR কোড:** বুকিং কনফার্ম হলে সাথে সাথেই আপনার ড্যাশবোর্ডে ডিজিটাল **QR Entry Pass** পাবেন যা মাঠে প্রবেশের সময় স্ক্যান করা হবে।`;
-      }
-      return `### ⚽ How to Book a Turf Ground:
-1. Go to **Playgrounds** tab from the top menu or dashboard.
-2. Choose your preferred venue (Football, Cricket, Futsal, Badminton).
-3. Pick your desired date and active hourly time slot (6:00 AM – 12:00 AM).
-4. Complete your reservation to instantly generate your **Gate QR Entry Pass** in your dashboard!`;
-    }
-
-    // 3. Tournaments, Draw, Lottery
-    if (q.includes("tourney") || q.includes("tournament") || q.includes("lottery") || q.includes("draw") || q.includes("fixture") || q.includes("টুর্নামেন্ট") || q.includes("লটারি")) {
-      if (isBangla) {
-        return `### 🏆 টুর্নামেন্ট ও লাইভ লটারি সিস্টেম:
-• **লাইভ ড্র (Live Lottery Draw):** টুর্নামেন্ট শুরুর ঠিক ১ দিন আগে ভেন্যু অ্যাডমিন লাইভ লটারির মাধ্যমে গ্রুপ ও ফিক্সচার তৈরি করেন।
-• **গ্রুপ ও নকআউট:** প্রতিটি দল গ্রুপ পর্বে ম্যাচ খেলবে এবং কোয়ালিফাই করা দলগুলো কোয়ার্টার, সেমি ও ফাইনালে উঠবে।
-• **ফলাফল ও ট্রফি:** প্রতিটি ম্যাচের লাইভ স্কোরবোর্ড ও ফলাফল সরাসরি TURF প্ল্যাটফর্মে রিয়েল-টাইমে আপডেট হয়!`;
-      }
-      return `### 🏆 Tournaments & Official Live Draw:
-• **Live Team Lottery:** 1 day before the tournament commences, the playground administrator conducts the official Live Draw ceremony where all verified teams are randomly distributed into group stages.
-• **Competition Structure:** Teams play group-stage matches followed by Quarter-finals, Semi-finals, and the Grand Final.
-• **Live Standings:** Points tables and fixtures update dynamically on the platform after every match.`;
-    }
-
-    // 4. Rain & Weather Rescheduling
-    if (q.includes("rain") || q.includes("weather") || q.includes("bristi") || q.includes("বৃষ্টি") || q.includes("reschedule")) {
-      if (isBangla) {
-        return `### 🌦️ বৃষ্টি বা প্রতিকূল আবহাওয়া সংক্রান্ত নিয়ম:
-• ভারী বৃষ্টি বা বিদ্যুতের সমস্যার কারণে যদি মাঠ খেলার অনুপযোগী হয়, তবে ভেন্যু অ্যাডমিন তাৎক্ষণিকভাবে ম্যাচটি অফিশিয়ালি স্থগিত করবেন।
-• অ্যাডমিন নতুন তারিখ ও সময় ঘোষণা করবেন এবং কোনো পর্ব অসমাপ্ত রেখে পরবর্তী পর্বের খেলা শুরু হবে না। খেলোয়াড়দের ফোনে মেসেজ পাঠানো হয়।`;
-      }
-      return `### 🌦️ Rain & Weather Policy:
-• If severe rain or ground conditions make play unsafe, the playground administrator logs an official delay reason.
-• The match is rescheduled to a mutually approved time. Next-round knockout matches remain locked until all preceding matches are officially played.`;
-    }
-
-    // 5. QR Code & Gate Entry
-    if (q.includes("qr") || q.includes("gate") || q.includes("scanner") || q.includes("pass") || q.includes("entry") || q.includes("গেটের")) {
-      if (isBangla) {
-        return `### 🎫 ডিজিটাল QR গেট পাস সিস্টেম:
-• আপনার প্রতিটি কনফার্মড বুকিং এবং টুর্নামেন্ট এন্ট্রির জন্য একটি ডায়নামিক QR কোড তৈরি হয়।
-• মাঠে পৌঁছানোর পর ভেন্যুর গেট সিকিউরিটি/স্টাফ তাদের TURF QR Scanner দিয়ে আপনার টিকিট স্ক্যান করবেন। একবার স্ক্যান হওয়ার সাথে সাথেই সবুজ ভেরিফিকেশন সিগন্যাল ও অডিও বীপ শোনা যাবে।`;
-      }
-      return `### 🎫 Digital QR Gate Pass System:
-• Every confirmed ground reservation and paid tournament ticket generates a dynamic QR Code.
-• Upon arrival at the venue gate, the security/staff scanner scans your QR pass to check you in seamlessly with zero paper tickets needed.`;
-    }
-
-    // 6. Grounds in Dhaka
-    if (q.includes("dhaka") || q.includes("venue") || q.includes("location") || q.includes("best") || q.includes("dhanmondi") || q.includes("uttara") || q.includes("মিরপুর")) {
-      if (isBangla) {
-        return `### 📍 ঢাকার শীর্ষ টার্ফ মাঠসমূহ:
-• **Dhanmondi Arena:** আন্তর্জাতিক মানের কৃত্রিম ঘাস, চমৎকার ফ্লাডলাইট এবং ড্রেসিংরুম সুবিধা।
-• **Uttara Sports Complex:** ফুটসাল ও ৭-এ-সাইড ফুটবলের জন্য সেরা।
-• **Gulshan & Banani Turf:** প্রিমিয়াম নাইট ম্যাচ সুবিধা ও ক্যাফে লাউঞ্জ।
-• **Mirpur Turf Hub:** বাজেট-বান্ধব ও চমৎকার পার্কিং সুবিধা।
-[প্লে-গ্রাউন্ডস ব্রাউজ করুন](#venues) সরাসরি বুকিং করার জন্য!`;
-      }
-      return `### 📍 Top Featured Turfs in Dhaka:
-• **Dhanmondi Arena:** FIFA-standard artificial grass, powerful LED floodlights & parking.
-• **Uttara Turf & Sports Hub:** Perfect for 7-a-side Football & Box Cricket.
-• **Gulshan/Banani Rooftop Turf:** Premium night games with corporate amenities.
-• **Mirpur Turf Zone:** High-durability turf with affordable hourly rates.
-Explore all grounds by navigating to **Playgrounds** tab!`;
-    }
-
-    // 7. Bengali General
-    if (isBangla) {
-      return `আমি আপনার প্রশ্নের উত্তর দিতে প্রস্তুত! আপনি স্লট বুকিং, টুর্নামেন্ট রেজিস্ট্রেশন, লাইভ ড্র, টাকা রিফান্ড বা বৃষ্টিতে ম্যাচ পেছানো নিয়ে যে কোনো প্রশ্ন করতে পারেন।
-
-**প্রয়োজনীয় লিংক:**
-• [মাঠ খুঁজুন](#venues)
-• [চলমান টুর্নামেন্ট](#tournaments)
-• [আমার ড্যাশবোর্ড ও QR পাস](#dashboard)`;
-    }
-
-    // Default English response
-    return `### 🤖 TURF Assistant Information
-Thank you for your question! Here is how TURF works:
-• **Playgrounds:** Search venues across Dhaka with artificial grass, floodlights, and premium amenities.
-• **Real-time Slots:** Reserve daytime or night slots with immediate digital QR receipt generation.
-• **Tournaments:** Register your team, participate in official live group lotteries, and battle for championship trophies.
-• **Direct Support:** You can also switch to the **Venue Messenger** tab above to chat directly with venue managers.
-
-Need a specific answer? Try typing *"How do I cancel?"* or *"How to register for tournament?"*`;
+    const venueName = contact?.playground?.name || "TURF ভেন্যুতে";
+    return `স্বাগতম ${venueName}! 👋 আমি এই মাঠের AI ভার্চুয়াল অ্যাসিস্ট্যান্ট।
+মাঠের সুযোগ-সুবিধা, খেলার নিয়মাবলী (ফুটবল/ক্রিকেট), আজকের স্লটের সময় ও দাম বা টুর্নামেন্ট সম্পর্কে যেকোনো প্রশ্ন করতে পারেন। এর বাইরে যেকোনো প্রয়োজনে কিছুক্ষণের মধ্যে ভেন্যু প্রতিনিধি আপনার সাথে যোগাযোগ করবেন।`;
   };
 
-  // Handle Send in AI Mode
-  const handleAiSend = (textToSend) => {
-    const messageText = (textToSend || input).trim();
-    if (!messageText) return;
+  // Dynamic Suggestion Chips based on who you're chatting with
+  const quickChips = useMemo(() => {
+    if (activeContact?.role === "super-admin") {
+      return [
+        "📋 ভেন্যু লাইসেন্স ও অনুমোদন শর্তাবলী",
+        "💰 পেমেন্ট ক্লিয়ারেন্স ও কমিশন নিয়ম",
+        "🏆 টুর্নামেন্ট লাইভ লটারি ও ব্র্যাকেট নিয়ম",
+        "👥 গেট স্টাফ ও QR স্ক্যানার কনফিগারেশন",
+        "👨‍💻 সিস্টেম অ্যাডমিনের সরাসরি সহায়তা চাই"
+      ];
+    }
+    const groundName = activeContact?.playground?.name || "মাঠের";
+    return [
+      `🏟️ ${groundName} সুযোগ-সুবিধা ও লোকেশন`,
+      "⏰ আজকের উপলব্ধ স্লট ও রেট",
+      "🏆 এই মাঠের টুর্নামেন্ট তথ্য",
+      "💸 বুকিং বাতিল ও রিফান্ডের নিয়ম",
+      "👟 কোন ধরনের জুতা/বুট পরে খেলা যাবে?",
+      "👨‍💼 ভেন্যু ম্যানেজারের সাথে কথা বলতে চাই"
+    ];
+  }, [activeContact]);
 
-    const userMsg = {
-      id: "u-" + Date.now(),
-      sender: "user",
-      text: messageText,
-      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-    };
+  // Filtered contacts list for sidebar
+  const filteredContactsList = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return contacts;
+    return contacts.filter((c) => {
+      const name = (c.name || "").toLowerCase();
+      const venue = (c.playground?.name || "").toLowerCase();
+      const sport = (c.playground?.sportType || "").toLowerCase();
+      const addr = (c.playground?.address || "").toLowerCase();
+      return name.includes(q) || venue.includes(q) || sport.includes(q) || addr.includes(q);
+    });
+  }, [contacts, search]);
 
-    setAiMessages((prev) => [...prev, userMsg]);
-    setInput("");
-    setIsTyping(true);
+  // Handle Send Message
+  const handleSend = async (messageText) => {
+    const text = (messageText || input).trim();
+    if (!text || !activeContact || isSending) return;
 
-    // Realistic typing response delay
-    setTimeout(() => {
-      const replyText = generateAiAnswer(messageText);
-      const aiReply = {
-        id: "ai-" + Date.now(),
-        sender: "ai",
-        text: replyText,
-        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        quickChips: [
-          "⚽ How to book a ground?",
-          "🏆 Tournament lottery & draw",
-          "💸 Refund policy",
-          "🎫 QR Gate Pass"
-        ]
-      };
-      setAiMessages((prev) => [...prev, aiReply]);
-      setIsTyping(false);
-    }, 600);
-  };
-
-  // Handle Send in Venue Messenger Mode
-  const handleMessengerSend = async () => {
-    const text = input.trim();
-    if (!text || !activeContact) return;
-
-    const recipientId = activeContact.id || activeContact._id;
-    const tempMsg = {
-      _id: "tmp-" + Date.now(),
-      sender: user?._id || "me",
-      recipient: recipientId,
+    const contactId = activeContact.id || activeContact._id;
+    const tempUserMsg = {
+      _id: "temp-" + Date.now(),
+      sender: user?._id || user?.id,
+      recipient: contactId,
       message: text,
+      senderRole: role,
       createdAt: new Date().toISOString()
     };
 
-    setThreadMessages((prev) => [...prev, tempMsg]);
+    setMessages((prev) => [...prev, tempUserMsg]);
     setInput("");
+    setIsSending(true);
+    playChime(false);
 
     try {
-      await request("/chat/send-message", {
+      const res = await request("/chat/send-message", {
         method: "POST",
         token,
-        body: { recipient: recipientId, message: text }
+        body: {
+          recipient: contactId,
+          message: text
+        }
       });
-      loadThreadMessages(recipientId);
+
+      // The backend returns { chat, botReply }
+      if (res?.botReply) {
+        setTimeout(() => {
+          setMessages((prev) => [...prev, res.botReply]);
+          playChime(true);
+        }, 500);
+      } else {
+        // Fallback local smart response if bot reply was omitted
+        setTimeout(() => {
+          generateFallbackAiResponse(text, activeContact);
+        }, 600);
+      }
     } catch (err) {
-      setMessengerError(err.message || "Failed to send message.");
+      setErrorBanner(err.message || "Failed to send message.");
+    } finally {
+      setIsSending(false);
     }
   };
 
-  const handleFormSubmit = (e) => {
-    e.preventDefault();
-    if (mode === "ai") {
-      handleAiSend();
+  // Local fallback smart response if server concierge already answered or offline
+  const generateFallbackAiResponse = (userText, contact) => {
+    const q = userText.toLowerCase();
+    const isSuperAdmin = contact?.role === "super-admin";
+    const venueName = contact?.playground?.name || "TURF ভেন্যু";
+
+    let reply = "";
+    if (isSuperAdmin) {
+      if (q.includes("approve") || q.includes("অনুমোদন")) {
+        reply = "TURF ভেন্যু অনুমোদন নিয়ম: নতুন ভেন্যু যুক্ত করার পর সিস্টেম অ্যাডমিন ভেন্যুর লাইসেন্স, ঠিকানা, ছবি ও ফেসিলিটি যাচাই করে ২৪–৪৮ ঘণ্টার মধ্যে অনুমোদন করেন।";
+      } else if (q.includes("commission") || q.includes("payout") || q.includes("টাকা") || q.includes("কমিশন")) {
+        reply = "পেমেন্ট ও পে-আউট নিয়ম: কাস্টমারদের অনলাইন ও ক্যাশ বুকিং সরাসরি ড্যাশবোর্ডে ট্র্যাক হয়। প্ল্যাটফর্ম ফি সমন্বয়ের পর প্রতি সপ্তাহের শেষে পে-আউট ক্লিয়ারেন্স সম্পন্ন হয়।";
+      } else {
+        reply = "কিছুক্ষণের মধ্যে সিস্টেম অ্যাডমিন সরাসরি আপনার সাথে যোগাযোগ করবেন। আপনার অনুরোধটি প্ল্যাটফর্ম অ্যাডমিনের কাছে পাঠানো হয়েছে। (A system administrator will assist you directly shortly.)";
+      }
     } else {
-      handleMessengerSend();
+      if (q.includes("cancel") || q.includes("refund") || q.includes("বাতিল") || q.includes("ফেরত")) {
+        reply = `বুকিং বাতিল ও রিফান্ডের নিয়ম: খেলার নির্ধারিত সময়ের অন্তত ২ ঘণ্টা আগে স্লট বাতিল করলে অনুমোদিত ক্যাশ রিফান্ড পাওয়া যায়, যা ${venueName}-এর অফিস থেকে সংগ্রহ করতে পারবেন।`;
+      } else if (q.includes("facility") || q.includes("সুবিধা") || q.includes("location") || q.includes("ঠিকানা") || q.includes("মাঠ")) {
+        const addr = contact?.playground?.address || "ঢাকা";
+        reply = `${venueName} (${addr})-এ আন্তর্জাতিক মানের কৃত্রিম ঘাস, চমৎকার ফ্লাডলাইট, নিরাপদ ড্রেসিংরুম ও পার্কিং সুবিধা রয়েছে। উপরে দেওয়া 'Open Map' বাটনে ক্লিক করে লাইভ ম্যাপ দেখতে পারেন।`;
+      } else if (q.includes("shoe") || q.includes("boot") || q.includes("জুতা") || q.includes("বুট") || q.includes("stud")) {
+        reply = `${venueName}-এ কৃত্রিম ঘাসের সুরক্ষায় সাধারণ টার্ফ শু (Turf Shoes) বা রাবার স্টাড (Rubber Studs) ব্যবহার করতে হবে। ধাতব স্পাইক বুট মাঠে সম্পূর্ণ নিষিদ্ধ।`;
+      } else if (q.includes("slot") || q.includes("time") || q.includes("স্লট") || q.includes("দাম") || q.includes("price")) {
+        reply = `${venueName}-এর স্লট প্রতিদিন সকাল ৬:০০ থেকে রাত ১২:০০ টা পর্যন্ত খোলা থাকে। আপনার পছন্দের তারিখ ও সময় জানাতে পারেন অথবা সরাসরি ড্যাশবোর্ড থেকে স্লট কনফার্ম করতে পারেন।`;
+      } else {
+        reply = "কিছুক্ষণের মধ্যে আপনার সাথে আমাদের প্রতিনিধি যোগাযোগ করবে। আপনার বার্তাটি ভেন্যু অ্যাডমিনের পর্যালোচনার জন্য পাঠানো হয়েছে। (A venue representative will contact you shortly.)";
+      }
     }
+
+    const aiMsg = {
+      _id: "local-ai-" + Date.now(),
+      senderRole: "system",
+      message: reply,
+      createdAt: new Date().toISOString()
+    };
+    setMessages((prev) => [...prev, aiMsg]);
+    playChime(true);
+  };
+
+  // Check if a message is an escalation / handoff
+  const isHandoffMessage = (msgText) => {
+    return (
+      msgText.includes("কিছুক্ষণের মধ্যে আপনার সাথে আমাদের প্রতিনিধি যোগাযোগ করবে") ||
+      msgText.includes("কিছুক্ষণের মধ্যে সিস্টেম অ্যাডমিন") ||
+      msgText.includes("representative will contact you shortly") ||
+      msgText.includes("system administrator will assist you")
+    );
+  };
+
+  const handleContactSelect = (contact) => {
+    setActiveContact(contact);
+    setMobileView("thread");
+    setShowVenueInfo(false);
   };
 
   return (
     <div className={`ai-messenger-container ${embedded ? "embedded-mode" : "modal-floating-mode"}`}>
-      {/* Messenger Header Bar */}
+      {/* 1. TOP HEADER */}
       <header className="ai-messenger-header">
         <div className="header-identity">
+          {mobileView === "thread" && (
+            <button
+              type="button"
+              className="mobile-back-to-contacts-btn"
+              onClick={() => setMobileView("list")}
+              title="Back to Contacts"
+            >
+              ←
+            </button>
+          )}
+
           <div className="ai-copilot-avatar">
-            {mode === "ai" ? "🤖" : (activeContact?.name?.[0] || "💬").toUpperCase()}
+            {activeContact?.role === "super-admin"
+              ? "🛡️"
+              : (activeContact?.playground?.name?.[0] || activeContact?.name?.[0] || "🏟️").toUpperCase()}
             <span className="online-beacon" />
           </div>
+
           <div className="identity-copy">
             <div className="identity-title-row">
-              <h3>{mode === "ai" ? "TURF AI Copilot" : (activeContact?.name || "Venue Messenger")}</h3>
-              <span className="ai-badge">{mode === "ai" ? "GPT Engine Active" : "Direct Chat"}</span>
+              <h3>
+                {activeContact?.role === "super-admin"
+                  ? "TURF Platform Support"
+                  : (activeContact?.playground?.name || activeContact?.name || "TURF AI Messenger")}
+              </h3>
+              <span className="ai-badge">
+                {activeContact?.role === "super-admin" ? "🛡️ System AI Active" : "🤖 Venue AI Active"}
+              </span>
             </div>
             <p>
-              {mode === "ai"
-                ? "24/7 Smart Assistance for bookings, rules & venues"
-                : (activeContact?.playground?.name || activeContact?.role?.replace("-", " ") || "Live Support Desk")}
+              {activeContact?.role === "super-admin"
+                ? "Platform Verification, Payouts & Administration"
+                : (activeContact?.playground?.address || activeContact?.role?.replace("-", " ") || "24/7 Playground & Game Assistant")}
             </p>
           </div>
         </div>
 
         <div className="header-actions">
-          {/* Mode Switcher Pills */}
-          <div className="mode-segmented-control">
+          {activeContact?.playground && (
             <button
               type="button"
-              className={`mode-btn ${mode === "ai" ? "active" : ""}`}
-              onClick={() => setMode("ai")}
+              className={`venue-info-toggle-btn ${showVenueInfo ? "active" : ""}`}
+              onClick={() => setShowVenueInfo(!showVenueInfo)}
+              title="Toggle Venue Details"
             >
-              🤖 AI Copilot
+              ℹ️ Details
             </button>
-            <button
-              type="button"
-              className={`mode-btn ${mode === "messenger" ? "active" : ""}`}
-              onClick={() => setMode("messenger")}
-            >
-              💬 Venue Chat
-            </button>
-          </div>
+          )}
 
           {onClose && (
             <button type="button" className="close-messenger-btn" onClick={onClose} aria-label="Close Chat">
@@ -342,186 +356,241 @@ Need a specific answer? Try typing *"How do I cancel?"* or *"How to register for
         </div>
       </header>
 
-      {/* Main Body Area */}
-      <div className="ai-messenger-body">
-        {/* ========================================================
-            MODE 1: TURF AI COPILOT
-            ======================================================== */}
-        {mode === "ai" && (
-          <div className="ai-thread-viewport">
-            <div className="ai-messages-list">
-              {aiMessages.map((msg) => (
-                <div key={msg.id} className={`chat-bubble-row ${msg.sender}`}>
-                  <div className="chat-bubble">
-                    <div className="bubble-content">
-                      {msg.text.split("\n").map((line, idx) => {
-                        if (line.startsWith("### ")) {
-                          return <h4 key={idx} className="bubble-heading">{line.replace("### ", "")}</h4>;
-                        }
-                        if (line.startsWith("• ")) {
-                          return <li key={idx} className="bubble-bullet">{line.replace("• ", "")}</li>;
-                        }
-                        if (line.trim().startsWith("[") && line.includes("](#")) {
-                          const match = line.match(/\[(.*?)\]\((.*?)\)/);
-                          if (match) {
-                            return (
-                              <button
-                                key={idx}
-                                type="button"
-                                className="bubble-link-btn"
-                                onClick={() => navigate && navigate(match[2].replace("#", ""))}
-                              >
-                                {match[1]} →
-                              </button>
-                            );
-                          }
-                        }
-                        return line ? <p key={idx}>{line}</p> : <div key={idx} style={{ height: "4px" }} />;
-                      })}
-                    </div>
-                    <span className="bubble-timestamp">{msg.timestamp}</span>
-                  </div>
-
-                  {msg.quickChips && msg.quickChips.length > 0 && (
-                    <div className="quick-chips-track">
-                      {msg.quickChips.map((chip, cIdx) => (
-                        <button
-                          key={cIdx}
-                          type="button"
-                          className="quick-chip-pill"
-                          onClick={() => handleAiSend(chip)}
-                        >
-                          {chip}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-
-              {isTyping && (
-                <div className="chat-bubble-row ai">
-                  <div className="chat-bubble typing-indicator-bubble">
-                    <span className="typing-dot" />
-                    <span className="typing-dot" />
-                    <span className="typing-dot" />
-                  </div>
-                </div>
-              )}
-              <div ref={messagesEndRef} />
+      {/* 2. VENUE DETAILS SUB-BANNER (If available) */}
+      {showVenueInfo && activeContact?.playground && (
+        <div className="venue-details-drawer">
+          <div className="venue-drawer-grid">
+            <div>
+              <strong>📍 Location:</strong>
+              <span>{activeContact.playground.address || "Dhaka, Bangladesh"}</span>
             </div>
-          </div>
-        )}
-
-        {/* ========================================================
-            MODE 2: DIRECT VENUE MESSENGER
-            ======================================================== */}
-        {mode === "messenger" && (
-          <div className="venue-messenger-layout">
-            {/* Contacts Sidebar */}
-            <aside className="messenger-contacts-aside">
-              <div className="contacts-aside-header">
-                <strong>Conversations</strong>
-                <span>{contacts.length} Available</span>
+            <div>
+              <strong>⚽ Sport:</strong>
+              <span>{activeContact.playground.sportType || "Football & Box Cricket"}</span>
+            </div>
+            {activeContact.phone && (
+              <div>
+                <strong>📞 Phone:</strong>
+                <span>{activeContact.phone}</span>
               </div>
-              <div className="contacts-scroll-list">
-                {loadingContacts ? (
-                  <p className="messenger-status-copy">Loading contacts…</p>
-                ) : contacts.length > 0 ? (
-                  contacts.map((c) => {
-                    const cId = c.id || c._id;
-                    const isSelected = (activeContact?.id || activeContact?._id) === cId;
+            )}
+            {activeContact.playground.googleMapLocation && (
+              <div>
+                <strong>🗺️ Map:</strong>
+                <a
+                  href={activeContact.playground.googleMapLocation}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="open-map-link-btn"
+                >
+                  Open in Google Maps →
+                </a>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 3. MAIN MESSENGER BODY (Split View: Contacts Left, Chat Thread Right) */}
+      <div className="ai-messenger-body">
+        {/* Contacts Sidebar (Venues / Admins) */}
+        <aside className={`messenger-contacts-aside ${mobileView === "list" ? "mobile-show" : "mobile-hide"}`}>
+          <div className="contacts-aside-header">
+            <strong>
+              {role === "customer" ? "Playground Venues" : "Conversations"}
+            </strong>
+            <span>{filteredContactsList.length} Active</span>
+          </div>
+
+          {/* Search bar */}
+          <div className="contacts-search-box">
+            <span className="search-icon">🔍</span>
+            <input
+              type="search"
+              placeholder={role === "customer" ? "Search venues or turfs..." : "Search contacts..."}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+
+          <div className="contacts-scroll-list">
+            {loadingContacts ? (
+              <p className="messenger-status-copy">Loading playgrounds…</p>
+            ) : filteredContactsList.length > 0 ? (
+              filteredContactsList.map((contact) => {
+                const cId = contact.id || contact._id;
+                const isSelected = (activeContact?.id || activeContact?._id) === cId;
+                const isSys = contact.role === "super-admin";
+                return (
+                  <div
+                    key={cId}
+                    className={`contact-card ${isSelected ? "selected" : ""}`}
+                    onClick={() => handleContactSelect(contact)}
+                  >
+                    <div className={`contact-avatar ${isSys ? "sys-avatar" : ""}`}>
+                      {isSys ? "🛡️" : (contact.playground?.name?.[0] || contact.name?.[0] || "🏟️").toUpperCase()}
+                    </div>
+                    <div className="contact-card-copy">
+                      <strong>{contact.playground?.name || contact.name}</strong>
+                      <span>
+                        {isSys
+                          ? "Platform Operations"
+                          : (contact.playground?.sportType ? `⚽ ${contact.playground.sportType}` : contact.name)}
+                      </span>
+                    </div>
+                    <span className="contact-live-dot" title="AI Ready" />
+                  </div>
+                );
+              })
+            ) : (
+              <p className="messenger-status-copy">No venues found matching your search.</p>
+            )}
+          </div>
+        </aside>
+
+        {/* Conversation Thread Panel */}
+        <section className={`messenger-thread-section ${mobileView === "thread" ? "mobile-show" : "mobile-hide"}`}>
+          {activeContact ? (
+            <>
+              {/* Messages viewport */}
+              <div className="messenger-messages-list">
+                {loadingMessages ? (
+                  <p className="messenger-status-copy">Loading conversation history…</p>
+                ) : messages.length > 0 ? (
+                  messages.map((m, idx) => {
+                    const isMine =
+                      m.senderRole === role &&
+                      (m.sender === (user?._id || user?.id) || m.senderRole !== "system");
+                    const isAi = m.senderRole === "system";
+                    const handoff = isAi && isHandoffMessage(m.message);
+
                     return (
                       <div
-                        key={cId}
-                        className={`contact-card ${isSelected ? "selected" : ""}`}
-                        onClick={() => setActiveContact(c)}
+                        key={m._id || idx}
+                        className={`chat-bubble-row ${isMine ? "user" : isAi ? "ai" : "admin"}`}
                       >
-                        <div className="contact-avatar">{c.name?.[0] || "V"}</div>
-                        <div className="contact-card-copy">
-                          <strong>{c.name}</strong>
-                          <span>{c.playground?.name || c.role?.replace("-", " ")}</span>
+                        {/* Sender Label Badge */}
+                        <div className="bubble-sender-badge">
+                          {isMine ? (
+                            <span>You</span>
+                          ) : isAi ? (
+                            <span className="badge-ai">🤖 {activeContact.role === "super-admin" ? "System AI" : "Venue AI"}</span>
+                          ) : (
+                            <span className="badge-admin">👨‍💼 {activeContact.role === "super-admin" ? "Super Admin" : "Venue Manager"}</span>
+                          )}
                         </div>
+
+                        {/* Bubble Content */}
+                        <div className={`chat-bubble ${isAi ? "ai-style" : isMine ? "user-style" : "admin-style"}`}>
+                          <div className="bubble-content">
+                            {m.message.split("\n").map((line, lIdx) => {
+                              if (line.startsWith("### ")) {
+                                return <h4 key={lIdx} className="bubble-heading">{line.replace("### ", "")}</h4>;
+                              }
+                              if (line.startsWith("• ")) {
+                                return <li key={lIdx} className="bubble-bullet">{line.replace("• ", "")}</li>;
+                              }
+                              return line ? <p key={lIdx}>{line}</p> : <div key={lIdx} style={{ height: "4px" }} />;
+                            })}
+                          </div>
+                          <span className="bubble-timestamp">
+                            {new Date(m.createdAt || Date.now()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                        </div>
+
+                        {/* Escalation alert banner if handoff triggered */}
+                        {handoff && (
+                          <div className="escalation-alert-banner">
+                            <span className="escalation-icon">🔔</span>
+                            <div>
+                              <strong>
+                                {activeContact.role === "super-admin"
+                                  ? "সিস্টেম অ্যাডমিনের কাছে অনুরোধ পাঠানো হয়েছে"
+                                  : "ভেন্যু ম্যানেজারের কাছে অনুরোধ পাঠানো হয়েছে"}
+                              </strong>
+                              <span>আমাদের প্রতিনিধি খুব শীঘ্রই আপনার সাথে সরাসরি যোগাযোগ করবে।</span>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })
                 ) : (
-                  <p className="messenger-status-copy">No venue contacts found. Try AI Copilot mode!</p>
+                  <div className="thread-empty-state">
+                    <span>💬</span>
+                    <p>
+                      {activeContact.role === "super-admin"
+                        ? "সিস্টেম সম্পর্কিত যেকোনো প্রশ্ন করুন। আমাদের প্ল্যাটফর্ম এআই আপনাকে সহায়তা করবে।"
+                        : "মাঠের সুযোগ-সুবিধা, খেলার নিয়ম বা স্লট সম্পর্কে প্রশ্ন করুন।"}
+                    </p>
+                  </div>
                 )}
-              </div>
-            </aside>
 
-            {/* Conversation Thread */}
-            <section className="messenger-thread-section">
-              {activeContact ? (
-                <>
-                  <div className="thread-contact-subhead">
-                    <div>
-                      <strong>{activeContact.name}</strong>
-                      <span>{activeContact.playground?.name || activeContact.role}</span>
+                {isSending && (
+                  <div className="chat-bubble-row ai">
+                    <div className="bubble-sender-badge">
+                      <span className="badge-ai">🤖 AI Answering…</span>
                     </div>
-                    {activeContact.playground?.phone && (
-                      <span className="contact-phone-chip">📞 {activeContact.playground.phone}</span>
-                    )}
+                    <div className="chat-bubble ai-style typing-indicator-bubble">
+                      <span className="typing-dot" />
+                      <span className="typing-dot" />
+                      <span className="typing-dot" />
+                    </div>
                   </div>
+                )}
+                <div ref={messagesEndRef} />
+              </div>
 
-                  <div className="messenger-messages-list">
-                    {loadingMessages ? (
-                      <p className="messenger-status-copy">Loading conversation history…</p>
-                    ) : threadMessages.length > 0 ? (
-                      threadMessages.map((m) => {
-                        const isMine = m.sender === (user?._id || user?.id);
-                        return (
-                          <div key={m._id} className={`chat-bubble-row ${isMine ? "user" : "ai"}`}>
-                            <div className="chat-bubble">
-                              <p>{m.message}</p>
-                              <span className="bubble-timestamp">
-                                {new Date(m.createdAt || Date.now()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <div className="thread-empty-state">
-                        <span>💬</span>
-                        <p>No messages yet. Send a message to start chatting with {activeContact.name}!</p>
-                      </div>
-                    )}
-                    <div ref={messagesEndRef} />
-                  </div>
-                </>
-              ) : (
-                <div className="thread-empty-state">
-                  <span>👈</span>
-                  <p>Select a venue contact to begin chatting.</p>
-                </div>
-              )}
-            </section>
-          </div>
-        )}
+              {/* Quick Suggestion Chips */}
+              <div className="thread-quick-chips-bar">
+                {quickChips.map((chip, cIdx) => (
+                  <button
+                    key={cIdx}
+                    type="button"
+                    className="quick-chip-pill"
+                    onClick={() => handleSend(chip)}
+                  >
+                    {chip}
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="thread-empty-state">
+              <span>👈</span>
+              <p>বামপাশের তালিকা থেকে যেকোনো ভেন্যু বা অ্যাডমিন নির্বাচন করুন।</p>
+            </div>
+          )}
+        </section>
       </div>
 
-      {/* Composer Input Bar */}
+      {/* 4. COMPOSER BAR */}
       <footer className="ai-messenger-composer">
-        {messengerError && <div className="messenger-error-banner">{messengerError}</div>}
-        <form onSubmit={handleFormSubmit} className="composer-form">
+        {errorBanner && <div className="messenger-error-banner">{errorBanner}</div>}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSend();
+          }}
+          className="composer-form"
+        >
           <input
             type="text"
             className="composer-input"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder={
-              mode === "ai"
-                ? "Ask TURF AI anything (e.g. 'How to book a slot?', 'Refund rules')..."
-                : `Message ${activeContact?.name || "venue admin"}...`
+              activeContact?.role === "super-admin"
+                ? "সিস্টেম পলিসি বা অ্যাডমিন সংক্রান্ত প্রশ্ন লিখুন..."
+                : `${activeContact?.playground?.name || "মাঠ"} বা খেলার নিয়ম সম্পর্কে প্রশ্ন লিখুন...`
             }
             maxLength={1200}
+            disabled={!activeContact || isSending}
           />
           <button
             type="submit"
             className="composer-send-btn"
-            disabled={!input.trim()}
+            disabled={!input.trim() || !activeContact || isSending}
             title="Send Message"
           >
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">

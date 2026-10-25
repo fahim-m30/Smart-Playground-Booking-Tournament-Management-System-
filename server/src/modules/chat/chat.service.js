@@ -32,8 +32,9 @@ const realtimeChatMessage = (chat) => ({
 
 // These rules keep communication useful for every account type without
 // exposing a customer-to-customer direct-message channel.
+// Customers only communicate with playground admins (venues); they do not message system admin directly.
 const messageableRoles = {
-    customer: ["playground-admin", "super-admin"],
+    customer: ["playground-admin"],
     "playground-admin": ["customer", "super-admin"],
     "super-admin": ["customer", "playground-admin"],
 };
@@ -43,9 +44,9 @@ const canMessageRole = (senderRole, recipientRole) =>
 
 // Handles the concierge flow workflow.
 const conciergeFlow = (senderRole, recipientRole) =>
-    senderRole === "customer"
-    || senderRole === "super-admin"
-    || (senderRole === "playground-admin" && recipientRole === "super-admin");
+    (senderRole === "customer" && recipientRole === "playground-admin")
+    || (senderRole === "playground-admin" && recipientRole === "super-admin")
+    || (senderRole === "super-admin");
 
 // Use Bangladesh calendar days rather than a rolling 24-hour window.
 const bangladeshDayBounds = (now = new Date()) => {
@@ -110,9 +111,108 @@ const money = (value) => `৳${Number(value || 0).toLocaleString("en-BD")}`;
 const shortDate = (value) => value ? new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" }).format(new Date(value)) : "Date to be confirmed";
 // Handles the bot has workflow.
 const botHas = (message, ...terms) => terms.some((term) => message.includes(term));
-const handoffResponse = "Thanks for your message. A TURF representative will contact you shortly. Your request has been sent to the responsible support team for review.";
+const customerHandoffResponse = "কিছুক্ষণের মধ্যে আপনার সাথে আমাদের প্রতিনিধি যোগাযোগ করবে। আপনার বার্তাটি ভেন্যু অ্যাডমিনের পর্যালোচনার জন্য পাঠানো হয়েছে। (A venue representative will contact you shortly.)";
+const systemAdminHandoffResponse = "কিছুক্ষণের মধ্যে সিস্টেম অ্যাডমিন সরাসরি আপনার সাথে যোগাযোগ করবেন। আপনার অনুরোধটি প্ল্যাটফর্ম অ্যাডমিনের কাছে পাঠানো হয়েছে। (A system administrator will assist you directly shortly.)";
+const handoffResponse = customerHandoffResponse;
 
-// Handles the venue information workflow.
+// Handles the platform answer workflow for playground admin talking to system.
+const platformAnswer = async (message) => {
+    const asksApproval = includesAny(message, ["approve", "approval", "verify", "verification", "অনুমোদন", "ভেরিফাই", "ভেরিফিকেশন"]);
+    const asksCommission = includesAny(message, ["commission", "payout", "withdraw", "fee", "rate", "income", "কমিশন", "টাকা", "উইথড্র", "আয়"]);
+    const asksSlotRules = includesAny(message, ["slot", "schedule", "pricing", "unavailable", "স্লট", "শিডিউল", "দাম"]);
+    const asksStaff = includesAny(message, ["staff", "scanner", "employee", "gatekeeper", "স্টাফ", "স্ক্যানার", "গেট"]);
+    const asksTourney = includesAny(message, ["tournament", "draw", "lottery", "fixture", "টুর্নামেন্ট", "লটারি", "ড্র"]);
+    const asksSuspension = includesAny(message, ["suspend", "suspended", "block", "blocked", "ban", "suspension", "সাসপেন্ড", "ব্যান"]);
+    const asksCounts = includesAny(message, ["user", "users", "playground", "playgrounds", "ইউজার", "প্লেগ্রাউন্ড"])
+        && includesAny(message, ["count", "total", "how many", "number", "কতজন", "কয়জন", "কতগুলো", "কত"]);
+
+    if (asksApproval) {
+        return "TURF ভেন্যু অনুমোদন নিয়ম: নতুন ভেন্যু যুক্ত করার পর সিস্টেম অ্যাডমিন ভেন্যুর ট্রেড লাইসেন্স, ঠিকানা, ছবি ও ফেসিলিটি যাচাই করে ২৪–৪৮ ঘণ্টার মধ্যে অনুমোদন করেন। অনুমোদন সংক্রান্ত বিশেষ প্রয়োজনে সিস্টেম অ্যাডমিন সহায়তা করবেন।";
+    }
+    if (asksCommission) {
+        return "পেমেন্ট ও পে-আউট নিয়ম: কাস্টমারদের অনলাইন ও ক্যাশ বুকিং সরাসরি ড্যাশবোর্ডে ট্র্যাক হয়। প্ল্যাটফর্ম ফি সমন্বয়ের পর প্রতি সপ্তাহের শেষে ভেন্যু অ্যাকাউন্টে পে-আউট ক্লিয়ারেন্স সম্পন্ন হয়। বিস্তারিত হিসেব 'Income' ট্যাবে দেখতে পারেন।";
+    }
+    if (asksSlotRules) {
+        return "স্লট কনফিগারেশন: ভেন্যু অ্যাডমিন দৈনিক বা নির্দিষ্ট বারের জন্য স্লট সময়সূচি ও দাম নির্ধারণ করতে পারেন। কোনো দিন মাঠ বন্ধ থাকলে 'Unavailable Dates'-এ তারিখ যোগ করে স্লট নিষ্ক্রিয় রাখা যায়।";
+    }
+    if (asksStaff) {
+        return "স্টাফ ও গেট স্ক্যানার: 'Staff & Employees' ট্যাব থেকে গেটকিপারদের জন্য অ্যাকাউন্ট তৈরি করা যায়। স্টাফরা কেবল তাদের মোবাইল দিয়ে প্লেয়ারদের QR কোড স্ক্যান করে গেট এন্ট্রি চেক-ইন করতে পারে।";
+    }
+    if (asksTourney) {
+        return "টুর্নামেন্ট আয়োজন: টুর্নামেন্ট শুরু হওয়ার ১ দিন আগে ভেন্যু অ্যাডমিন অফিসিয়াল লাইভ ড্র বা লটারি পরিচালনা করেন। লটারির মাধ্যমে দলগুলোর গ্রুপ স্টেজ ও নকআউট ফিক্সচার স্বয়ংক্রিয়ভাবে জেনারেট হয়।";
+    }
+
+    if (asksCounts || asksSuspension) {
+        const [users, customers, admins, suspended, playgrounds, activePlaygrounds] = await Promise.all([
+            User.countDocuments({ isDeleted: false }),
+            User.countDocuments({ role: "customer", isDeleted: false }),
+            User.countDocuments({ role: "playground-admin", isDeleted: false }),
+            User.countDocuments({ isBlocked: true, isDeleted: false }),
+            Playground.countDocuments({ isDeleted: false }),
+            Playground.countDocuments({ isDeleted: false, isApproved: true, status: "Active" }),
+        ]);
+        if (asksSuspension && !asksCounts) {
+            return `বর্তমানে প্ল্যাটফর্মে ${suspended}টি অ্যাকাউন্ট সাসপেন্ডেড রয়েছে। নিরাপত্তা বা পলিসি ভায়োলেশনের কারণে অ্যাকাউন্ট ব্লক করা হতে পারে। বিস্তারিত তথ্যের জন্য সিস্টেম অ্যাডমিন যোগাযোগ করবেন।`;
+        }
+        return `সিস্টেম সারসংক্ষেপ: মোট ব্যবহারকারী ${users} জন (${customers} গ্রাহক, ${admins} ভেন্যু অ্যাডমিন); মোট মাঠ ${playgrounds}টি (অনুমোদিত সক্রিয় মাঠ ${activePlaygrounds}টি)।`;
+    }
+
+    return null;
+};
+
+// Handles the game rules & turf details answer workflow.
+const gameRulesAnswer = (playground, message) => {
+    const isFootball = includesAny(message, ["football", "futsal", "boots", "studs", "cleats", "ফুটবল", "ফুটসাল", "জুতা", "বুট"]);
+    const isCricket = includesAny(message, ["cricket", "box cricket", "tennis ball", "ক্রিকেট", "বক্স"]);
+    const isGeneralRules = includesAny(message, ["rule", "rules", "regulation", "guideline", "timing", "duration", "নিয়ম", "সময়"]);
+
+    if (isFootball) {
+        return `${playground?.name || "টার্ফ ভেন্যুতে"} ফুটবল খেলার নিয়ম: কৃত্রিম ঘাসের সুরক্ষায় সাধারণ টার্ফ শু (Turf Shoes) বা রাবার স্টাড (Rubber Studs) ব্যবহার আবশ্যক; ধাতব স্পাইক বুট নিষিদ্ধ। ৫-এ-সাইড বা ৭-এ-সাইড ম্যাচের স্বাভাবিক সময়সীমা ৬০ থেকে ৯০ মিনিট।`;
+    }
+    if (isCricket) {
+        return `${playground?.name || "টার্ফ ভেন্যুতে"} বক্স ক্রিকেটের নিয়ম: সফট টেনিস বা টেপ-টেনিস বল দিয়ে খেলা হয়। বাউন্ডারি নেট এবং পিচ আন্তর্জাতিক টার্ফ স্ট্যান্ডার্ড মেনে প্রস্তুত করা থাকে।`;
+    }
+    if (isGeneralRules) {
+        return `${playground?.name || "টার্ফে"} মাঠের নিয়মাবলী: নির্ধারিত স্লট শুরুর ১০ মিনিট আগে উপস্থিত হয়ে QR কোড গেটে স্ক্যান করাতে হবে। ধূমপান ও ধারালো বুট মাঠে সম্পূর্ণ নিষিদ্ধ।`;
+    }
+    return null;
+};
+
+// Handles the concierge response for workflow.
+const conciergeResponseFor = async (rawMessage, playground, senderRole, recipientRole) => {
+    const message = assistantQuestion(rawMessage);
+
+    // 1. Playground Admin messaging Super Admin (Platform System AI)
+    if (senderRole === "playground-admin" && recipientRole === "super-admin") {
+        const sysReply = await platformAnswer(message);
+        if (sysReply) return sysReply;
+        if (includesAny(message, ["hello", "hi", "assalam", "salam", "help", "support", "হ্যালো", "হাই", "সাহায্য"])) {
+            return "স্বাগতম TURF সিস্টেম সাপোর্ট ডেস্কে। ভেন্যু অনুমোদন, স্লট পলিসি, কমিশন, টুর্নামেন্ট বা স্টাফ কনফিগারেশন সম্পর্কে জানতে প্রশ্ন করুন।";
+        }
+        return systemAdminHandoffResponse;
+    }
+
+    // 2. Customer messaging Playground Admin (Venue AI)
+    const cancellation = includesAny(message, ["cancel", "cencel", "cancellation", "refund", "বাতিল", "টাকা ফেরত", "ফেরত"]);
+    const tournament = includesAny(message, ["tournament", "fixture", "draw", "registration", "team", "টুর্নামেন্ট", "ফিক্সচার", "রেজিস্ট্রেশন", "লটারি"]);
+    const slot = includesAny(message, ["slot", "booking", "availability", "available", "price", "cost", "rate", "খালি", "ফাঁকা", "স্লট", "বুকিং", "দাম", "মূল্য"]);
+    const venue = includesAny(message, ["venue", "playground", "location", "address", "facility", "facilities", "ground", "মাঠ", "ভেন্যু", "ঠিকানা", "লোকেশন", "সুবিধা", "ফ্লাডলাইট", "পার্কিং"]);
+    const game = gameRulesAnswer(playground, message);
+
+    if (cancellation) {
+        return "বুকিং বাতিল ও রিফান্ডের নিয়ম: খেলার নির্ধারিত সময়ের অন্তত ২ ঘণ্টা আগে স্লট বাতিল করলে অনুমোদিত ক্যাশ রিফান্ড পাওয়া যায়, যা ভেন্যু অফিস থেকে সংগ্রহ করা যাবে। টুর্নামেন্টের ক্ষেত্রে শুরুর ২ দিন আগে বাতিল করতে হবে।";
+    }
+    if (game) return game;
+    if (tournament) return detailedTournamentAnswer(playground);
+    if (slot) return detailedSlotAnswer(playground, rawMessage);
+    if (venue) return detailedVenueAnswer(playground);
+    if (includesAny(message, ["hello", "hi", "assalam", "help", "support", "salam", "হ্যালো", "হাই", "সাহায্য"])) {
+        return `স্বাগতম ${playground?.name || "TURF ভেন্যুতে"}! আমি এই মাঠের ভার্চুয়াল অ্যাসিস্ট্যান্ট। মাঠের লোকেশন, সুযোগ-সুবিধা, খেলার নিয়ম, আজকের স্লটের সময় ও দাম বা টুর্নামেন্ট সম্পর্কে যেকোনো প্রশ্ন করতে পারেন।`;
+    }
+
+    // Outside the scope -> Handoff to human playground representative!
+    return customerHandoffResponse;
+};
 const venueInformation = (playground) => {
     if (!playground) return "Please select a playground or message its administrator so I can provide venue information.";
     const location = [playground.address, playground.area, playground.district].filter(Boolean).join(", ") || "Location not listed";
@@ -271,29 +371,10 @@ const platformAnswer = async (message) => {
     return `Platform summary: ${users} total user(s) (${customers} customer(s), ${admins} playground admin(s)); ${playgrounds} playground(s), including ${activePlaygrounds} active approved venue(s); ${suspended} suspended account(s).${asksSuspension ? " Suspensions can result from platform-rule or safety violations, or repeated resolved reports; individual details are confirmed by a representative." : ""}`;
 };
 
-// Handles the concierge response for workflow.
-const conciergeResponseFor = async (rawMessage, playground, senderRole) => {
-    const message = assistantQuestion(rawMessage);
-    const tournament = includesAny(message, ["tournament", "fixture", "draw", "registration", "team", "টুর্নামেন্ট", "ফিক্সচার", "রেজিস্ট্রেশন"]);
-    const slot = includesAny(message, ["slot", "booking", "availability", "available", "price", "cost", "rate", "খালি", "ফাঁকা", "স্লট", "বুকিং", "দাম", "মূল্য"]);
-    const venue = includesAny(message, ["venue", "playground", "location", "address", "facility", "ground", "location", "মাঠ", "ভেন্যু", "ঠিকানা", "লোকেশন", "সুবিধা"]);
-    const adminReply = senderRole === "playground-admin" || senderRole === "super-admin"
-        ? await platformAnswer(message)
-        : null;
-    if (adminReply) return adminReply;
-    if (tournament) return detailedTournamentAnswer(playground);
-    if (slot) return detailedSlotAnswer(playground, rawMessage);
-    if (venue) return detailedVenueAnswer(playground);
-    if (includesAny(message, ["hello", "hi", "assalam", "help", "support", "salam", "হ্যালো", "হাই", "সাহায্য"])) {
-        return "I can provide playground location and facilities, slot schedules, prices and date-based availability, plus tournament dates, fees and player requirements.";
-    }
-    return handoffResponse;
-};
-
 // Creates or starts the workflow for create professional concierge reply.
 const createProfessionalConciergeReply = async ({ senderId, senderRole, recipient, key, playground, customerMessage }) => {
     if (!conciergeFlow(senderRole, recipient.role)) return null;
-    const response = await conciergeResponseFor(customerMessage, playground, senderRole);
+    const response = await conciergeResponseFor(customerMessage, playground, senderRole, recipient.role);
     const { start, end } = bangladeshDayBounds();
     const welcomedToday = await Chat.exists({
         conversationKey: key,
@@ -301,8 +382,9 @@ const createProfessionalConciergeReply = async ({ senderId, senderRole, recipien
         isDeleted: false,
         createdAt: { $gte: start, $lt: end },
     });
-    const serviceName = playground?.name || (recipient.role === "super-admin" ? "TURF Support" : "TURF Support Desk");
-    const welcome = welcomedToday ? "" : `Welcome to ${serviceName}. I’m the TURF virtual assistant.`;
+    const isSystemSupport = recipient.role === "super-admin" || senderRole === "super-admin";
+    const serviceName = isSystemSupport ? "TURF System Support" : (playground?.name || "Venue Support");
+    const welcome = welcomedToday ? "" : `Welcome to ${serviceName}. I’m the virtual assistant.`;
     const message = [welcome, response].filter(Boolean).join(" ");
     if (!message) return null;
 
@@ -319,7 +401,7 @@ const createProfessionalConciergeReply = async ({ senderId, senderRole, recipien
     });
     // This flag is only used while handling the current request. It is not
     // persisted on the chat record.
-    botReply.needsHumanHandoff = response === handoffResponse;
+    botReply.needsHumanHandoff = response === customerHandoffResponse || response === systemAdminHandoffResponse;
     return botReply;
 };
 
