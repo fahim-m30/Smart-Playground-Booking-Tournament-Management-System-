@@ -64,16 +64,25 @@ app.use(cookieParser());
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 // ===============================
-// Health Check Route
+// Health & Keep-Alive Check Routes
 // ===============================
 
-app.get("/", (req, res) => {
+const healthCheckHandler = (req, res) => {
+    res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
     res.status(200).json({
         success: true,
-        message:
-            "Smart Playground Booking & Tournament Management System API is Running Successfully.",
+        status: "healthy",
+        service: "Smart Playground Booking & Tournament Management API",
+        uptimeSeconds: Math.floor(process.uptime()),
+        timestamp: new Date().toISOString(),
     });
-});
+};
+
+app.get("/", healthCheckHandler);
+app.get("/health", healthCheckHandler);
+app.get("/ping", healthCheckHandler);
+app.get("/api/v1/health", healthCheckHandler);
+app.get("/api/v1/ping", healthCheckHandler);
 
 // ===============================
 // API Routes

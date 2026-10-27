@@ -72,6 +72,17 @@ export default function App() {
     return () => window.removeEventListener("hashchange", handleHash);
   }, []);
 
+  // Background Keep-Alive Heartbeat: ensures Render backend stays warm while users are on site
+  useEffect(() => {
+    const keepAliveUrl = `${API.replace(/\/api\/v1\/?$/, "")}/health`;
+    const wakeBackend = () => {
+      fetch(keepAliveUrl, { method: "GET", cache: "no-store" }).catch(() => {});
+    };
+    wakeBackend();
+    const timer = setInterval(wakeBackend, 10 * 60 * 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   const logout = () => {
     localStorage.removeItem("turf_token");
     localStorage.removeItem("turf_user");

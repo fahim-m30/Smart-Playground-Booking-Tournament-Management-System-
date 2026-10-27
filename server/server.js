@@ -21,6 +21,7 @@ const app = require("./src/app");
 const connectDB = require("./src/config/db");
 const createSuperAdmin = require("./src/utils/createSuperAdmin");
 const { startNotificationScheduler } = require("./src/jobs/notificationJob");
+const { startKeepAliveJob } = require("./src/jobs/keepAliveJob");
 const { rescheduleUpcomingDrawsToNoon } = require("./src/modules/tournament/tournament.service");
 const http = require("http");
 const { initializeSocket } = require("./src/config/socket");
@@ -56,6 +57,7 @@ const startServer = async () => {
 
             console.log("Database connected successfully");
             startNotificationScheduler();
+            startKeepAliveJob();
 
             console.log("=================================");
         });
