@@ -11,24 +11,28 @@ jobs:
     name: Keep Render Backend Active
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Render Backend Health Endpoint
+      - name: Ping Render Backend Endpoint
         run: |
           echo "=========================================="
           echo "Starting 24/7 Keep-Alive ping to Render..."
           echo "Timestamp: $(date -u)"
           echo "=========================================="
           
-          URL="https://smart-playground-booking-tournament.onrender.com/health"
+          TARGET_URL="https://smart-playground-booking-tournament.onrender.com/"
+          HEALTH_URL="https://smart-playground-booking-tournament.onrender.com/health"
           
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 45 "$URL" || echo "000")
-          echo "Health Endpoint HTTP Status: $STATUS"
+          echo "Pinging root: $TARGET_URL"
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 45 "$TARGET_URL" || echo "000")
+          echo "Root HTTP Status: $STATUS"
           
-          if [ "$STATUS" -ge 200 ] && [ "$STATUS" -lt 400 ]; then
-            echo "✅ Render backend is warm and responded successfully."
+          echo "Pinging health endpoint: $HEALTH_URL"
+          HEALTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 45 "$HEALTH_URL" || echo "000")
+          echo "Health HTTP Status: $HEALTH_STATUS"
+          
+          if ([ "$STATUS" -ge 200 ] && [ "$STATUS" -lt 400 ]) || ([ "$HEALTH_STATUS" -ge 200 ] && [ "$HEALTH_STATUS" -lt 400 ]); then
+            echo "✅ Render backend is alive and warmed up!"
           else
-            echo "⚠️ Health check returned $STATUS. Trying fallback root endpoint..."
-            FALLBACK_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 45 "https://smart-playground-booking-tournament.onrender.com/" || echo "000")
-            echo "Fallback Root HTTP Status: $FALLBACK_STATUS"
+            echo "⚠️ Non-2xx response received, but request successfully sent to wake container."
           fi
           
           echo "Keep-alive cycle finished."
